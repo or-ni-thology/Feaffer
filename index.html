@@ -29,230 +29,254 @@
     font-family: 'EB Garamond', Georgia, serif;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
-    overflow: hidden;   /* all scrolling happens inside .sheet — the frame never gets its own bar */
+    overflow: hidden;   /* nothing scrolls the page — only the drawers move, sideways */
   }
 
-  /* the whole instrument is one fixed viewport that scrolls internally,
-     so the feather can stay put while the controls rise up under it. */
-  .sheet {
+  /* The whole instrument is one fixed viewport laid out top to bottom: a slim
+     provenance header, the feather standing in the middle, and the faffing
+     drawers gathered at the foot where the thumb rests. Nothing scrolls up
+     and down — the two drawers slide sideways instead. */
+  .frame {
     height: 100vh; height: 100dvh;
     max-width: 560px; margin: 0 auto;
-    overflow-y: auto;
-    overflow-x: hidden;
-    -webkit-overflow-scrolling: touch;
+    display: flex; flex-direction: column;
     border-left: 1px solid var(--line);
     border-right: 1px solid var(--line);
-    scrollbar-width: none;
+    overflow: hidden;
   }
-  .sheet::-webkit-scrollbar { width: 0; height: 0; }
 
-  /* the fixed feather — flush to the top, opaque, flat, one box */
-  .feather-box {
-    position: sticky; top: 0; z-index: 5;
-    background: var(--ground);
-    height: 46vh; height: 46dvh;
-    display: flex; align-items: center; justify-content: center;
-    padding: 1.1rem;
-    border-bottom: 1px solid var(--line);
-  }
-  #feather { display: block; height: 100%; width: auto; max-width: 100%; }
-
-  /* the control lane — rises up and tucks behind the feather */
-  .controls {
+  /* ——— the provenance header: seed a feather, or take the one you have ——— */
+  .head {
     background: var(--sheet);
-    padding: 1.2rem clamp(1rem, 4vw, 1.6rem) 2.4rem;
-    display: flex; flex-direction: column; gap: .9rem;
+    padding: .8rem clamp(.9rem, 4vw, 1.4rem) .75rem;
+    border-bottom: 1px solid var(--line);
+    display: flex; flex-direction: column; gap: .55rem;
   }
-
-  h2 {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: .64rem; letter-spacing: .22em; text-transform: uppercase;
-    color: var(--sepia); font-weight: 500;
-    padding-bottom: .4rem; border-bottom: 1px solid var(--line);
-    margin-top: .7rem;
-  }
-  h2:first-of-type { margin-top: 0; }
-
-  .field { display: flex; flex-direction: column; gap: .18rem; }
-  .field .row { display: flex; justify-content: space-between; align-items: baseline; }
-  .field label { font-size: .98rem; }
-  .field .val {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: .68rem; color: var(--rust);
-  }
-  .field .hint {
-    font-family: 'Cormorant Garamond', 'EB Garamond', serif;
-    font-style: italic; font-size: 1rem; color: var(--faint);
-    line-height: 1.25;
-  }
-
-  input[type=range] {
-    -webkit-appearance: none; appearance: none;
-    width: 100%; height: 1px; background: var(--line);
-    outline: none; cursor: pointer; margin: .35rem 0 .1rem;
-  }
-  input[type=range]::-webkit-slider-thumb {
-    -webkit-appearance: none; appearance: none;
-    width: 18px; height: 18px; border-radius: 50%;
-    background: var(--ground); border: 1.5px solid var(--moor);
-  }
-  input[type=range]::-moz-range-thumb {
-    width: 18px; height: 18px; border-radius: 50%;
-    background: var(--ground); border: 1.5px solid var(--moor);
-  }
-  input[type=range]:disabled { opacity: .3; cursor: not-allowed; }
-
-  .swatchrow { display: flex; gap: .45rem; align-items: center; }
-  input[type=color] {
-    -webkit-appearance: none; appearance: none; border: 1px solid var(--line);
-    width: 38px; height: 26px; padding: 0; background: none; cursor: pointer;
-  }
-  input[type=color]::-webkit-color-swatch-wrapper { padding: 2px; }
-  input[type=color]::-webkit-color-swatch { border: none; }
-
-  .toggle { display: flex; align-items: center; gap: .5rem; cursor: pointer; font-size: .98rem; }
-  .toggle input { accent-color: var(--moor); width: 16px; height: 16px; }
-
-  .provenance { display: flex; flex-direction: column; gap: .55rem; }
-  .provenance input[type=text]{
+  .head input[type=text]{
     width: 100%; background: transparent; border: 1px solid var(--line);
-    padding: .6rem .7rem; font-family: 'IBM Plex Mono', monospace;
+    padding: .55rem .7rem; font-family: 'IBM Plex Mono', monospace;
     font-size: .82rem; letter-spacing: .06em; color: var(--ink);
   }
-  .provenance input:focus { outline: 1px solid var(--moor); }
-
-  .btns { display: flex; gap: .5rem; flex-wrap: wrap; }
+  .head input:focus { outline: 1px solid var(--moor); }
+  .btns { display: flex; gap: .5rem; }
   button {
     font-family: 'IBM Plex Mono', monospace;
-    font-size: .66rem; letter-spacing: .1em; text-transform: uppercase;
-    padding: .6rem .7rem; cursor: pointer; flex: 1;
+    font-size: .64rem; letter-spacing: .1em; text-transform: uppercase;
+    padding: .55rem .6rem; cursor: pointer; flex: 1;
     background: var(--moor); color: var(--ground);
     border: 1px solid var(--moor); transition: background .15s;
+    white-space: nowrap;
   }
   button:hover { background: #3a4232; }
   button.ghost { background: transparent; color: var(--moor); }
   button.ghost:hover { background: #4a534014; }
   button:focus-visible { outline: 2px solid var(--rust); outline-offset: 2px; }
 
-  .cc0 {
+  /* ——— the stage: the feather stands here and fills whatever is left ——— */
+  .stage {
+    flex: 1 1 auto; min-height: 0;
+    background: var(--ground);
+    display: flex; align-items: center; justify-content: center;
+    padding: 1rem;
+  }
+  #feather { display: block; height: 100%; width: auto; max-width: 100%; }
+
+  /* ——— a faffing drawer: a bordered row of fixed cells you swipe sideways.
+     A control that wants more room goes LONG — another cell — never TALL, so
+     every cell keeps the same height and the drawer stays a clean band. ——— */
+  .drawer {
+    display: flex;
+    overflow-x: auto; overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    border-top: 1px solid var(--line);
+    background: var(--sheet);
+    scrollbar-width: none;
+  }
+  .drawer::-webkit-scrollbar { height: 0; }
+
+  /* the drawer's name, held to the left edge so you always know which band
+     you are faffing even after you have swiped a way along it */
+  .rail {
+    flex: 0 0 auto;
+    position: sticky; left: 0; z-index: 2;
+    background: var(--sheet);
+    border-right: 1px solid var(--line);
+    width: 58px;
+    display: flex; align-items: center; justify-content: center;
     font-family: 'IBM Plex Mono', monospace;
-    font-size: .58rem; letter-spacing: .1em; color: var(--faint);
-    margin-top: 1rem; text-align: center;
+    font-size: .58rem; letter-spacing: .18em; text-transform: uppercase;
+    color: var(--sepia);
+    writing-mode: vertical-rl; transform: rotate(180deg);
+  }
+
+  /* one cell of the bench */
+  .card {
+    flex: 0 0 auto;
+    width: 150px; height: 84px;
+    border-right: 1px solid var(--line);
+    padding: .6rem .7rem;
+    display: flex; flex-direction: column; justify-content: center; gap: .3rem;
+  }
+  .card:last-child { border-right: none; }
+  .card .cap { display: flex; justify-content: space-between; align-items: baseline; gap: .3rem; }
+  .card label, .card .cap > span:first-child {
+    font-size: .9rem; line-height: 1.15;
+  }
+  .card .val {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: .62rem; color: var(--rust); white-space: nowrap;
+  }
+
+  input[type=range] {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 1px; background: var(--line);
+    outline: none; cursor: pointer; margin: .2rem 0 .1rem;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--ground); border: 1.5px solid var(--moor);
+  }
+  input[type=range]::-moz-range-thumb {
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--ground); border: 1.5px solid var(--moor);
+  }
+  input[type=range]:disabled { opacity: .3; cursor: not-allowed; }
+
+  /* a cell that holds two pigment wells side by side */
+  .swatchcard .swatches { display: flex; gap: .4rem; align-items: center; }
+  input[type=color] {
+    -webkit-appearance: none; appearance: none; border: 1px solid var(--line);
+    width: 40px; height: 28px; padding: 0; background: none; cursor: pointer;
+  }
+  input[type=color]::-webkit-color-swatch-wrapper { padding: 2px; }
+  input[type=color]::-webkit-color-swatch { border: none; }
+  input[type=color]:disabled { opacity: .3; cursor: not-allowed; }
+
+  /* the iridescence switch — a cell you tap to light the sheen controls */
+  .actcard { cursor: pointer; user-select: none; }
+  .actcard .actrow { display: flex; align-items: center; gap: .45rem; }
+  .actcard input { accent-color: var(--moor); width: 17px; height: 17px; cursor: pointer; }
+  .actcard .actstate {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: .58rem; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--faint);
+  }
+
+  /* ——— the colophon, a hair's breadth at the foot ——— */
+  .foot {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: .54rem; letter-spacing: .08em; color: var(--faint);
+    text-align: center; padding: .4rem .5rem;
+    border-top: 1px solid var(--line);
   }
 </style>
 </head>
 <body>
-<main class="sheet">
+<main class="frame">
 
-  <section class="feather-box">
+  <header class="head">
+    <input type="text" id="coord" value="SD 9421 7638" spellcheck="false" aria-label="Grid reference — a coordinate seeds a specific feather">
+    <div class="btns">
+      <button id="conjure">Conjure from grid</button>
+      <button id="random" class="ghost">Wander</button>
+      <button id="save" class="ghost">Take specimen &darr;</button>
+    </div>
+  </header>
+
+  <section class="stage">
     <svg id="feather" viewBox="0 0 400 640" preserveAspectRatio="xMidYMid meet" aria-label="A generated feather specimen"></svg>
   </section>
 
-  <section class="controls">
+  <!-- ——— FORM: the shape of the thing you swipe through ——— -->
+  <div class="drawer" role="group" aria-label="Form">
+    <div class="rail">Form</div>
 
-    <div class="provenance">
-      <input type="text" id="coord" value="SD 9421 7638" spellcheck="false" aria-label="Grid reference — a coordinate seeds a specific feather">
-      <div class="btns">
-        <button id="conjure">Conjure from grid</button>
-        <button id="random" class="ghost">Wander</button>
-      </div>
-    </div>
-
-    <h2>Structure</h2>
-    <div class="field">
-      <div class="row"><label for="len">Rachis length</label><span class="val" id="len-v"></span></div>
+    <div class="card" title="how far the shaft reaches from calamus to tip">
+      <div class="cap"><label for="len">Rachis length</label><span class="val" id="len-v"></span></div>
       <input type="range" id="len" min="380" max="600" value="520">
     </div>
-    <div class="field">
-      <div class="row"><label for="curve">Shaft curvature</label><span class="val" id="curve-v"></span></div>
+    <div class="card" title="the wind it grew against">
+      <div class="cap"><label for="curve">Shaft curvature</label><span class="val" id="curve-v"></span></div>
       <input type="range" id="curve" min="-90" max="90" value="24">
-      <span class="hint">the wind it grew against</span>
     </div>
-    <div class="field">
-      <div class="row"><label for="width">Vane breadth</label><span class="val" id="width-v"></span></div>
+    <div class="card" title="how broad the vane blooms">
+      <div class="cap"><label for="width">Vane breadth</label><span class="val" id="width-v"></span></div>
       <input type="range" id="width" min="30" max="130" value="78">
     </div>
-    <div class="field">
-      <div class="row"><label for="asym">Vane asymmetry</label><span class="val" id="asym-v"></span></div>
+    <div class="card" title="leading edge narrows — the mark of a flight feather">
+      <div class="cap"><label for="asym">Vane asymmetry</label><span class="val" id="asym-v"></span></div>
       <input type="range" id="asym" min="0" max="100" value="0">
-      <span class="hint">leading edge narrows &mdash; the mark of a flight feather</span>
     </div>
-    <div class="field">
-      <div class="row"><label for="angle">Barb angle</label><span class="val" id="angle-v"></span></div>
+    <div class="card" title="the angle the barbs comb off the shaft">
+      <div class="cap"><label for="angle">Barb angle</label><span class="val" id="angle-v"></span></div>
       <input type="range" id="angle" min="20" max="72" value="46">
     </div>
-    <div class="field">
-      <div class="row"><label for="density">Barb density</label><span class="val" id="density-v"></span></div>
+    <div class="card" title="how many barbs comb the vane">
+      <div class="cap"><label for="density">Barb density</label><span class="val" id="density-v"></span></div>
       <input type="range" id="density" min="30" max="150" value="100">
     </div>
-    <div class="field">
-      <div class="row"><label for="down">Plumaceous down</label><span class="val" id="down-v"></span></div>
+    <div class="card" title="soft, disordered barbs at the base">
+      <div class="cap"><label for="down">Plumaceous down</label><span class="val" id="down-v"></span></div>
       <input type="range" id="down" min="0" max="45" value="18">
-      <span class="hint">soft, disordered barbs at the base</span>
     </div>
-    <div class="field">
-      <div class="row"><label for="wear">Age &amp; wear</label><span class="val" id="wear-v"></span></div>
+    <div class="card" title="the fraying and gaps of a feather that has flown">
+      <div class="cap"><label for="wear">Age &amp; wear</label><span class="val" id="wear-v"></span></div>
       <input type="range" id="wear" min="0" max="100" value="22">
     </div>
+  </div>
 
-    <h2>Pigment</h2>
-    <div class="field">
-      <div class="row"><label for="pig1">Ground &amp; shade tones</label></div>
-      <div class="swatchrow">
+  <!-- ——— COLOUR: pigment, pattern and the structural sheen ——— -->
+  <div class="drawer" role="group" aria-label="Colour">
+    <div class="rail">Colour</div>
+
+    <div class="card swatchcard" title="base &amp; shadow of the barbs">
+      <div class="cap"><span>Ground &amp; shade</span></div>
+      <div class="swatches">
         <input type="color" id="pig1" value="#6a5333" aria-label="Ground tone">
         <input type="color" id="pig2" value="#3a2c18" aria-label="Shade tone">
-        <span class="hint">base &amp; shadow of the barbs</span>
       </div>
     </div>
-    <div class="field">
-      <div class="row"><label for="bars">Barring</label><span class="val" id="bars-v"></span></div>
+    <div class="card" title="dark bands across the vane">
+      <div class="cap"><label for="bars">Barring</label><span class="val" id="bars-v"></span></div>
       <input type="range" id="bars" min="0" max="12" value="0">
-      <span class="hint">dark bands across the vane</span>
     </div>
-    <div class="field">
-      <div class="row"><label for="tipband">Terminal band</label><span class="val" id="tipband-v"></span></div>
+    <div class="card" title="a dark tip, as on a grouse or pheasant">
+      <div class="cap"><label for="tipband">Terminal band</label><span class="val" id="tipband-v"></span></div>
       <input type="range" id="tipband" min="0" max="40" value="0">
-      <span class="hint">a dark tip, as on a grouse or pheasant</span>
     </div>
-
-    <h2>Speckling</h2>
-    <div class="field">
-      <div class="row"><label for="speck">Spots &amp; splodges</label><span class="val" id="speck-v"></span></div>
+    <div class="card" title="flecks scattered across the vane — a first taster">
+      <div class="cap"><label for="speck">Spots &amp; splodges</label><span class="val" id="speck-v"></span></div>
       <input type="range" id="speck" min="0" max="100" value="0">
-      <span class="hint">flecks scattered across the vane &mdash; a first taster</span>
     </div>
 
-    <h2>Iridescence</h2>
-    <label class="toggle"><input type="checkbox" id="irid"> a structural sheen</label>
-    <div class="field">
-      <div class="row"><label for="iridcol">Sheen colours</label></div>
-      <div class="swatchrow">
+    <label class="card actcard" title="a structural sheen">
+      <div class="cap"><span>Iridescence</span></div>
+      <div class="actrow"><input type="checkbox" id="irid"><span class="actstate">a structural sheen</span></div>
+    </label>
+    <div class="card swatchcard" title="two hues it shifts between">
+      <div class="cap"><span>Sheen colours</span></div>
+      <div class="swatches">
         <input type="color" id="iridcol" value="#1f6f8c" aria-label="Sheen colour" disabled>
         <input type="color" id="iridcol2" value="#5e2f7a" aria-label="Second sheen colour" disabled>
-        <span class="hint">two hues it shifts between</span>
       </div>
     </div>
-    <div class="field">
-      <div class="row"><label for="iridpos">Sheen position</label><span class="val" id="iridpos-v"></span></div>
+    <div class="card" title="where along the vane it pools">
+      <div class="cap"><label for="iridpos">Sheen position</label><span class="val" id="iridpos-v"></span></div>
       <input type="range" id="iridpos" min="0" max="100" value="65" disabled>
-      <span class="hint">where along the vane it pools</span>
     </div>
-    <div class="field">
-      <div class="row"><label for="iridspread">Sheen spread</label><span class="val" id="iridspread-v"></span></div>
+    <div class="card" title="how far the sheen spreads">
+      <div class="cap"><label for="iridspread">Sheen spread</label><span class="val" id="iridspread-v"></span></div>
       <input type="range" id="iridspread" min="10" max="100" value="45" disabled>
     </div>
-    <div class="field">
-      <div class="row"><label for="iridstr">Sheen strength</label><span class="val" id="iridstr-v"></span></div>
+    <div class="card" title="how strong the sheen burns">
+      <div class="cap"><label for="iridstr">Sheen strength</label><span class="val" id="iridstr-v"></span></div>
       <input type="range" id="iridstr" min="10" max="100" value="60" disabled>
     </div>
+  </div>
 
-    <div class="btns" style="margin-top:.4rem">
-      <button id="save" class="ghost">Take specimen &darr;</button>
-    </div>
+  <p class="foot">CC0 &middot; for delight only. Not a business for imaginary birds.</p>
 
-    <p class="cc0">CC0 &middot; for delight only. Not a business for imaginary birds.</p>
-
-  </section>
 </main>
 
 <script>
