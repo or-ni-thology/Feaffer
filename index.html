@@ -480,7 +480,6 @@ function drawFeather(){
     const mb = Math.max(3, vaneW*0.11);
     defs += `<filter id="maskblur" filterUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}"><feGaussianBlur stdDeviation="${mb.toFixed(1)}"/></filter>`;
     defs += `<mask id="vanemask" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}"><path d="${d}" fill="#fff" filter="url(#maskblur)"/></mask>`;
-    defs += `<filter id="coreblur" filterUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}"><feGaussianBlur stdDeviation="${Math.max(2,vaneW*0.16).toFixed(1)}"/></filter>`;
   }
 
   // barbs
@@ -495,25 +494,26 @@ function drawFeather(){
   // multiplied over the barbs, hints at that density without drawing the
   // barbules that actually cause it.
   if(haveVane){
+    // The self-shadow reaches a fraction of the LOCAL vane half-width on each
+    // side, so it tapers with the vane on both edges, curved or straight. Its
+    // softness is built from several nested translucent bands — widest faint,
+    // narrowest where they all overlap — rather than an SVG blur filter, which
+    // iOS Safari renders unreliably inside masks/blend-modes. Pure fills look
+    // identical everywhere, so no more hard shadow lines on the phone.
     const coreCol = rgbStr(darken(pig2,0.65));
-    // a filled band hugging the rachis, reaching a fraction of the LOCAL vane
-    // half-width on each side — so it tapers with the vane and fades by its own
-    // blur on both edges, curved or straight, never a hard line against the mask.
-    const coreFrac = 0.42, steps = 30;
-    const rC=[], lC=[];
-    for(let i=0;i<=steps;i++){
-      const t=i/steps, rp=rachisPt(t);
-      const hwR=sideWidth(t,1)*coreFrac, hwL=sideWidth(t,-1)*coreFrac;
-      rC.push([rp.x+rp.norm.x*hwR, rp.y+rp.norm.y*hwR]);
-      lC.push([rp.x-rp.norm.x*hwL, rp.y-rp.norm.y*hwL]);
-    }
-    let d = `M ${rC[0][0].toFixed(1)} ${rC[0][1].toFixed(1)}`;
-    for(let i=1;i<rC.length;i++) d+=` L ${rC[i][0].toFixed(1)} ${rC[i][1].toFixed(1)}`;
-    for(let i=lC.length-1;i>=0;i--) d+=` L ${lC[i][0].toFixed(1)} ${lC[i][1].toFixed(1)}`;
-    d+=' Z';
-    out += `<g mask="url(#vanemask)" style="mix-blend-mode:multiply">`
-         + `<path d="${d}" fill="${coreCol}" opacity="0.22" filter="url(#coreblur)"/>`
-         + `</g>`;
+    const steps = 30;
+    const band = frac => {
+      let d='', first=true;
+      for(let i=0;i<=steps;i++){ const t=i/steps, rp=rachisPt(t), hw=sideWidth(t,1)*frac;
+        d += (first?'M ':' L ')+(rp.x+rp.norm.x*hw).toFixed(1)+' '+(rp.y+rp.norm.y*hw).toFixed(1); first=false; }
+      for(let i=steps;i>=0;i--){ const t=i/steps, rp=rachisPt(t), hw=sideWidth(t,-1)*frac;
+        d += ' L '+(rp.x-rp.norm.x*hw).toFixed(1)+' '+(rp.y-rp.norm.y*hw).toFixed(1); }
+      return d+' Z';
+    };
+    let bands=''; const nL=6;
+    for(let k=0;k<nL;k++){ const frac=0.12 + (0.46-0.12)*(k/(nL-1));
+      bands += `<path d="${band(frac)}" fill="${coreCol}" opacity="0.055"/>`; }
+    out += `<g style="mix-blend-mode:multiply">${bands}</g>`;
   }
 
   // speckling — spots & splodges scattered across the pennaceous vane
