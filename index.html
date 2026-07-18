@@ -245,11 +245,19 @@
       <div class="cap"><label for="bars">Barring</label><span class="val" id="bars-v"></span></div>
       <input type="range" id="bars" min="0" max="12" value="0">
     </div>
+    <div class="card" title="draw the bars onto one web of the vane only">
+      <div class="cap"><label for="barside">Bar side</label><span class="val" id="barside-v"></span></div>
+      <input type="range" id="barside" min="0" max="100" value="0">
+    </div>
+    <div class="card" title="ragged, mottled bar edges instead of clean bands">
+      <div class="cap"><label for="baredge">Bar edge</label><span class="val" id="baredge-v"></span></div>
+      <input type="range" id="baredge" min="0" max="100" value="0">
+    </div>
     <div class="card" title="a dark tip, as on a grouse or pheasant">
       <div class="cap"><label for="tipband">Terminal band</label><span class="val" id="tipband-v"></span></div>
       <input type="range" id="tipband" min="0" max="40" value="0">
     </div>
-    <div class="card" title="flecks scattered across the vane — a first taster">
+    <div class="card" title="flecks &amp; splodges grown into the barbs themselves">
       <div class="cap"><label for="speck">Spots &amp; splodges</label><span class="val" id="speck-v"></span></div>
       <input type="range" id="speck" min="0" max="100" value="0">
     </div>
@@ -300,7 +308,7 @@ const $ = id => document.getElementById(id);
 const P = {
   len:$('len'), curve:$('curve'), width:$('width'), tip:$('tip'), asym:$('asym'), angle:$('angle'),
   density:$('density'), down:$('down'), wear:$('wear'),
-  bars:$('bars'), tipband:$('tipband'), speck:$('speck'),
+  bars:$('bars'), barside:$('barside'), baredge:$('baredge'), tipband:$('tipband'), speck:$('speck'),
   iridpos:$('iridpos'), iridspread:$('iridspread'), iridstr:$('iridstr')
 };
 
@@ -330,6 +338,8 @@ function drawFeather(){
   const wear = +P.wear.value/100;
   const nBars = +P.bars.value;
   const tipBand = +P.tipband.value/100;
+  const barBias = +P.barside.value/100;   // 0 bars on both webs .. 1 one web only
+  const barEdge = +P.baredge.value/100;   // 0 crisp bands .. 1 ragged, mottled
   const speck = +P.speck.value/100;
 
   const pig1 = hexToRgb($('pig1').value);
@@ -409,11 +419,17 @@ function drawFeather(){
     const tfe = tf * tf;
     const effAng = ang + (Math.PI/2 - ang) * tfe * 0.9;
 
-    // barring: is this barb-row within a dark band?
+    // barring: is this barb-row within a dark band? barEdge wobbles the band
+    // boundary and mottles the fill using a deterministic per-row hash (kept off
+    // the main rng so the bars stay stable and don't disturb wear/jitter).
     let bandDark = 0;
+    const hsh = Math.sin(t*311.7 + nBars*57.3)*43758.5;
+    const rowN = hsh - Math.floor(hsh);   // 0..1 stable per barb-row
     if(nBars>0){
+      const wob = barEdge*(rowN-0.5)*0.6;                 // ragged band boundary
       const phase = Math.sin(t*Math.PI*nBars);
-      bandDark = Math.max(0, (Math.abs(phase)-0.45)/0.55); // sharp-ish bands
+      bandDark = Math.max(0, (Math.abs(phase)-(0.45+wob))/0.55);
+      if(bandDark>0 && barEdge>0) bandDark *= 1 - barEdge*rowN*0.8;   // mottle: some rows fade
     }
     if(tipBand>0 && t > 1-tipBand) bandDark = Math.max(bandDark, 0.9);
 
@@ -438,15 +454,21 @@ function drawFeather(){
       const ex=rp.x+rx*bl, ey=rp.y+ry*bl;
       const midx=rp.x+rx*bl*0.5+up.x*bl*0.18, midy=rp.y+ry*bl*0.5+up.y*bl*0.18;
 
+      // one-sided barring: fade the bars out on the leading (right) web as the
+      // bias climbs, so at full bias the bars sit on one web of the vane only.
+      let bd = bandDark;
+      if(barBias>0 && side>0) bd *= (1-barBias);
+
       // pigment: ground tone -> darker toward base & within bands
-      let shade = 0.15 + (1-t)*0.35 + bandDark*0.7;
+      let shade = 0.15 + (1-t)*0.35 + bd*0.7;
       shade = Math.min(1, shade);
       let col = mix(pig1, pig2, shade);
       if(downy) col = mix(col, {r:200,g:190,b:170}, 0.25);
 
       barbLines.push({
         d:`M ${rp.x.toFixed(1)} ${rp.y.toFixed(1)} Q ${midx.toFixed(1)} ${midy.toFixed(1)} ${ex.toFixed(1)} ${ey.toFixed(1)}`,
-        downy, t, col: rgbStr(col)
+        downy, t, col: rgbStr(col),
+        rpx:rp.x, rpy:rp.y, mx:midx, my:midy, ex, ey    // geometry for in-barb markings
       });
       // outline point for the soft wash mask — pulled IN from the barb tip so
       // the shading/sheen sit inside the vane and never touch the ragged edge.
@@ -489,6 +511,37 @@ function drawFeather(){
     out += `<path d="${b.d}" fill="none" stroke="${b.col}" stroke-width="${w}" stroke-linecap="round" opacity="${op}"/>`;
   }
 
+  // in-barb spots — flecks & splodges grown INTO the vane. Instead of ellipses
+  // laid on top, we darken the stretch of each barb that passes through a
+  // scattered spot, so the mark is made of the barbs themselves and moves with
+  // them. Each barb is sampled along its own curve and only the covered
+  // segments are redrawn darker.
+  if(speck>0){
+    const spots=[];
+    const nSpots=Math.floor(speck*28);
+    for(let i=0;i<nSpots;i++){
+      const st=0.14+rng()*0.78, sside=rng()<0.5?1:-1, f=0.15+rng()*0.8;
+      const hw=sideWidth(st,sside); if(hw<3) continue;
+      const rp=rachisPt(st);
+      spots.push({x:rp.x+rp.norm.x*sside*hw*f, y:rp.y+rp.norm.y*sside*hw*f, r2:Math.pow((1.8+speck*5)*(0.6+rng()*0.9),2)});
+    }
+    const spotCol=rgbStr(mix(pig1,pig2,0.92));
+    const qp=(a,b,c,s)=>{const mt=1-s;return mt*mt*a+2*mt*s*b+s*s*c;};
+    let marks='';
+    for(const b of barbLines){
+      if(b.downy) continue;
+      const SEG=7; let px=b.rpx, py=b.rpy;
+      for(let k=1;k<=SEG;k++){
+        const s=k/SEG, x=qp(b.rpx,b.mx,b.ex,s), y=qp(b.rpy,b.my,b.ey,s);
+        const cxp=(px+x)/2, cyp=(py+y)/2;
+        for(const sp of spots){ const dx=cxp-sp.x, dy=cyp-sp.y;
+          if(dx*dx+dy*dy<sp.r2){ marks+=`<path d="M ${px.toFixed(1)} ${py.toFixed(1)} L ${x.toFixed(1)} ${y.toFixed(1)}" fill="none" stroke="${spotCol}" stroke-width="1.5" stroke-linecap="round"/>`; break; } }
+        px=x; py=y;
+      }
+    }
+    out+=marks;
+  }
+
   // self-shadow — barbs bundle and overlap along the rachis, so the inner vane
   // sits darker than the open edge. A soft dark spine, clipped to the blade and
   // multiplied over the barbs, hints at that density without drawing the
@@ -514,28 +567,6 @@ function drawFeather(){
     for(let k=0;k<nL;k++){ const frac=0.12 + (0.46-0.12)*(k/(nL-1));
       bands += `<path d="${band(frac)}" fill="${coreCol}" opacity="0.055"/>`; }
     out += `<g style="mix-blend-mode:multiply">${bands}</g>`;
-  }
-
-  // speckling — spots & splodges scattered across the pennaceous vane
-  if(speck>0){
-    const nSpots = Math.floor(speck*80);
-    const maxR = 1.6 + speck*5.5;
-    for(let i=0;i<nSpots;i++){
-      const t = 0.12 + rng()*0.82;
-      const side = rng()<0.5 ? 1 : -1;
-      const f = 0.12 + rng()*0.82;                 // fraction out across the vane
-      const halfW = sideWidth(t, side);
-      if(halfW < 2) continue;
-      const rp = rachisPt(t);
-      const px = rp.x + rp.norm.x*side*halfW*f + rp.tan.x*halfW*f*0.25;
-      const py = rp.y + rp.norm.y*side*halfW*f + rp.tan.y*halfW*f*0.25;
-      const r  = maxR*(0.4+rng()*0.9);
-      const rx = r*(0.65+rng()*0.7), ry = r*(0.65+rng()*0.7);
-      const rot = (rng()*60-30);
-      const shade = 0.55 + rng()*0.4;
-      const col = mix(pig1, pig2, Math.min(1,shade));
-      out += `<ellipse cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" rx="${rx.toFixed(1)}" ry="${ry.toFixed(1)}" transform="rotate(${rot.toFixed(0)} ${px.toFixed(1)} ${py.toFixed(1)})" fill="${rgbStr(col)}" opacity="${(0.35+speck*0.4).toFixed(2)}"/>`;
-    }
   }
 
   // iridescent wash — a translucent lens over the vane, clipped to the feather's outline
@@ -587,6 +618,8 @@ function updateReadouts(){
   $('down-v').textContent = P.down.value+'%';
   $('wear-v').textContent = P.wear.value+'%';
   $('bars-v').textContent = P.bars.value>0? P.bars.value : 'none';
+  $('barside-v').textContent = P.barside.value>0? P.barside.value+'%' : 'both';
+  $('baredge-v').textContent = P.baredge.value>0? P.baredge.value+'%' : 'crisp';
   $('tipband-v').textContent = P.tipband.value>0? P.tipband.value+'%' : 'none';
   $('speck-v').textContent = P.speck.value>0? P.speck.value+'%' : 'none';
   $('iridpos-v').textContent = P.iridpos.value+'%';
@@ -610,6 +643,8 @@ function conjureFrom(str){
   P.down.value    = Math.floor(rng()*40);
   P.wear.value    = Math.floor(rng()*65);
   P.bars.value    = rng()<0.4 ? Math.floor(rng()*8) : 0;
+  P.barside.value = P.bars.value>0 && rng()<0.4 ? 40+Math.floor(rng()*60) : 0;
+  P.baredge.value = P.bars.value>0 ? Math.floor(rng()*rng()*100) : 0;
   P.tipband.value = rng()<0.3 ? 10+Math.floor(rng()*25) : 0;
   P.speck.value   = rng()<0.35 ? Math.floor(rng()*70) : 0;
 
