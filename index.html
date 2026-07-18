@@ -354,8 +354,11 @@ function drawFeather(){
   // SMOOTHED width envelope — single smooth curve, gentle shoulder.
   // tipShape draws the widest point lower and stretches the upper falloff into
   // a long fine taper (rounded apex at 0, snipe-point paintbrush at 1).
-  const peak = 0.58 - tipShape*0.10;
-  const tipPow = 1.05 + tipShape*2.2;
+  // tipShape moves the widest point lower and blends the upper falloff from a
+  // rounded apex (cos shoulder) toward a long, gently-convex straight taper —
+  // so a pointed feather narrows from lower down along a shallow line that
+  // never holds a shoulder and never curves concave (Mr Doodles' pheasant).
+  const peak = 0.58 - tipShape*0.16;
   function widthAt(t){
     let w;
     if(t < peak){
@@ -364,8 +367,9 @@ function drawFeather(){
       w = Math.pow(w, 0.85);
     } else {
       const u = (t-peak)/(1-peak);
-      w = Math.cos(u*Math.PI/2);           // ease down to tip
-      w = Math.pow(Math.max(0,w), tipPow);
+      const wRound = Math.cos(u*Math.PI/2);      // rounded apex
+      const wPoint = Math.pow(1-u, 0.9);         // long, gently-convex taper, never concave
+      w = wRound*(1-tipShape) + wPoint*tipShape;
     }
     return Math.max(0, w) * vaneW;
   }
@@ -381,14 +385,10 @@ function drawFeather(){
   function rachisPt(t){ const p=rachis(t); const tan=rachisTangent(t); const norm={x:-tan.y,y:tan.x};
     return { x:p.x + norm.x*rachisShift, y:p.y + norm.y*rachisShift, tan, norm }; }
 
-  // spineD runs the whole shaft (used for the self-shadow); shaftD is the
-  // VISIBLE quill, which stops at RACHIS_END so the tip is closed by barbs.
-  let shaftD = '', spineD = '';
-  { const p0=rachisPt(0);
-    shaftD=`M ${p0.x.toFixed(1)} ${p0.y.toFixed(1)}`;
-    spineD=`M ${p0.x.toFixed(1)} ${p0.y.toFixed(1)}`;
+  // the VISIBLE quill stops at RACHIS_END so the tip is closed by barbs.
+  let shaftD = '';
+  { const p0=rachisPt(0); shaftD=`M ${p0.x.toFixed(1)} ${p0.y.toFixed(1)}`;
     for(let i=1;i<=40;i++){ const u=i/40, p=rachisPt(u);
-      spineD+=` L ${p.x.toFixed(1)} ${p.y.toFixed(1)}`;
       if(u<=RACHIS_END) shaftD+=` L ${p.x.toFixed(1)} ${p.y.toFixed(1)}`; } }
 
   // barbs
@@ -496,8 +496,23 @@ function drawFeather(){
   // barbules that actually cause it.
   if(haveVane){
     const coreCol = rgbStr(darken(pig2,0.65));
+    // a filled band hugging the rachis, reaching a fraction of the LOCAL vane
+    // half-width on each side — so it tapers with the vane and fades by its own
+    // blur on both edges, curved or straight, never a hard line against the mask.
+    const coreFrac = 0.42, steps = 30;
+    const rC=[], lC=[];
+    for(let i=0;i<=steps;i++){
+      const t=i/steps, rp=rachisPt(t);
+      const hwR=sideWidth(t,1)*coreFrac, hwL=sideWidth(t,-1)*coreFrac;
+      rC.push([rp.x+rp.norm.x*hwR, rp.y+rp.norm.y*hwR]);
+      lC.push([rp.x-rp.norm.x*hwL, rp.y-rp.norm.y*hwL]);
+    }
+    let d = `M ${rC[0][0].toFixed(1)} ${rC[0][1].toFixed(1)}`;
+    for(let i=1;i<rC.length;i++) d+=` L ${rC[i][0].toFixed(1)} ${rC[i][1].toFixed(1)}`;
+    for(let i=lC.length-1;i>=0;i--) d+=` L ${lC[i][0].toFixed(1)} ${lC[i][1].toFixed(1)}`;
+    d+=' Z';
     out += `<g mask="url(#vanemask)" style="mix-blend-mode:multiply">`
-         + `<path d="${spineD}" fill="none" stroke="${coreCol}" stroke-width="${(vaneW*0.46).toFixed(1)}" stroke-linecap="round" opacity="0.24" filter="url(#coreblur)"/>`
+         + `<path d="${d}" fill="${coreCol}" opacity="0.22" filter="url(#coreblur)"/>`
          + `</g>`;
   }
 
