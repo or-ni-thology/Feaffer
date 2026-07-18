@@ -313,6 +313,8 @@ function drawFeather(){
   const cx = W/2;
   const baseY = H - 40, tipReach = +P.len.value;
   const tipY = baseY - tipReach;
+  const TIP_ZONE = 0.76;   // where the barbs begin sweeping forward over the tip
+  const RACHIS_END = 0.9;  // the visible quill stops here; barbs close the tip
 
   const curvature = +P.curve.value;
   const vaneW = +P.width.value;
@@ -371,9 +373,15 @@ function drawFeather(){
   function rachisPt(t){ const p=rachis(t); const tan=rachisTangent(t); const norm={x:-tan.y,y:tan.x};
     return { x:p.x + norm.x*rachisShift, y:p.y + norm.y*rachisShift, tan, norm }; }
 
-  let shaftD = '';
-  { const p0=rachisPt(0); shaftD=`M ${p0.x.toFixed(1)} ${p0.y.toFixed(1)}`;
-    for(let i=1;i<=40;i++){ const p=rachisPt(i/40); shaftD+=` L ${p.x.toFixed(1)} ${p.y.toFixed(1)}`; } }
+  // spineD runs the whole shaft (used for the self-shadow); shaftD is the
+  // VISIBLE quill, which stops at RACHIS_END so the tip is closed by barbs.
+  let shaftD = '', spineD = '';
+  { const p0=rachisPt(0);
+    shaftD=`M ${p0.x.toFixed(1)} ${p0.y.toFixed(1)}`;
+    spineD=`M ${p0.x.toFixed(1)} ${p0.y.toFixed(1)}`;
+    for(let i=1;i<=40;i++){ const u=i/40, p=rachisPt(u);
+      spineD+=` L ${p.x.toFixed(1)} ${p.y.toFixed(1)}`;
+      if(u<=RACHIS_END) shaftD+=` L ${p.x.toFixed(1)} ${p.y.toFixed(1)}`; } }
 
   // barbs
   const barbLines = [];
@@ -385,6 +393,13 @@ function drawFeather(){
     const downy = t < downFrac;
     const ang = downy ? barbAngle*1.5 : barbAngle;
     const up = rp.tan, norm = rp.norm;
+
+    // as a barb nears the tip it sweeps forward toward the shaft axis and
+    // lengthens, so the two sides fan over and close the tip with barbs
+    // rather than with the rachis (Streit & Heidrich's fanned tip).
+    const tf = t <= TIP_ZONE ? 0 : (t - TIP_ZONE) / (1 - TIP_ZONE);
+    const tfe = tf * tf;
+    const effAng = ang + (Math.PI/2 - ang) * tfe * 0.9;
 
     // barring: is this barb-row within a dark band?
     let bandDark = 0;
@@ -399,10 +414,14 @@ function drawFeather(){
       if(rng() < wearChance*0.5){ continue; }
 
       const halfW = sideWidth(t, side);
-      const dirx = norm.x*side*Math.sin(Math.PI/2-ang) + up.x*Math.cos(Math.PI/2-ang);
-      const diry = norm.y*side*Math.sin(Math.PI/2-ang) + up.y*Math.cos(Math.PI/2-ang);
+      const dirx = norm.x*side*Math.sin(Math.PI/2-effAng) + up.x*Math.cos(Math.PI/2-effAng);
+      const diry = norm.y*side*Math.sin(Math.PI/2-effAng) + up.y*Math.cos(Math.PI/2-effAng);
       const m = Math.hypot(dirx,diry)||1;
       let bl = halfW * (downy ? (1.1+rng()*0.5) : 1.0);
+      if(tf>0 && !downy){
+        const reachLen = (1-t) * tipReach * 1.12;   // carry the barb up over the tip
+        bl = bl*(1-tf) + Math.max(bl, reachLen)*tf;
+      }
       const jitter = downy ? (rng()-0.5)*ang*0.9 : (rng()-0.5)*0.12;
       const ca=Math.cos(jitter), sa=Math.sin(jitter);
       const rx=(dirx*ca-diry*sa)/m, ry=(dirx*sa+diry*ca)/m;
@@ -426,11 +445,33 @@ function drawFeather(){
   // assemble
   let defs = '', out = '';
 
+  // the vane outline — the closed blade the pennaceous barb-tips describe.
+  // Built once and reused to clip both the self-shadow and the iridescent wash.
+  const haveVane = leftPts.length>2 && rightPts.length>2;
+  if(haveVane){
+    rightPts.sort((a,b)=>a.t-b.t); leftPts.sort((a,b)=>a.t-b.t);
+    let poly = 'M ' + rightPts.map(p=>`${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' L ');
+    poly += ' L ' + leftPts.slice().reverse().map(p=>`${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' L ') + ' Z';
+    defs += `<clipPath id="vaneclip"><path d="${poly}"/></clipPath>`;
+    defs += `<filter id="coreblur" filterUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}"><feGaussianBlur stdDeviation="${Math.max(2,vaneW*0.16).toFixed(1)}"/></filter>`;
+  }
+
   // barbs
   for(const b of barbLines){
     const w = b.downy ? 0.7 : 0.95;
     const op = b.downy ? 0.5 : 0.85;
     out += `<path d="${b.d}" fill="none" stroke="${b.col}" stroke-width="${w}" stroke-linecap="round" opacity="${op}"/>`;
+  }
+
+  // self-shadow — barbs bundle and overlap along the rachis, so the inner vane
+  // sits darker than the open edge. A soft dark spine, clipped to the blade and
+  // multiplied over the barbs, hints at that density without drawing the
+  // barbules that actually cause it.
+  if(haveVane){
+    const coreCol = rgbStr(darken(pig2,0.65));
+    out += `<g clip-path="url(#vaneclip)" style="mix-blend-mode:multiply">`
+         + `<path d="${spineD}" fill="none" stroke="${coreCol}" stroke-width="${(vaneW*0.46).toFixed(1)}" stroke-linecap="round" opacity="0.24" filter="url(#coreblur)"/>`
+         + `</g>`;
   }
 
   // speckling — spots & splodges scattered across the pennaceous vane
@@ -456,12 +497,7 @@ function drawFeather(){
   }
 
   // iridescent wash — a translucent lens over the vane, clipped to the feather's outline
-  if(iridOn && leftPts.length>2 && rightPts.length>2){
-    rightPts.sort((a,b)=>a.t-b.t); leftPts.sort((a,b)=>a.t-b.t);
-    let poly = 'M ' + rightPts.map(p=>`${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' L ');
-    poly += ' L ' + leftPts.slice().reverse().map(p=>`${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' L ') + ' Z';
-    defs += `<clipPath id="vaneclip"><path d="${poly}"/></clipPath>`;
-
+  if(iridOn && haveVane){
     const c1 = $('iridcol').value, c2 = $('iridcol2').value;
     const centreT = iridPos;
     const cp = rachisPt(centreT);
