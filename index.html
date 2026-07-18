@@ -562,9 +562,7 @@ $('coord').addEventListener('keydown', e=>{ if(e.key==='Enter') conjureFrom($('c
 $('save').addEventListener('click', ()=>{
   const clone=$('feather').cloneNode(true);
   clone.setAttribute('xmlns','http://www.w3.org/2000/svg');
-  const bg=document.createElementNS('http://www.w3.org/2000/svg','rect');
-  bg.setAttribute('width','400'); bg.setAttribute('height','640'); bg.setAttribute('fill','#e6eaec');
-  clone.insertBefore(bg,clone.firstChild);
+  // no background rect — the specimen leaves on a transparent ground
   const blob=new Blob([clone.outerHTML],{type:'image/svg+xml'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
