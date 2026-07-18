@@ -204,6 +204,10 @@
       <div class="cap"><label for="width">Vane breadth</label><span class="val" id="width-v"></span></div>
       <input type="range" id="width" min="30" max="130" value="78">
     </div>
+    <div class="card" title="rounded apex through to a long snipe-point">
+      <div class="cap"><label for="tip">Tip taper</label><span class="val" id="tip-v"></span></div>
+      <input type="range" id="tip" min="0" max="100" value="0">
+    </div>
     <div class="card" title="leading edge narrows — the mark of a flight feather">
       <div class="cap"><label for="asym">Vane asymmetry</label><span class="val" id="asym-v"></span></div>
       <input type="range" id="asym" min="0" max="100" value="0">
@@ -294,7 +298,7 @@ function freshDraw(){ return mulberry(drawSeed); }
 
 const $ = id => document.getElementById(id);
 const P = {
-  len:$('len'), curve:$('curve'), width:$('width'), asym:$('asym'), angle:$('angle'),
+  len:$('len'), curve:$('curve'), width:$('width'), tip:$('tip'), asym:$('asym'), angle:$('angle'),
   density:$('density'), down:$('down'), wear:$('wear'),
   bars:$('bars'), tipband:$('tipband'), speck:$('speck'),
   iridpos:$('iridpos'), iridspread:$('iridspread'), iridstr:$('iridstr')
@@ -318,6 +322,7 @@ function drawFeather(){
 
   const curvature = +P.curve.value;
   const vaneW = +P.width.value;
+  const tipShape = +P.tip.value/100;              // 0 rounded apex .. 1 long snipe-point
   const asym = +P.asym.value/100;                 // 0 symmetric .. 1 strong flight feather
   const barbAngle = +P.angle.value * Math.PI/180;
   const nBarbs = +P.density.value;
@@ -346,9 +351,12 @@ function drawFeather(){
     const dx=2*(1-t)*(ctrlX-cx)+2*t*(cx-ctrlX), dy=2*(1-t)*(ctrlY-baseY)+2*t*(tipY-ctrlY);
     const m=Math.hypot(dx,dy)||1; return {x:dx/m,y:dy/m}; };
 
-  // SMOOTHED width envelope — single smooth curve, gentle shoulder
+  // SMOOTHED width envelope — single smooth curve, gentle shoulder.
+  // tipShape draws the widest point lower and stretches the upper falloff into
+  // a long fine taper (rounded apex at 0, snipe-point paintbrush at 1).
+  const peak = 0.58 - tipShape*0.10;
+  const tipPow = 1.05 + tipShape*2.2;
   function widthAt(t){
-    const peak = 0.58;
     let w;
     if(t < peak){
       const u = t/peak;
@@ -357,7 +365,7 @@ function drawFeather(){
     } else {
       const u = (t-peak)/(1-peak);
       w = Math.cos(u*Math.PI/2);           // ease down to tip
-      w = Math.pow(Math.max(0,w), 1.05);
+      w = Math.pow(Math.max(0,w), tipPow);
     }
     return Math.max(0, w) * vaneW;
   }
@@ -419,7 +427,9 @@ function drawFeather(){
       const m = Math.hypot(dirx,diry)||1;
       let bl = halfW * (downy ? (1.1+rng()*0.5) : 1.0);
       if(tf>0 && !downy){
-        const reachLen = (1-t) * tipReach * 1.12;   // carry the barb up over the tip
+        // a rounded apex is barbs over-reaching to close a broad tip; a pointed
+        // tip wants them to hug the envelope, so the over-reach fades with taper.
+        const reachLen = (1-t) * tipReach * 1.12 * (1 - tipShape*0.85);
         bl = bl*(1-tf) + Math.max(bl, reachLen)*tf;
       }
       const jitter = downy ? (rng()-0.5)*ang*0.9 : (rng()-0.5)*0.12;
@@ -438,21 +448,38 @@ function drawFeather(){
         d:`M ${rp.x.toFixed(1)} ${rp.y.toFixed(1)} Q ${midx.toFixed(1)} ${midy.toFixed(1)} ${ex.toFixed(1)} ${ey.toFixed(1)}`,
         downy, t, col: rgbStr(col)
       });
-      if(!downy){ (side>0?rightPts:leftPts).push({x:ex,y:ey,t}); }
+      // outline point for the soft wash mask — pulled IN from the barb tip so
+      // the shading/sheen sit inside the vane and never touch the ragged edge.
+      if(!downy){ const io=0.84; (side>0?rightPts:leftPts).push({x:rp.x+(ex-rp.x)*io, y:rp.y+(ey-rp.y)*io, t}); }
     }
   }
 
   // assemble
   let defs = '', out = '';
 
-  // the vane outline — the closed blade the pennaceous barb-tips describe.
-  // Built once and reused to clip both the self-shadow and the iridescent wash.
+  // the vane wash region — an inset, SMOOTHED blade the wash sits inside. Both
+  // the self-shadow and the iridescent sheen are masked (not hard-clipped) to
+  // it, so their edges feather away inside the vane instead of catching on the
+  // ragged sawtooth of the barb tips or ending in a hard line near the down.
   const haveVane = leftPts.length>2 && rightPts.length>2;
   if(haveVane){
     rightPts.sort((a,b)=>a.t-b.t); leftPts.sort((a,b)=>a.t-b.t);
-    let poly = 'M ' + rightPts.map(p=>`${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' L ');
-    poly += ' L ' + leftPts.slice().reverse().map(p=>`${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' L ') + ' Z';
-    defs += `<clipPath id="vaneclip"><path d="${poly}"/></clipPath>`;
+    // one closed ring: up the right edge, down the left
+    const ring = rightPts.concat(leftPts.slice().reverse());
+    // smooth it with midpoint quadratics — the barb tips become control points,
+    // so the outline curves through them instead of zig-zagging between them.
+    const n = ring.length;
+    const mid = (a,b)=>[( a.x+b.x)/2, (a.y+b.y)/2];
+    let d = `M ${mid(ring[n-1],ring[0]).map(v=>v.toFixed(1)).join(' ')}`;
+    for(let i=0;i<n;i++){
+      const cur=ring[i], nx=ring[(i+1)%n], m2=mid(cur,nx);
+      d += ` Q ${cur.x.toFixed(1)} ${cur.y.toFixed(1)} ${m2[0].toFixed(1)} ${m2[1].toFixed(1)}`;
+    }
+    d += ' Z';
+    // a soft-edged mask: the smoothed blade, blurred, so the wash fades out
+    const mb = Math.max(3, vaneW*0.11);
+    defs += `<filter id="maskblur" filterUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}"><feGaussianBlur stdDeviation="${mb.toFixed(1)}"/></filter>`;
+    defs += `<mask id="vanemask" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}"><path d="${d}" fill="#fff" filter="url(#maskblur)"/></mask>`;
     defs += `<filter id="coreblur" filterUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}"><feGaussianBlur stdDeviation="${Math.max(2,vaneW*0.16).toFixed(1)}"/></filter>`;
   }
 
@@ -469,7 +496,7 @@ function drawFeather(){
   // barbules that actually cause it.
   if(haveVane){
     const coreCol = rgbStr(darken(pig2,0.65));
-    out += `<g clip-path="url(#vaneclip)" style="mix-blend-mode:multiply">`
+    out += `<g mask="url(#vanemask)" style="mix-blend-mode:multiply">`
          + `<path d="${spineD}" fill="none" stroke="${coreCol}" stroke-width="${(vaneW*0.46).toFixed(1)}" stroke-linecap="round" opacity="0.24" filter="url(#coreblur)"/>`
          + `</g>`;
   }
@@ -509,7 +536,7 @@ function drawFeather(){
         <stop offset="55%" stop-color="${c2}" stop-opacity="${(iridStr*0.55).toFixed(2)}"/>
         <stop offset="100%" stop-color="${c2}" stop-opacity="0"/>
       </radialGradient>`;
-    out += `<g clip-path="url(#vaneclip)" style="mix-blend-mode:screen">
+    out += `<g mask="url(#vanemask)" style="mix-blend-mode:screen">
         <rect x="0" y="0" width="${W}" height="${H}" fill="url(#${gid})"/>
       </g>`;
     const cp2 = rachisPt(Math.min(0.95, centreT+0.12));
@@ -518,7 +545,7 @@ function drawFeather(){
         <stop offset="0%" stop-color="${c1}" stop-opacity="${(iridStr*0.5).toFixed(2)}"/>
         <stop offset="100%" stop-color="${c1}" stop-opacity="0"/>
       </radialGradient>`;
-    out += `<g clip-path="url(#vaneclip)" style="mix-blend-mode:screen">
+    out += `<g mask="url(#vanemask)" style="mix-blend-mode:screen">
         <rect x="0" y="0" width="${W}" height="${H}" fill="url(#${gid}2)"/>
       </g>`;
   }
@@ -538,6 +565,7 @@ function updateReadouts(){
   $('len-v').textContent = P.len.value+' u';
   $('curve-v').textContent = (P.curve.value>0?'+':'')+P.curve.value+'°';
   $('width-v').textContent = P.width.value+' u';
+  $('tip-v').textContent = P.tip.value>0? P.tip.value+'%' : 'round';
   $('asym-v').textContent = P.asym.value+'%';
   $('angle-v').textContent = P.angle.value+'°';
   $('density-v').textContent = P.density.value;
@@ -560,6 +588,7 @@ function conjureFrom(str){
   P.len.value     = 400 + Math.floor(rng()*200);
   P.curve.value   = Math.floor((rng()-0.5)*150);
   P.width.value   = 45 + Math.floor(rng()*75);
+  P.tip.value     = rng()<0.5 ? Math.floor(rng()*rng()*110) : 0;  // often round, sometimes a fine point
   P.asym.value    = rng()<0.45 ? Math.floor(rng()*90) : 0;  // some birds fly, some don't
   P.angle.value   = 28 + Math.floor(rng()*38);
   P.density.value = 60 + Math.floor(rng()*85);
