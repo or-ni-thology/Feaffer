@@ -29,230 +29,266 @@
     font-family: 'EB Garamond', Georgia, serif;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
-    overflow: hidden;   /* all scrolling happens inside .sheet — the frame never gets its own bar */
+    overflow: hidden;   /* nothing scrolls the page — only the drawers move, sideways */
   }
 
-  /* the whole instrument is one fixed viewport that scrolls internally,
-     so the feather can stay put while the controls rise up under it. */
-  .sheet {
+  /* The whole instrument is one fixed viewport laid out top to bottom: a slim
+     provenance header, the feather standing in the middle, and the faffing
+     drawers gathered at the foot where the thumb rests. Nothing scrolls up
+     and down — the two drawers slide sideways instead. */
+  .frame {
     height: 100vh; height: 100dvh;
     max-width: 560px; margin: 0 auto;
-    overflow-y: auto;
-    overflow-x: hidden;
-    -webkit-overflow-scrolling: touch;
+    display: flex; flex-direction: column;
     border-left: 1px solid var(--line);
     border-right: 1px solid var(--line);
-    scrollbar-width: none;
+    overflow: hidden;
   }
-  .sheet::-webkit-scrollbar { width: 0; height: 0; }
 
-  /* the fixed feather — flush to the top, opaque, flat, one box */
-  .feather-box {
-    position: sticky; top: 0; z-index: 5;
-    background: var(--ground);
-    height: 46vh; height: 46dvh;
-    display: flex; align-items: center; justify-content: center;
-    padding: 1.1rem;
-    border-bottom: 1px solid var(--line);
-  }
-  #feather { display: block; height: 100%; width: auto; max-width: 100%; }
-
-  /* the control lane — rises up and tucks behind the feather */
-  .controls {
+  /* ——— the provenance header: seed a feather, or take the one you have ——— */
+  .head {
     background: var(--sheet);
-    padding: 1.2rem clamp(1rem, 4vw, 1.6rem) 2.4rem;
-    display: flex; flex-direction: column; gap: .9rem;
+    padding: .8rem clamp(.9rem, 4vw, 1.4rem) .75rem;
+    border-bottom: 1px solid var(--line);
+    display: flex; flex-direction: column; gap: .55rem;
   }
-
-  h2 {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: .64rem; letter-spacing: .22em; text-transform: uppercase;
-    color: var(--sepia); font-weight: 500;
-    padding-bottom: .4rem; border-bottom: 1px solid var(--line);
-    margin-top: .7rem;
-  }
-  h2:first-of-type { margin-top: 0; }
-
-  .field { display: flex; flex-direction: column; gap: .18rem; }
-  .field .row { display: flex; justify-content: space-between; align-items: baseline; }
-  .field label { font-size: .98rem; }
-  .field .val {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: .68rem; color: var(--rust);
-  }
-  .field .hint {
-    font-family: 'Cormorant Garamond', 'EB Garamond', serif;
-    font-style: italic; font-size: 1rem; color: var(--faint);
-    line-height: 1.25;
-  }
-
-  input[type=range] {
-    -webkit-appearance: none; appearance: none;
-    width: 100%; height: 1px; background: var(--line);
-    outline: none; cursor: pointer; margin: .35rem 0 .1rem;
-  }
-  input[type=range]::-webkit-slider-thumb {
-    -webkit-appearance: none; appearance: none;
-    width: 18px; height: 18px; border-radius: 50%;
-    background: var(--ground); border: 1.5px solid var(--moor);
-  }
-  input[type=range]::-moz-range-thumb {
-    width: 18px; height: 18px; border-radius: 50%;
-    background: var(--ground); border: 1.5px solid var(--moor);
-  }
-  input[type=range]:disabled { opacity: .3; cursor: not-allowed; }
-
-  .swatchrow { display: flex; gap: .45rem; align-items: center; }
-  input[type=color] {
-    -webkit-appearance: none; appearance: none; border: 1px solid var(--line);
-    width: 38px; height: 26px; padding: 0; background: none; cursor: pointer;
-  }
-  input[type=color]::-webkit-color-swatch-wrapper { padding: 2px; }
-  input[type=color]::-webkit-color-swatch { border: none; }
-
-  .toggle { display: flex; align-items: center; gap: .5rem; cursor: pointer; font-size: .98rem; }
-  .toggle input { accent-color: var(--moor); width: 16px; height: 16px; }
-
-  .provenance { display: flex; flex-direction: column; gap: .55rem; }
-  .provenance input[type=text]{
+  .head input[type=text]{
     width: 100%; background: transparent; border: 1px solid var(--line);
-    padding: .6rem .7rem; font-family: 'IBM Plex Mono', monospace;
+    padding: .55rem .7rem; font-family: 'IBM Plex Mono', monospace;
     font-size: .82rem; letter-spacing: .06em; color: var(--ink);
   }
-  .provenance input:focus { outline: 1px solid var(--moor); }
-
-  .btns { display: flex; gap: .5rem; flex-wrap: wrap; }
+  .head input:focus { outline: 1px solid var(--moor); }
+  .btns { display: flex; gap: .5rem; }
   button {
     font-family: 'IBM Plex Mono', monospace;
-    font-size: .66rem; letter-spacing: .1em; text-transform: uppercase;
-    padding: .6rem .7rem; cursor: pointer; flex: 1;
+    font-size: .64rem; letter-spacing: .1em; text-transform: uppercase;
+    padding: .55rem .6rem; cursor: pointer; flex: 1;
     background: var(--moor); color: var(--ground);
     border: 1px solid var(--moor); transition: background .15s;
+    white-space: nowrap;
   }
   button:hover { background: #3a4232; }
   button.ghost { background: transparent; color: var(--moor); }
   button.ghost:hover { background: #4a534014; }
   button:focus-visible { outline: 2px solid var(--rust); outline-offset: 2px; }
 
-  .cc0 {
+  /* ——— the stage: the feather stands here and fills whatever is left ——— */
+  .stage {
+    flex: 1 1 auto; min-height: 0;
+    background: var(--ground);
+    display: flex; align-items: center; justify-content: center;
+    padding: 1rem;
+  }
+  #feather { display: block; height: 100%; width: auto; max-width: 100%; }
+
+  /* ——— a faffing drawer: a bordered row of fixed cells you swipe sideways.
+     A control that wants more room goes LONG — another cell — never TALL, so
+     every cell keeps the same height and the drawer stays a clean band. ——— */
+  .drawer {
+    display: flex;
+    overflow-x: auto; overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    border-top: 1px solid var(--line);
+    background: var(--sheet);
+    scrollbar-width: none;
+  }
+  .drawer::-webkit-scrollbar { height: 0; }
+
+  /* the drawer's name, held to the left edge so you always know which band
+     you are faffing even after you have swiped a way along it */
+  .rail {
+    flex: 0 0 auto;
+    position: sticky; left: 0; z-index: 2;
+    background: var(--sheet);
+    border-right: 1px solid var(--line);
+    width: 58px;
+    display: flex; align-items: center; justify-content: center;
     font-family: 'IBM Plex Mono', monospace;
-    font-size: .58rem; letter-spacing: .1em; color: var(--faint);
-    margin-top: 1rem; text-align: center;
+    font-size: .58rem; letter-spacing: .18em; text-transform: uppercase;
+    color: var(--sepia);
+    writing-mode: vertical-rl; transform: rotate(180deg);
+  }
+
+  /* one cell of the bench */
+  .card {
+    flex: 0 0 auto;
+    width: 150px; height: 84px;
+    border-right: 1px solid var(--line);
+    padding: .6rem .7rem;
+    display: flex; flex-direction: column; justify-content: center; gap: .3rem;
+  }
+  .card:last-child { border-right: none; }
+  .card .cap { display: flex; justify-content: space-between; align-items: baseline; gap: .3rem; }
+  .card label, .card .cap > span:first-child {
+    font-size: .9rem; line-height: 1.15;
+  }
+  .card .val {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: .62rem; color: var(--rust); white-space: nowrap;
+  }
+
+  input[type=range] {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 1px; background: var(--line);
+    outline: none; cursor: pointer; margin: .2rem 0 .1rem;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--ground); border: 1.5px solid var(--moor);
+  }
+  input[type=range]::-moz-range-thumb {
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--ground); border: 1.5px solid var(--moor);
+  }
+  input[type=range]:disabled { opacity: .3; cursor: not-allowed; }
+
+  /* a cell that holds two pigment wells side by side */
+  .swatchcard .swatches { display: flex; gap: .4rem; align-items: center; }
+  input[type=color] {
+    -webkit-appearance: none; appearance: none; border: 1px solid var(--line);
+    width: 40px; height: 28px; padding: 0; background: none; cursor: pointer;
+  }
+  input[type=color]::-webkit-color-swatch-wrapper { padding: 2px; }
+  input[type=color]::-webkit-color-swatch { border: none; }
+  input[type=color]:disabled { opacity: .3; cursor: not-allowed; }
+
+  /* the iridescence switch — a cell you tap to light the sheen controls */
+  .actcard { cursor: pointer; user-select: none; }
+  .actcard .actrow { display: flex; align-items: center; gap: .45rem; }
+  .actcard input { accent-color: var(--moor); width: 17px; height: 17px; cursor: pointer; }
+  .actcard .actstate {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: .58rem; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--faint);
+  }
+
+  /* ——— the colophon, a hair's breadth at the foot ——— */
+  .foot {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: .54rem; letter-spacing: .08em; color: var(--faint);
+    text-align: center; padding: .4rem .5rem;
+    border-top: 1px solid var(--line);
   }
 </style>
 </head>
 <body>
-<main class="sheet">
+<main class="frame">
 
-  <section class="feather-box">
+  <header class="head">
+    <input type="text" id="coord" value="SD 9421 7638" spellcheck="false" aria-label="Grid reference — a coordinate seeds a specific feather">
+    <div class="btns">
+      <button id="conjure">Conjure from grid</button>
+      <button id="random" class="ghost">Wander</button>
+      <button id="save" class="ghost">Take specimen &darr;</button>
+    </div>
+  </header>
+
+  <section class="stage">
     <svg id="feather" viewBox="0 0 400 640" preserveAspectRatio="xMidYMid meet" aria-label="A generated feather specimen"></svg>
   </section>
 
-  <section class="controls">
+  <!-- ——— FORM: the shape of the thing you swipe through ——— -->
+  <div class="drawer" role="group" aria-label="Form">
+    <div class="rail">Form</div>
 
-    <div class="provenance">
-      <input type="text" id="coord" value="SD 9421 7638" spellcheck="false" aria-label="Grid reference — a coordinate seeds a specific feather">
-      <div class="btns">
-        <button id="conjure">Conjure from grid</button>
-        <button id="random" class="ghost">Wander</button>
-      </div>
-    </div>
-
-    <h2>Structure</h2>
-    <div class="field">
-      <div class="row"><label for="len">Rachis length</label><span class="val" id="len-v"></span></div>
+    <div class="card" title="how far the shaft reaches from calamus to tip">
+      <div class="cap"><label for="len">Rachis length</label><span class="val" id="len-v"></span></div>
       <input type="range" id="len" min="380" max="600" value="520">
     </div>
-    <div class="field">
-      <div class="row"><label for="curve">Shaft curvature</label><span class="val" id="curve-v"></span></div>
+    <div class="card" title="the wind it grew against">
+      <div class="cap"><label for="curve">Shaft curvature</label><span class="val" id="curve-v"></span></div>
       <input type="range" id="curve" min="-90" max="90" value="24">
-      <span class="hint">the wind it grew against</span>
     </div>
-    <div class="field">
-      <div class="row"><label for="width">Vane breadth</label><span class="val" id="width-v"></span></div>
+    <div class="card" title="how broad the vane blooms">
+      <div class="cap"><label for="width">Vane breadth</label><span class="val" id="width-v"></span></div>
       <input type="range" id="width" min="30" max="130" value="78">
     </div>
-    <div class="field">
-      <div class="row"><label for="asym">Vane asymmetry</label><span class="val" id="asym-v"></span></div>
-      <input type="range" id="asym" min="0" max="100" value="0">
-      <span class="hint">leading edge narrows &mdash; the mark of a flight feather</span>
+    <div class="card" title="rounded apex through to a long snipe-point">
+      <div class="cap"><label for="tip">Tip taper</label><span class="val" id="tip-v"></span></div>
+      <input type="range" id="tip" min="0" max="100" value="0">
     </div>
-    <div class="field">
-      <div class="row"><label for="angle">Barb angle</label><span class="val" id="angle-v"></span></div>
+    <div class="card" title="leading edge narrows — the mark of a flight feather">
+      <div class="cap"><label for="asym">Vane asymmetry</label><span class="val" id="asym-v"></span></div>
+      <input type="range" id="asym" min="0" max="100" value="0">
+    </div>
+    <div class="card" title="the angle the barbs comb off the shaft">
+      <div class="cap"><label for="angle">Barb angle</label><span class="val" id="angle-v"></span></div>
       <input type="range" id="angle" min="20" max="72" value="46">
     </div>
-    <div class="field">
-      <div class="row"><label for="density">Barb density</label><span class="val" id="density-v"></span></div>
+    <div class="card" title="how many barbs comb the vane">
+      <div class="cap"><label for="density">Barb density</label><span class="val" id="density-v"></span></div>
       <input type="range" id="density" min="30" max="150" value="100">
     </div>
-    <div class="field">
-      <div class="row"><label for="down">Plumaceous down</label><span class="val" id="down-v"></span></div>
+    <div class="card" title="soft, disordered barbs at the base">
+      <div class="cap"><label for="down">Plumaceous down</label><span class="val" id="down-v"></span></div>
       <input type="range" id="down" min="0" max="45" value="18">
-      <span class="hint">soft, disordered barbs at the base</span>
     </div>
-    <div class="field">
-      <div class="row"><label for="wear">Age &amp; wear</label><span class="val" id="wear-v"></span></div>
+    <div class="card" title="the fraying and gaps of a feather that has flown">
+      <div class="cap"><label for="wear">Age &amp; wear</label><span class="val" id="wear-v"></span></div>
       <input type="range" id="wear" min="0" max="100" value="22">
     </div>
+  </div>
 
-    <h2>Pigment</h2>
-    <div class="field">
-      <div class="row"><label for="pig1">Ground &amp; shade tones</label></div>
-      <div class="swatchrow">
+  <!-- ——— COLOUR: pigment, pattern and the structural sheen ——— -->
+  <div class="drawer" role="group" aria-label="Colour">
+    <div class="rail">Colour</div>
+
+    <div class="card swatchcard" title="base &amp; shadow of the barbs">
+      <div class="cap"><span>Ground &amp; shade</span></div>
+      <div class="swatches">
         <input type="color" id="pig1" value="#6a5333" aria-label="Ground tone">
         <input type="color" id="pig2" value="#3a2c18" aria-label="Shade tone">
-        <span class="hint">base &amp; shadow of the barbs</span>
       </div>
     </div>
-    <div class="field">
-      <div class="row"><label for="bars">Barring</label><span class="val" id="bars-v"></span></div>
+    <div class="card" title="dark bands across the vane">
+      <div class="cap"><label for="bars">Barring</label><span class="val" id="bars-v"></span></div>
       <input type="range" id="bars" min="0" max="12" value="0">
-      <span class="hint">dark bands across the vane</span>
     </div>
-    <div class="field">
-      <div class="row"><label for="tipband">Terminal band</label><span class="val" id="tipband-v"></span></div>
+    <div class="card" title="draw the bars onto one web of the vane only">
+      <div class="cap"><label for="barside">Bar side</label><span class="val" id="barside-v"></span></div>
+      <input type="range" id="barside" min="0" max="100" value="0">
+    </div>
+    <div class="card" title="ragged, mottled bar edges instead of clean bands">
+      <div class="cap"><label for="baredge">Bar edge</label><span class="val" id="baredge-v"></span></div>
+      <input type="range" id="baredge" min="0" max="100" value="0">
+    </div>
+    <div class="card" title="a dark tip, as on a grouse or pheasant">
+      <div class="cap"><label for="tipband">Terminal band</label><span class="val" id="tipband-v"></span></div>
       <input type="range" id="tipband" min="0" max="40" value="0">
-      <span class="hint">a dark tip, as on a grouse or pheasant</span>
     </div>
-
-    <h2>Speckling</h2>
-    <div class="field">
-      <div class="row"><label for="speck">Spots &amp; splodges</label><span class="val" id="speck-v"></span></div>
+    <div class="card" title="flecks &amp; splodges grown into the barbs themselves">
+      <div class="cap"><label for="speck">Spots &amp; splodges</label><span class="val" id="speck-v"></span></div>
       <input type="range" id="speck" min="0" max="100" value="0">
-      <span class="hint">flecks scattered across the vane &mdash; a first taster</span>
     </div>
 
-    <h2>Iridescence</h2>
-    <label class="toggle"><input type="checkbox" id="irid"> a structural sheen</label>
-    <div class="field">
-      <div class="row"><label for="iridcol">Sheen colours</label></div>
-      <div class="swatchrow">
+    <label class="card actcard" title="a structural sheen">
+      <div class="cap"><span>Iridescence</span></div>
+      <div class="actrow"><input type="checkbox" id="irid"><span class="actstate">a structural sheen</span></div>
+    </label>
+    <div class="card swatchcard" title="two hues it shifts between">
+      <div class="cap"><span>Sheen colours</span></div>
+      <div class="swatches">
         <input type="color" id="iridcol" value="#1f6f8c" aria-label="Sheen colour" disabled>
         <input type="color" id="iridcol2" value="#5e2f7a" aria-label="Second sheen colour" disabled>
-        <span class="hint">two hues it shifts between</span>
       </div>
     </div>
-    <div class="field">
-      <div class="row"><label for="iridpos">Sheen position</label><span class="val" id="iridpos-v"></span></div>
+    <div class="card" title="where along the vane it pools">
+      <div class="cap"><label for="iridpos">Sheen position</label><span class="val" id="iridpos-v"></span></div>
       <input type="range" id="iridpos" min="0" max="100" value="65" disabled>
-      <span class="hint">where along the vane it pools</span>
     </div>
-    <div class="field">
-      <div class="row"><label for="iridspread">Sheen spread</label><span class="val" id="iridspread-v"></span></div>
+    <div class="card" title="how far the sheen spreads">
+      <div class="cap"><label for="iridspread">Sheen spread</label><span class="val" id="iridspread-v"></span></div>
       <input type="range" id="iridspread" min="10" max="100" value="45" disabled>
     </div>
-    <div class="field">
-      <div class="row"><label for="iridstr">Sheen strength</label><span class="val" id="iridstr-v"></span></div>
+    <div class="card" title="how strong the sheen burns">
+      <div class="cap"><label for="iridstr">Sheen strength</label><span class="val" id="iridstr-v"></span></div>
       <input type="range" id="iridstr" min="10" max="100" value="60" disabled>
     </div>
+  </div>
 
-    <div class="btns" style="margin-top:.4rem">
-      <button id="save" class="ghost">Take specimen &darr;</button>
-    </div>
+  <p class="foot">CC0 &middot; for delight only. Not a business for imaginary birds.</p>
 
-    <p class="cc0">CC0 &middot; for delight only. Not a business for imaginary birds.</p>
-
-  </section>
 </main>
 
 <script>
@@ -270,9 +306,9 @@ function freshDraw(){ return mulberry(drawSeed); }
 
 const $ = id => document.getElementById(id);
 const P = {
-  len:$('len'), curve:$('curve'), width:$('width'), asym:$('asym'), angle:$('angle'),
+  len:$('len'), curve:$('curve'), width:$('width'), tip:$('tip'), asym:$('asym'), angle:$('angle'),
   density:$('density'), down:$('down'), wear:$('wear'),
-  bars:$('bars'), tipband:$('tipband'), speck:$('speck'),
+  bars:$('bars'), barside:$('barside'), baredge:$('baredge'), tipband:$('tipband'), speck:$('speck'),
   iridpos:$('iridpos'), iridspread:$('iridspread'), iridstr:$('iridstr')
 };
 
@@ -289,9 +325,12 @@ function drawFeather(){
   const cx = W/2;
   const baseY = H - 40, tipReach = +P.len.value;
   const tipY = baseY - tipReach;
+  const TIP_ZONE = 0.76;   // where the barbs begin sweeping forward over the tip
+  const RACHIS_END = 0.9;  // the visible quill stops here; barbs close the tip
 
   const curvature = +P.curve.value;
   const vaneW = +P.width.value;
+  const tipShape = +P.tip.value/100;              // 0 rounded apex .. 1 long snipe-point
   const asym = +P.asym.value/100;                 // 0 symmetric .. 1 strong flight feather
   const barbAngle = +P.angle.value * Math.PI/180;
   const nBarbs = +P.density.value;
@@ -299,6 +338,8 @@ function drawFeather(){
   const wear = +P.wear.value/100;
   const nBars = +P.bars.value;
   const tipBand = +P.tipband.value/100;
+  const barBias = +P.barside.value/100;   // 0 bars on both webs .. 1 one web only
+  const barEdge = +P.baredge.value/100;   // 0 crisp bands .. 1 ragged, mottled
   const speck = +P.speck.value/100;
 
   const pig1 = hexToRgb($('pig1').value);
@@ -320,9 +361,15 @@ function drawFeather(){
     const dx=2*(1-t)*(ctrlX-cx)+2*t*(cx-ctrlX), dy=2*(1-t)*(ctrlY-baseY)+2*t*(tipY-ctrlY);
     const m=Math.hypot(dx,dy)||1; return {x:dx/m,y:dy/m}; };
 
-  // SMOOTHED width envelope — single smooth curve, gentle shoulder
+  // SMOOTHED width envelope — single smooth curve, gentle shoulder.
+  // tipShape draws the widest point lower and stretches the upper falloff into
+  // a long fine taper (rounded apex at 0, snipe-point paintbrush at 1).
+  // tipShape moves the widest point lower and blends the upper falloff from a
+  // rounded apex (cos shoulder) toward a long, gently-convex straight taper —
+  // so a pointed feather narrows from lower down along a shallow line that
+  // never holds a shoulder and never curves concave (Mr Doodles' pheasant).
+  const peak = 0.58 - tipShape*0.16;
   function widthAt(t){
-    const peak = 0.58;
     let w;
     if(t < peak){
       const u = t/peak;
@@ -330,8 +377,9 @@ function drawFeather(){
       w = Math.pow(w, 0.85);
     } else {
       const u = (t-peak)/(1-peak);
-      w = Math.cos(u*Math.PI/2);           // ease down to tip
-      w = Math.pow(Math.max(0,w), 1.05);
+      const wRound = Math.cos(u*Math.PI/2);      // rounded apex
+      const wPoint = Math.pow(1-u, 0.9);         // long, gently-convex taper, never concave
+      w = wRound*(1-tipShape) + wPoint*tipShape;
     }
     return Math.max(0, w) * vaneW;
   }
@@ -347,9 +395,11 @@ function drawFeather(){
   function rachisPt(t){ const p=rachis(t); const tan=rachisTangent(t); const norm={x:-tan.y,y:tan.x};
     return { x:p.x + norm.x*rachisShift, y:p.y + norm.y*rachisShift, tan, norm }; }
 
+  // the VISIBLE quill stops at RACHIS_END so the tip is closed by barbs.
   let shaftD = '';
   { const p0=rachisPt(0); shaftD=`M ${p0.x.toFixed(1)} ${p0.y.toFixed(1)}`;
-    for(let i=1;i<=40;i++){ const p=rachisPt(i/40); shaftD+=` L ${p.x.toFixed(1)} ${p.y.toFixed(1)}`; } }
+    for(let i=1;i<=40;i++){ const u=i/40, p=rachisPt(u);
+      if(u<=RACHIS_END) shaftD+=` L ${p.x.toFixed(1)} ${p.y.toFixed(1)}`; } }
 
   // barbs
   const barbLines = [];
@@ -362,11 +412,24 @@ function drawFeather(){
     const ang = downy ? barbAngle*1.5 : barbAngle;
     const up = rp.tan, norm = rp.norm;
 
-    // barring: is this barb-row within a dark band?
+    // as a barb nears the tip it sweeps forward toward the shaft axis and
+    // lengthens, so the two sides fan over and close the tip with barbs
+    // rather than with the rachis (Streit & Heidrich's fanned tip).
+    const tf = t <= TIP_ZONE ? 0 : (t - TIP_ZONE) / (1 - TIP_ZONE);
+    const tfe = tf * tf;
+    const effAng = ang + (Math.PI/2 - ang) * tfe * 0.9;
+
+    // barring: is this barb-row within a dark band? barEdge wobbles the band
+    // boundary and mottles the fill using a deterministic per-row hash (kept off
+    // the main rng so the bars stay stable and don't disturb wear/jitter).
     let bandDark = 0;
+    const hsh = Math.sin(t*311.7 + nBars*57.3)*43758.5;
+    const rowN = hsh - Math.floor(hsh);   // 0..1 stable per barb-row
     if(nBars>0){
+      const wob = barEdge*(rowN-0.5)*0.6;                 // ragged band boundary
       const phase = Math.sin(t*Math.PI*nBars);
-      bandDark = Math.max(0, (Math.abs(phase)-0.45)/0.55); // sharp-ish bands
+      bandDark = Math.max(0, (Math.abs(phase)-(0.45+wob))/0.55);
+      if(bandDark>0 && barEdge>0) bandDark *= 1 - barEdge*rowN*0.8;   // mottle: some rows fade
     }
     if(tipBand>0 && t > 1-tipBand) bandDark = Math.max(bandDark, 0.9);
 
@@ -375,32 +438,71 @@ function drawFeather(){
       if(rng() < wearChance*0.5){ continue; }
 
       const halfW = sideWidth(t, side);
-      const dirx = norm.x*side*Math.sin(Math.PI/2-ang) + up.x*Math.cos(Math.PI/2-ang);
-      const diry = norm.y*side*Math.sin(Math.PI/2-ang) + up.y*Math.cos(Math.PI/2-ang);
+      const dirx = norm.x*side*Math.sin(Math.PI/2-effAng) + up.x*Math.cos(Math.PI/2-effAng);
+      const diry = norm.y*side*Math.sin(Math.PI/2-effAng) + up.y*Math.cos(Math.PI/2-effAng);
       const m = Math.hypot(dirx,diry)||1;
       let bl = halfW * (downy ? (1.1+rng()*0.5) : 1.0);
+      if(tf>0 && !downy){
+        // a rounded apex is barbs over-reaching to close a broad tip; a pointed
+        // tip wants them to hug the envelope, so the over-reach fades with taper.
+        const reachLen = (1-t) * tipReach * 1.12 * (1 - tipShape*0.85);
+        bl = bl*(1-tf) + Math.max(bl, reachLen)*tf;
+      }
       const jitter = downy ? (rng()-0.5)*ang*0.9 : (rng()-0.5)*0.12;
       const ca=Math.cos(jitter), sa=Math.sin(jitter);
       const rx=(dirx*ca-diry*sa)/m, ry=(dirx*sa+diry*ca)/m;
       const ex=rp.x+rx*bl, ey=rp.y+ry*bl;
       const midx=rp.x+rx*bl*0.5+up.x*bl*0.18, midy=rp.y+ry*bl*0.5+up.y*bl*0.18;
 
+      // one-sided barring: fade the bars out on the leading (right) web as the
+      // bias climbs, so at full bias the bars sit on one web of the vane only.
+      let bd = bandDark;
+      if(barBias>0 && side>0) bd *= (1-barBias);
+
       // pigment: ground tone -> darker toward base & within bands
-      let shade = 0.15 + (1-t)*0.35 + bandDark*0.7;
+      let shade = 0.15 + (1-t)*0.35 + bd*0.7;
       shade = Math.min(1, shade);
       let col = mix(pig1, pig2, shade);
       if(downy) col = mix(col, {r:200,g:190,b:170}, 0.25);
 
       barbLines.push({
         d:`M ${rp.x.toFixed(1)} ${rp.y.toFixed(1)} Q ${midx.toFixed(1)} ${midy.toFixed(1)} ${ex.toFixed(1)} ${ey.toFixed(1)}`,
-        downy, t, col: rgbStr(col)
+        downy, t, col: rgbStr(col),
+        rpx:rp.x, rpy:rp.y, mx:midx, my:midy, ex, ey    // geometry for in-barb markings
       });
-      if(!downy){ (side>0?rightPts:leftPts).push({x:ex,y:ey,t}); }
+      // outline point for the soft wash mask — pulled IN from the barb tip so
+      // the shading/sheen sit inside the vane and never touch the ragged edge.
+      if(!downy){ const io=0.84; (side>0?rightPts:leftPts).push({x:rp.x+(ex-rp.x)*io, y:rp.y+(ey-rp.y)*io, t}); }
     }
   }
 
   // assemble
   let defs = '', out = '';
+
+  // the vane wash region — an inset, SMOOTHED blade the wash sits inside. Both
+  // the self-shadow and the iridescent sheen are masked (not hard-clipped) to
+  // it, so their edges feather away inside the vane instead of catching on the
+  // ragged sawtooth of the barb tips or ending in a hard line near the down.
+  const haveVane = leftPts.length>2 && rightPts.length>2;
+  if(haveVane){
+    rightPts.sort((a,b)=>a.t-b.t); leftPts.sort((a,b)=>a.t-b.t);
+    // one closed ring: up the right edge, down the left
+    const ring = rightPts.concat(leftPts.slice().reverse());
+    // smooth it with midpoint quadratics — the barb tips become control points,
+    // so the outline curves through them instead of zig-zagging between them.
+    const n = ring.length;
+    const mid = (a,b)=>[( a.x+b.x)/2, (a.y+b.y)/2];
+    let d = `M ${mid(ring[n-1],ring[0]).map(v=>v.toFixed(1)).join(' ')}`;
+    for(let i=0;i<n;i++){
+      const cur=ring[i], nx=ring[(i+1)%n], m2=mid(cur,nx);
+      d += ` Q ${cur.x.toFixed(1)} ${cur.y.toFixed(1)} ${m2[0].toFixed(1)} ${m2[1].toFixed(1)}`;
+    }
+    d += ' Z';
+    // a soft-edged mask: the smoothed blade, blurred, so the wash fades out
+    const mb = Math.max(3, vaneW*0.11);
+    defs += `<filter id="maskblur" filterUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}"><feGaussianBlur stdDeviation="${mb.toFixed(1)}"/></filter>`;
+    defs += `<mask id="vanemask" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}"><path d="${d}" fill="#fff" filter="url(#maskblur)"/></mask>`;
+  }
 
   // barbs
   for(const b of barbLines){
@@ -409,35 +511,44 @@ function drawFeather(){
     out += `<path d="${b.d}" fill="none" stroke="${b.col}" stroke-width="${w}" stroke-linecap="round" opacity="${op}"/>`;
   }
 
-  // speckling — spots & splodges scattered across the pennaceous vane
+  // in-barb spots — flecks & splodges grown INTO the vane. Instead of ellipses
+  // laid on top, we darken the stretch of each barb that passes through a
+  // scattered spot, so the mark is made of the barbs themselves and moves with
+  // them. Each barb is sampled along its own curve and only the covered
+  // segments are redrawn darker.
   if(speck>0){
-    const nSpots = Math.floor(speck*80);
-    const maxR = 1.6 + speck*5.5;
+    const spots=[];
+    const nSpots=Math.floor(speck*28);
     for(let i=0;i<nSpots;i++){
-      const t = 0.12 + rng()*0.82;
-      const side = rng()<0.5 ? 1 : -1;
-      const f = 0.12 + rng()*0.82;                 // fraction out across the vane
-      const halfW = sideWidth(t, side);
-      if(halfW < 2) continue;
-      const rp = rachisPt(t);
-      const px = rp.x + rp.norm.x*side*halfW*f + rp.tan.x*halfW*f*0.25;
-      const py = rp.y + rp.norm.y*side*halfW*f + rp.tan.y*halfW*f*0.25;
-      const r  = maxR*(0.4+rng()*0.9);
-      const rx = r*(0.65+rng()*0.7), ry = r*(0.65+rng()*0.7);
-      const rot = (rng()*60-30);
-      const shade = 0.55 + rng()*0.4;
-      const col = mix(pig1, pig2, Math.min(1,shade));
-      out += `<ellipse cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" rx="${rx.toFixed(1)}" ry="${ry.toFixed(1)}" transform="rotate(${rot.toFixed(0)} ${px.toFixed(1)} ${py.toFixed(1)})" fill="${rgbStr(col)}" opacity="${(0.35+speck*0.4).toFixed(2)}"/>`;
+      const st=0.14+rng()*0.78, sside=rng()<0.5?1:-1, f=0.15+rng()*0.8;
+      const hw=sideWidth(st,sside); if(hw<3) continue;
+      const rp=rachisPt(st);
+      spots.push({x:rp.x+rp.norm.x*sside*hw*f, y:rp.y+rp.norm.y*sside*hw*f, r2:Math.pow((1.8+speck*5)*(0.6+rng()*0.9),2)});
     }
+    const spotCol=rgbStr(mix(pig1,pig2,0.92));
+    const qp=(a,b,c,s)=>{const mt=1-s;return mt*mt*a+2*mt*s*b+s*s*c;};
+    let marks='';
+    for(const b of barbLines){
+      if(b.downy) continue;
+      const SEG=7; let px=b.rpx, py=b.rpy;
+      for(let k=1;k<=SEG;k++){
+        const s=k/SEG, x=qp(b.rpx,b.mx,b.ex,s), y=qp(b.rpy,b.my,b.ey,s);
+        const cxp=(px+x)/2, cyp=(py+y)/2;
+        for(const sp of spots){ const dx=cxp-sp.x, dy=cyp-sp.y;
+          if(dx*dx+dy*dy<sp.r2){ marks+=`<path d="M ${px.toFixed(1)} ${py.toFixed(1)} L ${x.toFixed(1)} ${y.toFixed(1)}" fill="none" stroke="${spotCol}" stroke-width="1.5" stroke-linecap="round"/>`; break; } }
+        px=x; py=y;
+      }
+    }
+    out+=marks;
   }
 
-  // iridescent wash — a translucent lens over the vane, clipped to the feather's outline
-  if(iridOn && leftPts.length>2 && rightPts.length>2){
-    rightPts.sort((a,b)=>a.t-b.t); leftPts.sort((a,b)=>a.t-b.t);
-    let poly = 'M ' + rightPts.map(p=>`${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' L ');
-    poly += ' L ' + leftPts.slice().reverse().map(p=>`${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' L ') + ' Z';
-    defs += `<clipPath id="vaneclip"><path d="${poly}"/></clipPath>`;
+  // (The self-shadow that once darkened the inner vane has been retired: with
+  // markings now growing into the barbs — and shiftable side to side — a fixed
+  // central darkening only got in their way. The soft iridescent wash below can
+  // stand in as a shadow when one is wanted, e.g. a dark shade on a pale down.)
 
+  // iridescent wash — a translucent lens over the vane, clipped to the feather's outline
+  if(iridOn && haveVane){
     const c1 = $('iridcol').value, c2 = $('iridcol2').value;
     const centreT = iridPos;
     const cp = rachisPt(centreT);
@@ -449,7 +560,7 @@ function drawFeather(){
         <stop offset="55%" stop-color="${c2}" stop-opacity="${(iridStr*0.55).toFixed(2)}"/>
         <stop offset="100%" stop-color="${c2}" stop-opacity="0"/>
       </radialGradient>`;
-    out += `<g clip-path="url(#vaneclip)" style="mix-blend-mode:screen">
+    out += `<g mask="url(#vanemask)" style="mix-blend-mode:screen">
         <rect x="0" y="0" width="${W}" height="${H}" fill="url(#${gid})"/>
       </g>`;
     const cp2 = rachisPt(Math.min(0.95, centreT+0.12));
@@ -458,7 +569,7 @@ function drawFeather(){
         <stop offset="0%" stop-color="${c1}" stop-opacity="${(iridStr*0.5).toFixed(2)}"/>
         <stop offset="100%" stop-color="${c1}" stop-opacity="0"/>
       </radialGradient>`;
-    out += `<g clip-path="url(#vaneclip)" style="mix-blend-mode:screen">
+    out += `<g mask="url(#vanemask)" style="mix-blend-mode:screen">
         <rect x="0" y="0" width="${W}" height="${H}" fill="url(#${gid}2)"/>
       </g>`;
   }
@@ -478,12 +589,15 @@ function updateReadouts(){
   $('len-v').textContent = P.len.value+' u';
   $('curve-v').textContent = (P.curve.value>0?'+':'')+P.curve.value+'°';
   $('width-v').textContent = P.width.value+' u';
+  $('tip-v').textContent = P.tip.value>0? P.tip.value+'%' : 'round';
   $('asym-v').textContent = P.asym.value+'%';
   $('angle-v').textContent = P.angle.value+'°';
   $('density-v').textContent = P.density.value;
   $('down-v').textContent = P.down.value+'%';
   $('wear-v').textContent = P.wear.value+'%';
   $('bars-v').textContent = P.bars.value>0? P.bars.value : 'none';
+  $('barside-v').textContent = P.barside.value>0? P.barside.value+'%' : 'both';
+  $('baredge-v').textContent = P.baredge.value>0? P.baredge.value+'%' : 'crisp';
   $('tipband-v').textContent = P.tipband.value>0? P.tipband.value+'%' : 'none';
   $('speck-v').textContent = P.speck.value>0? P.speck.value+'%' : 'none';
   $('iridpos-v').textContent = P.iridpos.value+'%';
@@ -500,12 +614,15 @@ function conjureFrom(str){
   P.len.value     = 400 + Math.floor(rng()*200);
   P.curve.value   = Math.floor((rng()-0.5)*150);
   P.width.value   = 45 + Math.floor(rng()*75);
+  P.tip.value     = rng()<0.5 ? Math.floor(rng()*rng()*110) : 0;  // often round, sometimes a fine point
   P.asym.value    = rng()<0.45 ? Math.floor(rng()*90) : 0;  // some birds fly, some don't
   P.angle.value   = 28 + Math.floor(rng()*38);
   P.density.value = 60 + Math.floor(rng()*85);
   P.down.value    = Math.floor(rng()*40);
   P.wear.value    = Math.floor(rng()*65);
   P.bars.value    = rng()<0.4 ? Math.floor(rng()*8) : 0;
+  P.barside.value = P.bars.value>0 && rng()<0.4 ? 40+Math.floor(rng()*60) : 0;
+  P.baredge.value = P.bars.value>0 ? Math.floor(rng()*rng()*100) : 0;
   P.tipband.value = rng()<0.3 ? 10+Math.floor(rng()*25) : 0;
   P.speck.value   = rng()<0.35 ? Math.floor(rng()*70) : 0;
 
