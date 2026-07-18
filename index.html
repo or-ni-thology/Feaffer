@@ -22,26 +22,28 @@
     --faint: #7c7a70;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { height: 100%; }
+  html { height: 100%; }
   body {
+    min-height: 100%;
     background: var(--ground);
     color: var(--ink);
     font-family: 'EB Garamond', Georgia, serif;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
-    overflow: hidden;   /* nothing scrolls the page — only the drawers move, sideways */
+    overflow-x: hidden;   /* the page never scrolls sideways; the drawers do */
   }
 
   /* The whole instrument is one fixed viewport laid out top to bottom: a slim
      provenance header, the feather standing in the middle, and the faffing
      drawers gathered at the foot where the thumb rests. Nothing scrolls up
      and down — the two drawers slide sideways instead. */
+  /* A neat closed panel sized to its own content, so an embedding iframe can
+     be told exactly how tall to be (see the height-whisper at the foot of the
+     script) — no guessed heights, no letterboxing, no double scrollbars. */
   .frame {
-    height: 100vh; height: 100dvh;
     max-width: 560px; margin: 0 auto;
     display: flex; flex-direction: column;
-    border-left: 1px solid var(--line);
-    border-right: 1px solid var(--line);
+    border: 1px solid var(--line);
     overflow: hidden;
   }
 
@@ -74,7 +76,7 @@
 
   /* ——— the stage: the feather stands here and fills whatever is left ——— */
   .stage {
-    flex: 1 1 auto; min-height: 0;
+    height: clamp(300px, 88vw, 460px);   /* the feather's room — scales with width, not viewport height */
     background: var(--ground);
     display: flex; align-items: center; justify-content: center;
     padding: 1rem;
@@ -100,7 +102,6 @@
     flex: 0 0 auto;
     position: sticky; left: 0; z-index: 2;
     background: var(--sheet);
-    border-right: 1px solid var(--line);
     width: 58px;
     display: flex; align-items: center; justify-content: center;
     font-family: 'IBM Plex Mono', monospace;
@@ -163,13 +164,6 @@
     color: var(--faint);
   }
 
-  /* ——— the colophon, a hair's breadth at the foot ——— */
-  .foot {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: .54rem; letter-spacing: .08em; color: var(--faint);
-    text-align: center; padding: .4rem .5rem;
-    border-top: 1px solid var(--line);
-  }
 </style>
 </head>
 <body>
@@ -286,8 +280,6 @@
       <input type="range" id="iridstr" min="10" max="100" value="60" disabled>
     </div>
   </div>
-
-  <p class="foot">CC0 &middot; for delight only. Not a business for imaginary birds.</p>
 
 </main>
 
@@ -688,6 +680,23 @@ $('save').addEventListener('click', ()=>{
 });
 
 conjureFrom($('coord').value);
+
+/* ---- whisper our height to an embedding page, so the iframe can size itself
+   exactly to the tool — no guessed height, no inner scrollbar. The parent
+   listens for { feaffer:'height' } and sets the iframe height to match. ---- */
+(function(){
+  const frame = document.querySelector('.frame');
+  let last = 0;
+  function whisper(){
+    if(window.parent === window) return;           // standalone: nobody to tell
+    const h = Math.ceil(frame.getBoundingClientRect().height);
+    if(h && h !== last){ last = h; window.parent.postMessage({ feaffer:'height', height:h }, '*'); }
+  }
+  window.addEventListener('load', whisper);
+  window.addEventListener('resize', whisper);
+  if(window.ResizeObserver) new ResizeObserver(whisper).observe(frame);
+  whisper();
+})();
 </script>
 </body>
 </html>
