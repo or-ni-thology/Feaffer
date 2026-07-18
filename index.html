@@ -542,32 +542,10 @@ function drawFeather(){
     out+=marks;
   }
 
-  // self-shadow — barbs bundle and overlap along the rachis, so the inner vane
-  // sits darker than the open edge. A soft dark spine, clipped to the blade and
-  // multiplied over the barbs, hints at that density without drawing the
-  // barbules that actually cause it.
-  if(haveVane){
-    // The self-shadow reaches a fraction of the LOCAL vane half-width on each
-    // side, so it tapers with the vane on both edges, curved or straight. Its
-    // softness is built from several nested translucent bands — widest faint,
-    // narrowest where they all overlap — rather than an SVG blur filter, which
-    // iOS Safari renders unreliably inside masks/blend-modes. Pure fills look
-    // identical everywhere, so no more hard shadow lines on the phone.
-    const coreCol = rgbStr(darken(pig2,0.65));
-    const steps = 30;
-    const band = frac => {
-      let d='', first=true;
-      for(let i=0;i<=steps;i++){ const t=i/steps, rp=rachisPt(t), hw=sideWidth(t,1)*frac;
-        d += (first?'M ':' L ')+(rp.x+rp.norm.x*hw).toFixed(1)+' '+(rp.y+rp.norm.y*hw).toFixed(1); first=false; }
-      for(let i=steps;i>=0;i--){ const t=i/steps, rp=rachisPt(t), hw=sideWidth(t,-1)*frac;
-        d += ' L '+(rp.x-rp.norm.x*hw).toFixed(1)+' '+(rp.y-rp.norm.y*hw).toFixed(1); }
-      return d+' Z';
-    };
-    let bands=''; const nL=6;
-    for(let k=0;k<nL;k++){ const frac=0.12 + (0.46-0.12)*(k/(nL-1));
-      bands += `<path d="${band(frac)}" fill="${coreCol}" opacity="0.055"/>`; }
-    out += `<g style="mix-blend-mode:multiply">${bands}</g>`;
-  }
+  // (The self-shadow that once darkened the inner vane has been retired: with
+  // markings now growing into the barbs — and shiftable side to side — a fixed
+  // central darkening only got in their way. The soft iridescent wash below can
+  // stand in as a shadow when one is wanted, e.g. a dark shade on a pale down.)
 
   // iridescent wash — a translucent lens over the vane, clipped to the feather's outline
   if(iridOn && haveVane){
