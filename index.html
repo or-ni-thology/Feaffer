@@ -343,6 +343,34 @@ function drawFeather(){
   const iridStr = +P.iridstr.value/100;
 
   const rng = freshDraw();  // replayable each render
+  // a second, independent stream for the fluff: the main stream's draw order
+  // is a specimen's identity (its wear gaps, its barb jitter), so the down
+  // wanders on its own replayable stream and faffing it never re-rolls the vane.
+  const drng = mulberry((drawSeed ^ 0x9E3779B9) >>> 0);
+
+  // a wandering strand: chained gentle turns around a per-strand curl, with a
+  // whisper of droop — the shape of down. Draws only from the fluff stream.
+  function strand(x0, y0, dx0, dy0, len, wildness){
+    const segs = 4;
+    let px=x0, py=y0, dx=dx0, dy=dy0;
+    const curl = (drng()-0.5)*2.6*wildness;   // the strand's own persuasion
+    const pts = [[px,py]];
+    for(let k=0;k<segs;k++){
+      const turn = curl/segs + (drng()-0.5)*0.45*wildness;
+      const ct=Math.cos(turn), st=Math.sin(turn);
+      const ndx=dx*ct-dy*st, ndy=dx*st+dy*ct+0.08;   // +0.08 is gravity's word
+      const dm=Math.hypot(ndx,ndy)||1; dx=ndx/dm; dy=ndy/dm;
+      const sl=(len/segs)*(0.8+drng()*0.4);
+      px+=dx*sl; py+=dy*sl; pts.push([px,py]);
+    }
+    let d=`M ${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
+    for(let k=1;k<segs;k++){
+      const hx=(pts[k][0]+pts[k+1][0])/2, hy=(pts[k][1]+pts[k+1][1])/2;
+      d+=` Q ${pts[k][0].toFixed(1)} ${pts[k][1].toFixed(1)} ${hx.toFixed(1)} ${hy.toFixed(1)}`;
+    }
+    d+=` L ${pts[segs][0].toFixed(1)} ${pts[segs][1].toFixed(1)}`;
+    return d;
+  }
 
   // rachis quadratic
   const ctrlX = cx + curvature, ctrlY = (baseY + tipY)/2;
@@ -432,7 +460,6 @@ function drawFeather(){
       bandDark = Math.max(0, (Math.abs(phase)-(0.45+wob))/0.55);
       if(bandDark>0 && barEdge>0) bandDark *= 1 - barEdge*rowN*0.8;   // mottle: some rows fade
     }
-    if(tipBand>0 && t > 1-tipBand) bandDark = Math.max(bandDark, 0.9);
 
     for(const side of [1,-1]){
       const wearChance = wear * (0.4 + 0.6*t);
@@ -477,14 +504,40 @@ function drawFeather(){
       let col = mix(pig1, pig2, shade);
       if(downy) col = mix(col, {r:200,g:190,b:170}, 0.25);
 
-      barbLines.push({
-        d:`M ${rp.x.toFixed(1)} ${rp.y.toFixed(1)} Q ${midx.toFixed(1)} ${midy.toFixed(1)} ${ex.toFixed(1)} ${ey.toFixed(1)}`,
-        downy, t, col: rgbStr(col),
-        rpx:rp.x, rpy:rp.y, mx:midx, my:midy, ex, ey    // geometry for in-barb markings
-      });
-      // outline point for the soft wash mask — pulled IN from the barb tip so
-      // the shading/sheen sit inside the vane and never touch the ragged edge.
-      if(!downy){ const io=0.84; (side>0?rightPts:leftPts).push({x:rp.x+(ex-rp.x)*io, y:rp.y+(ey-rp.y)*io, t}); }
+      if(downy){
+        // down is not a stroke but a wander — wildest deep in the plumage,
+        // calming as it climbs toward the vane so the join doesn't snap.
+        const fluff = 0.35 + 0.65*Math.max(0, 1 - t/downFrac);
+        barbLines.push({
+          d: strand(rp.x, rp.y, rx, ry, bl, fluff),
+          downy, t, col: rgbStr(col),
+          dw: 0.5+drng()*0.3, dop: 0.36+drng()*0.22
+        });
+      } else {
+        if(downFrac>0){
+          // the afterfeather: for a short way above the down each vane barb
+          // keeps a downy base, so a faint strand under the web's shoulder
+          // eases fluff into clean vane instead of a hard waterline.
+          const fringe = 1 - (t - downFrac)/0.08;
+          if(fringe > 0){
+            const wl = halfW*(0.35+drng()*0.45)*(0.4+0.6*fringe);
+            barbLines.push({
+              d: strand(rp.x, rp.y, rx, ry, wl, 0.9),
+              downy: true, t, col: rgbStr(mix(col,{r:200,g:190,b:170},0.35)),
+              dw: 0.5+drng()*0.2, dop: 0.12+0.26*fringe
+            });
+          }
+        }
+        barbLines.push({
+          d:`M ${rp.x.toFixed(1)} ${rp.y.toFixed(1)} Q ${midx.toFixed(1)} ${midy.toFixed(1)} ${ex.toFixed(1)} ${ey.toFixed(1)}`,
+          downy, t, rowN, col: rgbStr(col),
+          rpx:rp.x, rpy:rp.y, mx:midx, my:midy, ex, ey    // geometry for in-barb markings
+        });
+        // outline point for the soft wash mask — pulled IN from the barb tip so
+        // the shading/sheen sit inside the vane and never touch the ragged edge.
+        const io=0.84;
+        (side>0?rightPts:leftPts).push({x:rp.x+(ex-rp.x)*io, y:rp.y+(ey-rp.y)*io, t});
+      }
     }
   }
 
@@ -522,8 +575,8 @@ function drawFeather(){
   const crowd = Math.min(1, Math.cos(barbAngle)/0.695);   // 0.695 = cos 46°, the default comb
   const vaneStroke = 0.95*(0.78 + 0.22*crowd);
   for(const b of barbLines){
-    const w = b.downy ? 0.7 : vaneStroke;
-    const op = b.downy ? 0.5 : 0.85;
+    const w = b.downy ? b.dw : vaneStroke;
+    const op = b.downy ? b.dop : 0.85;
     out += `<path d="${b.d}" fill="none" stroke="${b.col}" stroke-width="${w}" stroke-linecap="round" opacity="${op}"/>`;
   }
 
@@ -556,6 +609,39 @@ function drawFeather(){
       }
     }
     out+=marks;
+  }
+
+  // the terminal band — one spell of pigment as the feather grew, so its
+  // inner edge follows a growth contour: level with the tip at the rachis and
+  // drooping toward the base out along each web (the chevron on a hawk's
+  // tail), never a per-row waterline. Like the specks it darkens stretches of
+  // the barbs themselves, fading in over a soft inner edge; the Bar edge
+  // slider lends the band the same raggedness it gives the barring.
+  if(tipBand>0){
+    const gB = 1 - tipBand;              // the growth contour where the band begins
+    const soft = 0.02 + tipBand*0.12;    // breadth of the fade at the inner edge
+    const bandCol = rgbStr(mix(pig1,pig2,0.95));
+    const bw = (vaneStroke+0.5).toFixed(2);
+    const qb=(a,b,c,s)=>{const mt=1-s;return mt*mt*a+2*mt*s*b+s*s*c;};
+    let band='';
+    for(const b of barbLines){
+      if(b.downy) continue;
+      const chordT = Math.hypot(b.ex-b.rpx, b.ey-b.rpy)/tipReach;   // barb reach in rachis units
+      if(b.t + chordT + 0.09 < gB) continue;    // wholly below the band, wobble included
+      const wob = (b.rowN-0.5)*(0.02 + barEdge*0.12);   // ragged boundary
+      const fade = 1 - barEdge*b.rowN*0.7;              // mottle: some rows thin out
+      if(fade < 0.08) continue;
+      const SEG=8; let px=b.rpx, py=b.rpy;
+      for(let k=1;k<=SEG;k++){
+        const s=k/SEG, x=qb(b.rpx,b.mx,b.ex,s), y=qb(b.rpy,b.my,b.ey,s);
+        const f = Math.min(1, (b.t + ((k-0.5)/SEG)*chordT + wob - gB)/soft);
+        if(f > 0.05){
+          band += `<path d="M ${px.toFixed(1)} ${py.toFixed(1)} L ${x.toFixed(1)} ${y.toFixed(1)}" fill="none" stroke="${bandCol}" stroke-width="${bw}" stroke-linecap="round" opacity="${(f*fade*0.9).toFixed(2)}"/>`;
+        }
+        px=x; py=y;
+      }
+    }
+    out += band;
   }
 
   // (The self-shadow that once darkened the inner vane has been retired: with
