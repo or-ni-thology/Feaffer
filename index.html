@@ -353,26 +353,25 @@ function drawFeather(){
     const dx=2*(1-t)*(ctrlX-cx)+2*t*(cx-ctrlX), dy=2*(1-t)*(ctrlY-baseY)+2*t*(tipY-ctrlY);
     const m=Math.hypot(dx,dy)||1; return {x:dx/m,y:dy/m}; };
 
-  // SMOOTHED width envelope — single smooth curve, gentle shoulder.
-  // tipShape draws the widest point lower and stretches the upper falloff into
-  // a long fine taper (rounded apex at 0, snipe-point paintbrush at 1).
-  // tipShape moves the widest point lower and blends the upper falloff from a
-  // rounded apex (cos shoulder) toward a long, gently-convex straight taper —
-  // so a pointed feather narrows from lower down along a shallow line that
-  // never holds a shoulder and never curves concave (Mr Doodles' pheasant).
-  const peak = 0.58 - tipShape*0.16;
+  // ——— the vane's silhouette: ONE smooth curve, so it has no shoulder ———
+  // The half-width runs along a single Beta-shaped growth profile,
+  //     w(t) ∝ t^a · (1−t)^b ,   normalised so its own peak is the full breadth.
+  // It used to be two different curves (a sine rise, a cosine fall) stitched
+  // together at the widest point — and that seam is exactly where the eye caught
+  // a "shoulder": the two halves met with matching height but mismatched
+  // curvature, a little knuckle. One analytic curve has no seam and no jump in
+  // curvature anywhere, so the outline is smooth from calamus to tip.
+  //   a  swells the lower half   — how the vane leaves the base
+  //   b  draws the upper taper   — rounded apex (small b) to snipe-point (large b)
+  // The widest point isn't set by hand any more; it falls out of the exponents
+  // at t = a/(a+b), and slides downward on its own as the tip sharpens — just as
+  // a real feather's broadest point sits lower on a more pointed feather.
+  const aExp = 0.85 + tipShape*0.35;   // 0.85 (rounded) → 1.20 (pointed)
+  const bExp = 0.55 + tipShape*0.95;   // 0.55 (rounded, blunt) → 1.50 (long fine point)
+  const peak = aExp/(aExp+bExp);
+  const peakW = Math.pow(peak,aExp)*Math.pow(1-peak,bExp) || 1;   // the curve's own max
   function widthAt(t){
-    let w;
-    if(t < peak){
-      const u = t/peak;
-      w = Math.sin(u*Math.PI/2);          // ease up to full — rounded, not angular
-      w = Math.pow(w, 0.85);
-    } else {
-      const u = (t-peak)/(1-peak);
-      const wRound = Math.cos(u*Math.PI/2);      // rounded apex
-      const wPoint = Math.pow(1-u, 0.9);         // long, gently-convex taper, never concave
-      w = wRound*(1-tipShape) + wPoint*tipShape;
-    }
+    const w = Math.pow(t,aExp)*Math.pow(1-t,bExp)/peakW;
     return Math.max(0, w) * vaneW;
   }
   // per-side breadth: asymmetry steals width from the leading (right) side, gives to trailing

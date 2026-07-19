@@ -73,19 +73,66 @@ along the feather are we?" is always answered by `t`.
 ### Vane breadth — *the silhouette*
 
 The blade isn't a rectangle; it swells and tapers. A single **envelope function**
-decides the half-width of the vane at every height `t`:
+decides the half-width of the vane at every height `t`. We give each barb the
+length that envelope calls for, and the tips of the barbs *are* the outline —
+this is the paper's "barb-length profile."
+
+The envelope is **one smooth curve** — a *growth profile*, the same
+single-humped shape a Beta distribution draws:
 
 ```
-broadest at t ≈ 0.58 (a little above the middle),
-easing up from the base as a sine curve,
-easing down to a point at the tip as a cosine curve.
+w(t) ∝ t^a · (1 − t)^b        (then scaled so its own peak = full breadth)
 ```
 
-`breadth` scales that whole envelope. Small, and you get a slim pin; large, and a
-broad paddle. The gentle "shoulder" you see — fuller than a plain triangle — is
-those sine/cosine eases with a slight power-curve on them, so the edge is
-*rounded*, not angular. This is the paper's "barb-length profile" — the outline is
-made by giving each barb the right length for its height.
+Two exponents do everything:
+
+- **`a`** swells the **lower** half — how briskly the vane leaves the base.
+- **`b`** draws the **upper** taper — a small `b` rounds the apex, a large `b`
+  pulls it out into a long fine point.
+
+And here's the quiet gift of writing it this way: **you never place the widest
+point by hand.** It falls out of the exponents, at
+
+```
+t = a / (a + b)
+```
+
+— and slides *downward on its own* as the tip sharpens, which is exactly what a
+real feather does (a more pointed feather carries its broadest point lower).
+`breadth` just scales the whole curve: small for a slim pin, large for a broad
+paddle.
+
+#### Why one curve, and not two — *the shoulder*
+
+This is worth a paragraph, because it's a small lesson in honest maths. The
+envelope *used* to be **two** curves — a sine easing up to the widest point, a
+cosine easing back down — **stitched together** at the peak. They met at the
+same height, so the join looked continuous… but their *curvatures* didn't match.
+The eye is merciless about that: a place where a curve's bend changes abruptly
+reads as a **corner**, a little **knuckle** — a "shoulder" sat right at the
+feather's widest point, and on a narrow specimen it bulged.
+
+The cure wasn't to sand the corner down with yet another fudge factor. It was to
+stop stitching: **one analytic curve has no seam**, so its curvature never jumps,
+so there is no shoulder to see — anywhere along the blade, at any tip setting.
+The knobble didn't get *smoothed*; it stopped *existing*. That's the difference
+between patching a shape and choosing a better one.
+
+### Tip taper — *rounded apex to snipe-point*
+
+The `tip` slider is simply **`b`**, the upper-taper exponent, run from blunt to
+fine (and `a` eased along with it a touch, to keep the body handsome). At `0`
+you get a rounded, downy apex; wind it up and the vane narrows from lower down
+along a long, clean point — the paper's interpolation "between structures,"
+walked with one knob.
+
+One subtlety lives at the very top. The rachis doesn't reach the tip — the last
+tenth is **closed by the barbs themselves**, fanning forward over the end
+(Streit & Heidrich's fanned tip). How far those barbs over-reach is set by the
+vane's **own breadth**, not by the feather's length — so a narrow feather closes
+to a small rounded tip and a broad one to a broad tip, always *in proportion*.
+(An earlier version reached by length alone, which grew a fat rounded head on a
+thin shaft — an un-feathery bulb. Tying the reach to breadth cured it.)
 
 ### Barb angle — *swept-out or swept-back*
 
