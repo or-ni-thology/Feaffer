@@ -202,6 +202,10 @@
       <div class="cap"><label for="tip">Tip taper</label><span class="val" id="tip-v"></span></div>
       <input type="range" id="tip" min="0" max="100" value="0">
     </div>
+    <div class="card" title="a fine tapered apex through to a full, blunt, buzzard-round crown">
+      <div class="cap"><label for="apex">Apex fullness</label><span class="val" id="apex-v"></span></div>
+      <input type="range" id="apex" min="0" max="100" value="35">
+    </div>
     <div class="card" title="leading edge narrows — the mark of a flight feather">
       <div class="cap"><label for="asym">Vane asymmetry</label><span class="val" id="asym-v"></span></div>
       <input type="range" id="asym" min="0" max="100" value="0">
@@ -298,7 +302,7 @@ function freshDraw(){ return mulberry(drawSeed); }
 
 const $ = id => document.getElementById(id);
 const P = {
-  len:$('len'), curve:$('curve'), width:$('width'), tip:$('tip'), asym:$('asym'), angle:$('angle'),
+  len:$('len'), curve:$('curve'), width:$('width'), tip:$('tip'), apex:$('apex'), asym:$('asym'), angle:$('angle'),
   density:$('density'), down:$('down'), wear:$('wear'),
   bars:$('bars'), barside:$('barside'), baredge:$('baredge'), tipband:$('tipband'), speck:$('speck'),
   iridpos:$('iridpos'), iridspread:$('iridspread'), iridstr:$('iridstr')
@@ -323,6 +327,7 @@ function drawFeather(){
   const curvature = +P.curve.value;
   const vaneW = +P.width.value;
   const tipShape = +P.tip.value/100;              // 0 rounded apex .. 1 long snipe-point
+  const apexFull = +P.apex.value/100;             // 0 fine tapered apex .. 1 full blunt buzzard-crown
   const asym = +P.asym.value/100;                 // 0 symmetric .. 1 strong flight feather
   const barbAngle = +P.angle.value * Math.PI/180;
   const nBarbs = +P.density.value;
@@ -366,8 +371,17 @@ function drawFeather(){
   // The widest point isn't set by hand any more; it falls out of the exponents
   // at t = a/(a+b), and slides downward on its own as the tip sharpens — just as
   // a real feather's broadest point sits lower on a more pointed feather.
-  const aExp = 0.85 + tipShape*0.35;   // 0.85 (rounded) → 1.20 (pointed)
-  const bExp = 0.55 + tipShape*0.95;   // 0.55 (rounded, blunt) → 1.50 (long fine point)
+  //
+  // Two sliders share the taper exponent b, and they don't fight:
+  //   • Apex fullness owns the ROUNDED end — bRound. A small bRound is a blunt,
+  //     full crown (a buzzard); a large one is a fine tapered apex. As the crown
+  //     fills, the widest point rises on its own, which is what a blunt feather
+  //     really does — it carries its breadth high.
+  //   • Tip taper then pulls b from that rounded value up toward a long fine
+  //     point, so a full snipe-point is always fine no matter the apex setting.
+  const bRound = 0.73 - apexFull*0.48;              // 0.73 fine apex → 0.25 blunt buzzard-crown
+  const aExp = 0.85 + tipShape*0.35;                // 0.85 (rounded) → 1.20 (pointed)
+  const bExp = bRound + tipShape*(1.50 - bRound);   // rounded-end taper, drawn out to a point by tip taper
   const peak = aExp/(aExp+bExp);
   const peakW = Math.pow(peak,aExp)*Math.pow(1-peak,bExp) || 1;   // the curve's own max
   function widthAt(t){
@@ -589,6 +603,7 @@ function updateReadouts(){
   $('curve-v').textContent = (P.curve.value>0?'+':'')+P.curve.value+'°';
   $('width-v').textContent = P.width.value+' u';
   $('tip-v').textContent = P.tip.value>0? P.tip.value+'%' : 'round';
+  $('apex-v').textContent = P.apex.value>0? P.apex.value+'%' : 'fine';
   $('asym-v').textContent = P.asym.value+'%';
   $('angle-v').textContent = P.angle.value+'°';
   $('density-v').textContent = P.density.value;
@@ -614,6 +629,7 @@ function conjureFrom(str){
   P.curve.value   = Math.floor((rng()-0.5)*150);
   P.width.value   = 45 + Math.floor(rng()*75);
   P.tip.value     = rng()<0.5 ? Math.floor(rng()*rng()*110) : 0;  // often round, sometimes a fine point
+  P.apex.value    = rng()<0.2 ? 65+Math.floor(rng()*35) : 25+Math.floor(rng()*40);  // mostly gently rounded, sometimes a blunt buzzard crown
   P.asym.value    = rng()<0.45 ? Math.floor(rng()*90) : 0;  // some birds fly, some don't
   P.angle.value   = 28 + Math.floor(rng()*38);
   P.density.value = 60 + Math.floor(rng()*85);

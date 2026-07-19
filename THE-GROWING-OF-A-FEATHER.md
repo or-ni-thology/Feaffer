@@ -134,6 +134,31 @@ to a small rounded tip and a broad one to a broad tip, always *in proportion*.
 (An earlier version reached by length alone, which grew a fat rounded head on a
 thin shaft — an un-feathery bulb. Tying the reach to breadth cured it.)
 
+### Apex fullness — *fine tip to buzzard-blunt crown*
+
+Tip taper and apex fullness are **two knobs on one exponent**, and the trick to
+making them not fight is to hand each a different job on `b`:
+
+```
+bRound = 0.73 − 0.48 · apexFullness     the value of b at the rounded end
+b      = bRound + tipTaper · (1.5 − bRound)   tip taper draws it out to a point
+```
+
+- **Apex fullness** owns the **rounded end**. Turn it up and `bRound` shrinks:
+  the crown blunts and *fills*, and — because the widest point sits at
+  `t = a/(a+b)` — that broad point **rises on its own** toward the top. That is
+  exactly what a real blunt feather does: a buzzard's covert carries its breadth
+  high and rounds off almost square. Turn it down and the apex draws to a fine,
+  elegant taper.
+- **Tip taper** then pulls `b` from wherever the crown left it up toward a long
+  fine point — so a full snipe-point comes out fine *regardless* of the apex
+  setting, and the two sliders never contradict each other.
+
+This is the axis a **buzzard feather** asked for — broad and bluntly round, a
+shape the tool simply couldn't draw before. Push it past biology and the crown
+domes into an improbable puff — which is precisely the sort of straying the
+morphospace (Part IV) is *for*.
+
 ### Barb angle — *swept-out or swept-back*
 
 Each barb leaves the rachis at an angle. We build it from the shaft's own
