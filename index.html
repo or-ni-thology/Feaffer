@@ -408,8 +408,10 @@ function drawFeather(){
     // lengthens, so the two sides fan over and close the tip with barbs
     // rather than with the rachis (Streit & Heidrich's fanned tip).
     const tf = t <= TIP_ZONE ? 0 : (t - TIP_ZONE) / (1 - TIP_ZONE);
-    const tfe = tf * tf;
-    const effAng = ang + (Math.PI/2 - ang) * tfe * 0.9;
+    // barbs converge onto the shaft axis steadily from the start of the tip zone
+    // (linear tf, not tf²) and nearly all the way (×0.96), so the two webs are
+    // drawn together to a soft rounded close instead of doming out into a bulb.
+    const effAng = ang + (Math.PI/2 - ang) * tf * 0.96;
 
     // barring: is this barb-row within a dark band? barEdge wobbles the band
     // boundary and mottles the fill using a deterministic per-row hash (kept off
@@ -435,9 +437,15 @@ function drawFeather(){
       const m = Math.hypot(dirx,diry)||1;
       let bl = halfW * (downy ? (1.1+rng()*0.5) : 1.0);
       if(tf>0 && !downy){
-        // a rounded apex is barbs over-reaching to close a broad tip; a pointed
-        // tip wants them to hug the envelope, so the over-reach fades with taper.
-        const reachLen = (1-t) * tipReach * 1.12 * (1 - tipShape*0.85);
+        // How far the tip-closing barbs over-reach is set mostly by the vane's
+        // OWN breadth (capW, the half-width where the tip begins) and only a
+        // little by the feather's length — so a narrow feather closes to a small
+        // rounded tip and a broad one to a broad tip. Reaching by length alone
+        // grew a fat rounded head on a thin shaft: an un-feathery bulb on narrow,
+        // long specimens. The over-reach still fades to nothing at the very tip,
+        // and a pointed apex (high tipShape) hugs the envelope as before.
+        const capW = widthAt(TIP_ZONE);
+        const reachLen = ((1-t)*tipReach*0.45 + capW*1.7*(1-t)/(1-TIP_ZONE)) * (1 - tipShape*0.85);
         bl = bl*(1-tf) + Math.max(bl, reachLen)*tf;
       }
       const jitter = downy ? (rng()-0.5)*ang*0.9 : (rng()-0.5)*0.12;
