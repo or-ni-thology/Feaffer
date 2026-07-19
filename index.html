@@ -454,12 +454,14 @@ function drawFeather(){
     return base * (1 + asym*0.42);              // trailing edge broader
   }
 
-  // how hard the closing fan pulls barb tips toward the apex: a broad rounded
-  // apex at the default comb needs the full pull to dome shut, but a steep
-  // comb already runs its barbs up the axis (full pull stacked them into an
-  // opaque spearhead) and a fine point wants to stay an airy taper — both
-  // ask for far less. 0.768 = π/2 − 46°, the default comb's turning room.
-  const closeNeed = Math.min(1, (Math.PI/2 - barbAngle)/0.768) * (1 - tipShape*0.6);
+  // how hard the closing fan pulls barb tips toward the apex: a rounded
+  // apex needs the full pull to dome shut — at every comb. (The pull was
+  // once eased off for steep combs, whose long axis-running barbs stacked
+  // into an opaque spearhead under it; but since barbs are cut at the
+  // outline the near-tip rows are short, and the weakened pull had become
+  // the failure — it left them straggling up the axis in a parted tuft.)
+  // A fine point still wants to stay an airy taper.
+  const closeNeed = 1 - tipShape*0.6;
 
   // wear beyond missing barbs: a flown feather UNZIPS — neighbouring barbs
   // let go of one another and the vane edge bites in a V-shaped notch. The
