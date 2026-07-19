@@ -198,9 +198,14 @@
       <div class="cap"><label for="width">Vane breadth</label><span class="val" id="width-v"></span></div>
       <input type="range" id="width" min="30" max="130" value="78">
     </div>
-    <div class="card" title="rounded apex through to a long snipe-point">
-      <div class="cap"><label for="tip">Tip taper</label><span class="val" id="tip-v"></span></div>
-      <input type="range" id="tip" min="0" max="100" value="0">
+    <div class="card actcard" id="apexcard" role="button" tabindex="0"
+         title="the apex family — every feather closes one of three ways: rounded (a dome), acuminate (a point), truncate (a square cut)">
+      <div class="cap"><span>Apex</span><span class="val" id="apextype-v"></span></div>
+      <div class="actrow"><span class="actstate">tap to turn the family</span></div>
+    </div>
+    <div class="card" title="the degree within the family — fullness of the dome, fineness of the point, or the corner of the cut">
+      <div class="cap"><label for="apex" id="apex-label">Fullness</label><span class="val" id="apex-v"></span></div>
+      <input type="range" id="apex" min="0" max="100" value="35">
     </div>
     <div class="card" title="leading edge narrows — the mark of a flight feather">
       <div class="cap"><label for="asym">Vane asymmetry</label><span class="val" id="asym-v"></span></div>
@@ -294,11 +299,16 @@ function mulberry(seed){ let a=seed; return ()=>{ a|=0; a=a+0x6D2B79F5|0;
 
 // a dedicated, replayable rng for the *drawing* so tweaks don't flicker.
 let drawSeed = 12345;
+
+// the apex family — feather tips are categorical, not a slide: field guides
+// say ROUNDED, ACUMINATE, TRUNCATE, and each closes by its own mechanism
+// (a dome wraps, a point tapers, a square cut shears). 0 · 1 · 2.
+let apexType = 0;
 function freshDraw(){ return mulberry(drawSeed); }
 
 const $ = id => document.getElementById(id);
 const P = {
-  len:$('len'), curve:$('curve'), width:$('width'), tip:$('tip'), asym:$('asym'), angle:$('angle'),
+  len:$('len'), curve:$('curve'), width:$('width'), apex:$('apex'), asym:$('asym'), angle:$('angle'),
   density:$('density'), down:$('down'), wear:$('wear'),
   bars:$('bars'), barside:$('barside'), baredge:$('baredge'), tipband:$('tipband'), speck:$('speck'),
   iridpos:$('iridpos'), iridspread:$('iridspread'), iridstr:$('iridstr')
@@ -322,7 +332,7 @@ function drawFeather(){
 
   const curvature = +P.curve.value;
   const vaneW = +P.width.value;
-  const tipShape = +P.tip.value/100;              // 0 rounded apex .. 1 long snipe-point
+  const apexDeg = +P.apex.value/100;              // the degree within the apex family
   const asym = +P.asym.value/100;                 // 0 symmetric .. 1 strong flight feather
   const barbAngle = +P.angle.value * Math.PI/180;
   const nBarbs = +P.density.value;
@@ -402,23 +412,37 @@ function drawFeather(){
     const dx=2*(1-t)*(ctrlX-cx)+2*t*(cx-ctrlX), dy=2*(1-t)*(ctrlY-baseY)+2*t*(tipY-ctrlY);
     const m=Math.hypot(dx,dy)||1; return {x:dx/m,y:dy/m}; };
 
-  // SMOOTHED width envelope — single smooth curve, gentle shoulder.
-  // A rounded feather carries its widest point well above the middle of the
-  // vane — a paddle, not a lens — and its roundness must live in PIXELS, not
-  // in the normalised parameter: the old cos falloff shed width across the
-  // whole upper vane, so the apex was a wedge whose angle was breadth over
-  // length and a long feather could never hold a curve at the tip. Now the
-  // rounded envelope eases to fSeam of its breadth (a flat-ended smoothstep,
-  // so the join is seamless) and turns over a quarter-ellipse cap as deep
-  // along the shaft as the vane is wide across — a true dome at any length
-  // (a magpie's tail). tipShape draws the widest point lower and blends the
-  // falloff toward a long, gently-convex taper that never holds a shoulder
-  // and never curves concave (Mr Doodles' pheasant).
-  const peak = 0.63 - tipShape*0.21;
+  // THE APEX FAMILIES — a feather's tip is categorical, not a slide. The
+  // continuous pointy-to-roundy blend was retired after a long season of
+  // lumps: its midrange always ran two closing mechanisms at once, and the
+  // failures lived in the mixture. Field guides know three families, each
+  // with its own mathematics and its own way of closing:
+  //   ROUNDED   — a superellipse crown, u^p + w² = 1, convex for every
+  //               p ≥ 1, nowhere to hollow. The degree sweeps p: a slender
+  //               parabolic dome, through the egg-shaped crown of a little
+  //               downy feather, to breadth held late over a blunt paddle.
+  //               The base exponent is sized in PIXELS so the dome turns
+  //               over as deep along the shaft as the vane is wide across —
+  //               a magpie's tail stays round at any length. Closes by
+  //               WRAP (the fan, below).
+  //   ACUMINATE — a taper, (1-u)^k. The degree is fineness: it draws the
+  //               widest point down the shaft and steepens k from a soft
+  //               convex point to the sweeping, gently-CONCAVE needle of a
+  //               pheasant's tail — concavity is honest here; it is what
+  //               acuminate means. Closes by TAPER alone: no fan, the
+  //               barbs simply shorten to nothing.
+  //   TRUNCATE  — the rounded body, but the vane simply ENDS: barbs shear
+  //               off along a growth contour (the terminal band's chevron,
+  //               reused as scissors). The degree is the corner — a smooth
+  //               minimum against the outline cut rounds where the cut
+  //               meets the side, crisp square to soft-shouldered. Vane
+  //               asymmetry skews the cut toward a parallelogram unaided.
+  const peak = apexType===1 ? 0.63 - apexDeg*0.24 : 0.63;
   const latK = Math.cos(barbAngle);   // the across-vane share of a barb's length
-  const fSeam = 0.62;                 // breadth still in hand when the dome begins
-  const capT = Math.min((1-peak)*0.6, fSeam*vaneW*latK/tipReach);
-  const capT0 = 1 - capT;
+  const pBase = (1-peak)*tipReach/(vaneW*latK);
+  const pApex = apexType===2 ? Math.max(2.5, pBase*1.15)
+              : Math.max(1.4 + apexDeg*0.6, pBase*(0.6 + apexDeg*1.2));
+  const kFine = 0.9 + apexDeg*1.3;
   function widthAt(t){
     if(t >= 1) return 0;
     let w;
@@ -427,20 +451,18 @@ function drawFeather(){
       w = Math.sin(u*Math.PI/2);          // ease up to full — rounded, not angular
       w = Math.pow(w, 0.85);
     } else {
-      let wRound;
-      if(t < capT0){
-        const s = (t-peak)/(capT0-peak);
-        wRound = 1 - (1-fSeam)*s*s*(3-2*s);           // hold breadth, easing to the cap
-      } else {
-        const v = (t-capT0)/capT;
-        wRound = fSeam*Math.sqrt(Math.max(0, 1-v*v)); // the dome
-      }
       const u = (t-peak)/(1-peak);
-      const wPoint = Math.pow(1-u, 0.9);   // long, gently-convex taper, never concave
-      w = wRound*(1-tipShape) + wPoint*tipShape;
+      w = apexType===1 ? Math.pow(1-u, kFine)
+                       : Math.sqrt(Math.max(0, 1 - Math.pow(u, pApex)));
     }
     return Math.max(0, w) * vaneW;
   }
+  // the truncate scissors: the cut sits on a growth contour, and the degree
+  // is the corner's radius — the smoothing of min(outline, shear) where the
+  // side of the vane meets the cut edge
+  const gCut = 0.96;
+  const cornerR = (0.02 + apexDeg*0.22)*tipReach;
+  function smin(a,b,k){ const h=Math.max(0, 1-Math.abs(a-b)/k); return Math.min(a,b) - h*h*k*0.25; }
   // per-side breadth: asymmetry steals width from the leading (right) side, gives to trailing
   function sideWidth(t, side){
     const base = widthAt(t);
@@ -448,12 +470,12 @@ function drawFeather(){
     return base * (1 + asym*0.42);              // trailing edge broader
   }
 
-  // how hard the closing fan pulls barb tips toward the apex: a broad rounded
-  // apex at the default comb needs the full pull to dome shut, but a steep
-  // comb already runs its barbs up the axis (full pull stacked them into an
-  // opaque spearhead) and a fine point wants to stay an airy taper — both
-  // ask for far less. 0.768 = π/2 − 46°, the default comb's turning room.
-  const closeNeed = Math.min(1, (Math.PI/2 - barbAngle)/0.768) * (1 - tipShape*0.6);
+  // a point on the vane's outline — the fan lands its barbs here, and wants
+  // the outline's own direction so their arcs can arrive along it
+  function outlineAt(tt, side){
+    const p = rachisPt(tt); const w = sideWidth(tt, side)*latK;
+    return { x: p.x + p.norm.x*side*w, y: p.y + p.norm.y*side*w };
+  }
 
   // wear beyond missing barbs: a flown feather UNZIPS — neighbouring barbs
   // let go of one another and the vane edge bites in a V-shaped notch. The
@@ -526,8 +548,40 @@ function drawFeather(){
       const dirx = norm.x*side*Math.cos(ang) + up.x*Math.sin(ang);
       const diry = norm.y*side*Math.cos(ang) + up.y*Math.sin(ang);
       const m = Math.hypot(dirx,diry)||1;
-      let bl = halfW * (downy ? (1.1+rng()*0.5) : 1.0);
-      if(!downy) bl *= notchFactor(t, side);   // the unzipped vane bites in
+      let bl = halfW;
+      if(downy){
+        bl *= 1.1+rng()*0.5;
+      } else {
+        // a barb is cut where it MEETS the outline, not to the envelope at
+        // its root: a barb climbs as it reaches out, and the silhouette is
+        // drawn by tips, not roots. Reading the envelope at the root let a
+        // shoulder-rooted barb on a short broad feather climb clean past
+        // the crown at full breadth — the square-shouldered fat head — so
+        // the length that lands the tip on the envelope is solved instead
+        // (damped fixed point; the envelope's tip-end steepness would make
+        // the bare iteration ring).
+        const climb = Math.sin(ang)/tipReach;
+        for(let it=0;it<4;it++){
+          const h = Math.min(1, t + bl*climb);
+          bl = 0.5*bl + 0.5*sideWidth(h, side);
+        }
+        if(apexType===2){
+          // the truncate shear: a barb grows only until the scissors'
+          // contour — level with the cut at the rachis, drooping gently
+          // toward the base out along each web, the terminal band's own
+          // chevron. The smooth minimum rounds the corner where the cut
+          // edge meets the side of the vane.
+          const shear = (gCut - t)*tipReach;
+          if(shear < 1) continue;
+          bl = smin(bl, shear, cornerR);
+          if(bl < 1) continue;
+        }
+        bl *= notchFactor(t, side);   // the unzipped vane bites in
+        // a barb too short to read as a stroke renders as a floating dot —
+        // the acuminate needle's last reaches are carried by the sprig of
+        // bare shaft instead (drawn with the quill), so let the dots go.
+        if(bl < 1.4) continue;
+      }
 
       // jitter, held to a constant width of wobble: a steep barb runs nearly
       // along the shaft, so the same angular shake used to swing its tip far
@@ -539,24 +593,53 @@ function drawFeather(){
       const rx=(dirx*ca-diry*sa)/m, ry=(dirx*sa+diry*ca)/m;
       let ex=rp.x+rx*bl, ey=rp.y+ry*bl;
 
-      if(sw>0 && !downy){
-        // the closing fan: each barb tip reaches for a landing ON THE OUTLINE
-        // a stretch ahead — the deeper into the zone, the further ahead, the
-        // last rows at the apex itself — so the fan closes the crown while
-        // tracing the dome (or the point) instead of collapsing every strand
-        // onto the axis and re-sharpening the tip.
+      // the closing fan — the ROUNDED family only. A dome is the one apex
+      // that closes by WRAP; a point closes by taper and a cut by shear,
+      // and neither wants its barbs bent toward the crown at all. Serving
+      // one master, the fan can serve it properly.
+      let fanPull = 0, ftx = 0, fty = 0;
+      if(apexType===0 && sw>0 && !downy){
+        // each barb tip reaches for a landing ON THE OUTLINE a stretch
+        // ahead — the deeper into the zone, the further ahead, the last
+        // rows at the apex itself — so the fan closes the crown while
+        // tracing the dome instead of collapsing every strand onto the
+        // axis and re-sharpening the tip.
         const tEnd = t + (1-t)*(0.55 + 0.45*tf);
         const ap = rachisPt(tEnd);
         // the last rows tuck in toward the axis so the two webs meet over the
         // crown instead of leaving a parted V above the rachis end.
         const hw = sideWidth(tEnd, side)*latK*(1 - tf*tf*0.7);
-        const pull = sw*closeNeed;
-        ex += (ap.x + ap.norm.x*side*hw - ex)*pull;
-        ey += (ap.y + ap.norm.y*side*hw - ey)*pull;
+        fanPull = sw;
+        ex += (ap.x + ap.norm.x*side*hw - ex)*fanPull;
+        ey += (ap.y + ap.norm.y*side*hw - ey)*fanPull;
+        // the outline's own direction at the landing, so the arc can ARRIVE
+        // along the crown rather than merely touch down on it
+        const dd = 0.015;
+        const o1 = outlineAt(Math.max(peak, tEnd-dd), side);
+        const o2 = outlineAt(Math.min(1, tEnd+dd), side);
+        ftx = o2.x-o1.x; fty = o2.y-o1.y;
+        const fm = Math.hypot(ftx,fty)||1; ftx/=fm; fty/=fm;
       }
 
       const vx=ex-rp.x, vy=ey-rp.y, vl=Math.hypot(vx,vy);
-      const midx=rp.x+vx*0.5+up.x*vl*0.18, midy=rp.y+vy*0.5+up.y*vl*0.18;
+      let midx=rp.x+vx*0.5+up.x*vl*0.18, midy=rp.y+vy*0.5+up.y*vl*0.18;
+      if(fanPull>0){
+        // a fanned barb LEAVES the shaft like its unfanned neighbours and
+        // ARRIVES skimming the outline: the arc's control point is where
+        // those two directions cross. It fades in with the pull so the
+        // zone's edge stays seamless, and a wild intersection (near-
+        // parallel directions) keeps the plain arc — this coherence is
+        // what dissolves the fan's old habit of forming its own central
+        // plume with a cleft against each web.
+        const den = ry*ftx - rx*fty;
+        if(Math.abs(den) > 0.02){
+          const a = (vy*ftx - vx*fty)/den;
+          if(a > 0.15*vl && a < 1.6*vl){
+            midx += (rp.x + rx*a - midx)*fanPull;
+            midy += (rp.y + ry*a - midy)*fanPull;
+          }
+        }
+      }
 
       // one-sided barring: fade the bars out on the leading (right) web as the
       // bias climbs, so at full bias the bars sit on one web of the vane only.
@@ -750,6 +833,16 @@ function drawFeather(){
   const hueQuill = `rgb(${(pig1.r*0.6+150)|0} ${(pig1.g*0.6+140)|0} ${(pig1.b*0.6+120)|0})`;
   out += `<path d="${shaftD}" fill="none" stroke="${hueQuill}" stroke-width="3.4" stroke-linecap="round"/>`;
   out += `<path d="${shaftD}" fill="none" stroke="${rgbStr(darken(pig2,0.9))}" stroke-width="1" stroke-linecap="round"/>`;
+  if(apexType===1){
+    // the sprig: on an acuminate feather the shaft itself runs to the very
+    // tip, the vane hugging it in whiskers — so a fine tapering reach of
+    // quill carries the point past where drawable barbs give out.
+    let sprigD='';
+    for(let i=0;i<=8;i++){ const u=RACHIS_END + (i/8)*(1-RACHIS_END)*0.99;
+      const p=rachisPt(u); sprigD += (i?' L':'M')+` ${p.x.toFixed(1)} ${p.y.toFixed(1)}`; }
+    out += `<path d="${sprigD}" fill="none" stroke="${hueQuill}" stroke-width="1.7" stroke-linecap="round"/>`;
+    out += `<path d="${sprigD}" fill="none" stroke="${rgbStr(darken(pig2,0.9))}" stroke-width="0.7" stroke-linecap="round"/>`;
+  }
   const b0=rachisPt(0), b1=rachisPt(0.05);
   out += `<line x1="${b0.x}" y1="${b0.y+10}" x2="${b1.x}" y2="${b1.y}" stroke="${hueQuill}" stroke-width="5" stroke-linecap="round" opacity="0.8"/>`;
 
@@ -761,7 +854,9 @@ function updateReadouts(){
   $('len-v').textContent = P.len.value+' u';
   $('curve-v').textContent = (P.curve.value>0?'+':'')+P.curve.value+'°';
   $('width-v').textContent = P.width.value+' u';
-  $('tip-v').textContent = P.tip.value>0? P.tip.value+'%' : 'round';
+  $('apextype-v').textContent = ['rounded','acuminate','truncate'][apexType];
+  $('apex-label').textContent = ['Fullness','Fineness','Corner'][apexType];
+  $('apex-v').textContent = P.apex.value+'%';
   $('asym-v').textContent = P.asym.value+'%';
   $('angle-v').textContent = P.angle.value+'°';
   $('density-v').textContent = P.density.value;
@@ -786,12 +881,18 @@ function conjureFrom(str){
   P.len.value     = 400 + Math.floor(rng()*200);
   P.curve.value   = Math.floor((rng()-0.5)*150);
   P.width.value   = 45 + Math.floor(rng()*75);
-  P.tip.value     = rng()<0.5 ? Math.floor(rng()*rng()*110) : 0;  // often round, sometimes a fine point
+  // the apex family: rounded is the moor's common coin, the acuminate
+  // regular enough, the truncate an occasional treat
+  const fam = rng();
+  apexType = fam<0.55 ? 0 : fam<0.85 ? 1 : 2;
+  P.apex.value    = 10 + Math.floor(rng()*80);
   P.asym.value    = rng()<0.45 ? Math.floor(rng()*90) : 0;  // some birds fly, some don't
   P.angle.value   = 28 + Math.floor(rng()*38);
   P.density.value = 60 + Math.floor(rng()*85);
   P.down.value    = Math.floor(rng()*40);
-  P.wear.value    = Math.floor(rng()*65);
+  // the moor mostly offers pristine little finds; now and then a properly
+  // bedraggled one to leave behind — disappointment mild, and occasional
+  P.wear.value    = rng()<0.3 ? 12+Math.floor(rng()*53) : Math.floor(rng()*10);
   P.bars.value    = rng()<0.4 ? Math.floor(rng()*8) : 0;
   P.barside.value = P.bars.value>0 && rng()<0.4 ? 40+Math.floor(rng()*60) : 0;
   P.baredge.value = P.bars.value>0 ? Math.floor(rng()*rng()*100) : 0;
@@ -837,6 +938,13 @@ function toggleIrid(){
 Object.values(P).forEach(el => el.addEventListener('input', render));
 ['pig1','pig2','iridcol','iridcol2'].forEach(id=>$(id).addEventListener('input', render));
 $('irid').addEventListener('change', ()=>{ toggleIrid(); render(); });
+
+/* the apex family card cycles rounded -> acuminate -> truncate */
+function turnApex(){ apexType = (apexType+1)%3; render(); }
+$('apexcard').addEventListener('click', turnApex);
+$('apexcard').addEventListener('keydown', e=>{
+  if(e.key==='Enter'||e.key===' '){ e.preventDefault(); turnApex(); }
+});
 
 $('conjure').addEventListener('click', ()=> conjureFrom($('coord').value.trim() || 'origin'));
 $('random').addEventListener('click', ()=>{
