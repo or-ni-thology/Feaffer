@@ -449,6 +449,20 @@ function drawFeather(){
       const diry = norm.y*side*Math.sin(Math.PI/2-effAng) + up.y*Math.cos(Math.PI/2-effAng);
       const m = Math.hypot(dirx,diry)||1;
       let bl = halfW * (downy ? (1.1+rng()*0.5) : 1.0);
+      // The vane's sideways reach is bl·cos(angle) — so as the barbs sweep the
+      // blade quietly PINCHES, and its margin thins to a sparse, staggered,
+      // gap-toothed comb (the "raggedy edge" of a steeply-combed feather). A
+      // real feather doesn't narrow like that — its barbs simply grow longer to
+      // span the vane, and barbules zip their tips into a clean edge. So past
+      // the reference 46° comb we lengthen each barb to hold its reach, closing
+      // most (0.65) of the pinch: the blade keeps its breadth and the tips crowd
+      // back into a tidy margin. It only ever lengthens (never narrows a shallow
+      // comb), and leaves the self-closing fanned tip alone.
+      if(!downy && tf===0){
+        const ref = Math.cos(46*Math.PI/180);
+        const comp = Math.max(1, ref/Math.cos(effAng));
+        bl *= 1 + (comp-1)*0.65;
+      }
       if(tf>0 && !downy){
         // How far the tip-closing barbs over-reach is set mostly by the vane's
         // OWN breadth (capW, the half-width where the tip begins) and only a

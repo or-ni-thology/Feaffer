@@ -173,6 +173,29 @@ At a low angle the barbs stand almost **straight out** to the side. At a high
 angle they **sweep sharply toward the tip**, like the teeth of a swept comb. Real
 barbs always lean a little toward the tip; the slider lets you say how much.
 
+#### Keeping the edge — *the barbule cheat, in disguise*
+
+Sweeping the comb has a side-effect worth understanding. A barb of length `L`
+leaving at angle `θ` only reaches `L·cos θ` *sideways* — so as `θ` climbs, the
+vane quietly **pinches narrower**, and its margin thins into a sparse,
+staggered, gap-toothed comb. That's the **raggedy edge** of a steeply-combed
+feather.
+
+A real feather doesn't do that, for two reasons — and this is where the
+**barbules** the notes keep promising actually enter the story. First, its barbs
+simply grow *longer* to span the vane, so breadth doesn't collapse with sweep.
+Second, and more to the point: the distal **barbules hook neighbouring barbs
+together at their tips** and hold the margin in a clean line. The ragged edge, in
+other words, is *precisely the visual signature of barbules missing.*
+
+So rather than draw a billion barbules, we borrow the *first* mechanism to imply
+the *second*: past the reference 46° comb we **lengthen each barb** to hold its
+sideways reach, closing most (0.65) of the pinch. The blade keeps its breadth and
+the tips crowd back into a tidy margin — the barbules' job, done by geometry. It
+only ever lengthens (a shallow comb is left alone), and the self-closing fanned
+tip is untouched. A true barbule *coherence* axis is still the honest next rung
+(Part IV); this is its cheapest, most convincing understudy.
+
 ### Barb density — *how fine the comb*
 
 Simply how many barbs we plant along the rachis. More barbs, finer and more solid
