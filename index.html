@@ -60,7 +60,9 @@
     font-size: .82rem; letter-spacing: .06em; color: var(--ink);
   }
   .head input:focus { outline: 1px solid var(--moor); }
-  .btns { display: flex; gap: .5rem; }
+  /* a single neat row where there is room; on a narrow phone the extra φ key
+     lets it wrap to a tidy second line rather than clipping a button off. */
+  .btns { display: flex; flex-wrap: wrap; gap: .5rem; }
   button {
     font-family: 'IBM Plex Mono', monospace;
     font-size: .64rem; letter-spacing: .1em; text-transform: uppercase;
@@ -73,6 +75,14 @@
   button.ghost { background: transparent; color: var(--moor); }
   button.ghost:hover { background: #4a534014; }
   button:focus-visible { outline: 2px solid var(--rust); outline-offset: 2px; }
+  /* the phi key — the golden-angle shortcut every one of these tools carries.
+     Held narrow beside the others, the glyph set in the tool's serif italic. */
+  button.phi {
+    flex: 0 0 auto; width: 46px; padding: .55rem 0;
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-style: italic; text-transform: none;
+    font-size: 1.25rem; letter-spacing: 0; line-height: 1;
+  }
 
   /* ——— the stage: the feather stands here and fills whatever is left ——— */
   .stage {
@@ -173,6 +183,7 @@
     <input type="text" id="coord" value="SD 9421 7638" spellcheck="false" aria-label="Grid reference — a coordinate seeds a specific feather">
     <div class="btns">
       <button id="conjure">Conjure from grid</button>
+      <button id="phi" class="ghost phi" title="φ — golden-angle & Fibonacci proportions, and the peacock eye" aria-label="Apply golden proportions and light the phi eye">φ</button>
       <button id="random" class="ghost">Wander</button>
       <button id="save" class="ghost">Take specimen &darr;</button>
     </div>
@@ -215,17 +226,17 @@
       <div class="cap"><label for="angle">Barb angle</label><span class="val" id="angle-v"></span></div>
       <input type="range" id="angle" min="20" max="72" value="46">
     </div>
-    <div class="card" title="how many barbs comb the vane">
+    <div class="card" title="how many barbs comb the vane — denser packs a silkier web and fills the crown">
       <div class="cap"><label for="density">Barb density</label><span class="val" id="density-v"></span></div>
-      <input type="range" id="density" min="30" max="150" value="100">
+      <input type="range" id="density" min="30" max="190" value="118">
     </div>
     <div class="card" title="soft, disordered barbs at the base">
       <div class="cap"><label for="down">Plumaceous down</label><span class="val" id="down-v"></span></div>
       <input type="range" id="down" min="0" max="45" value="18">
     </div>
-    <div class="card" title="the fraying and gaps of a feather that has flown">
+    <div class="card" title="a light fraying and the odd unzipped notch — most moor finds are near pristine">
       <div class="cap"><label for="wear">Age &amp; wear</label><span class="val" id="wear-v"></span></div>
-      <input type="range" id="wear" min="0" max="100" value="22">
+      <input type="range" id="wear" min="0" max="100" value="10">
     </div>
   </div>
 
@@ -252,6 +263,10 @@
       <div class="cap"><label for="baredge">Bar edge</label><span class="val" id="baredge-v"></span></div>
       <input type="range" id="baredge" min="0" max="100" value="0">
     </div>
+    <div class="card" title="let the bars dissolve into a broken chain of splotches, the way faded barring does">
+      <div class="cap"><label for="barbreak">Bar break</label><span class="val" id="barbreak-v"></span></div>
+      <input type="range" id="barbreak" min="0" max="100" value="0">
+    </div>
     <div class="card" title="a dark tip, as on a grouse or pheasant">
       <div class="cap"><label for="tipband">Terminal band</label><span class="val" id="tipband-v"></span></div>
       <input type="range" id="tipband" min="0" max="40" value="0">
@@ -259,6 +274,20 @@
     <div class="card" title="flecks &amp; splodges grown into the barbs themselves">
       <div class="cap"><label for="speck">Spots &amp; splodges</label><span class="val" id="speck-v"></span></div>
       <input type="range" id="speck" min="0" max="100" value="0">
+    </div>
+    <div class="card swatchcard" title="a second pigment, pooled in soft patches across the vane">
+      <div class="cap"><span>Patch pigment</span></div>
+      <div class="swatches">
+        <input type="color" id="patchcol" value="#a2502c" aria-label="Patch colour">
+      </div>
+    </div>
+    <div class="card" title="how much of the second pigment pools into patches">
+      <div class="cap"><label for="patch">Colour patch</label><span class="val" id="patch-v"></span></div>
+      <input type="range" id="patch" min="0" max="100" value="0">
+    </div>
+    <div class="card" title="a peacock ocellus — concentric rings grown into the vane, their radii spaced by φ">
+      <div class="cap"><label for="eye">Ocellus eye</label><span class="val" id="eye-v"></span></div>
+      <input type="range" id="eye" min="0" max="100" value="0">
     </div>
 
     <label class="card actcard" title="a structural sheen">
@@ -310,7 +339,8 @@ const $ = id => document.getElementById(id);
 const P = {
   len:$('len'), curve:$('curve'), width:$('width'), apex:$('apex'), asym:$('asym'), angle:$('angle'),
   density:$('density'), down:$('down'), wear:$('wear'),
-  bars:$('bars'), barside:$('barside'), baredge:$('baredge'), tipband:$('tipband'), speck:$('speck'),
+  bars:$('bars'), barside:$('barside'), baredge:$('baredge'), barbreak:$('barbreak'),
+  tipband:$('tipband'), speck:$('speck'), patch:$('patch'), eye:$('eye'),
   iridpos:$('iridpos'), iridspread:$('iridspread'), iridstr:$('iridstr')
 };
 
@@ -342,7 +372,10 @@ function drawFeather(){
   const tipBand = +P.tipband.value/100;
   const barBias = +P.barside.value/100;   // 0 bars on both webs .. 1 one web only
   const barEdge = +P.baredge.value/100;   // 0 crisp bands .. 1 ragged, mottled
+  const barBreak = +P.barbreak.value/100; // 0 solid bands .. 1 broken into splotches
   const speck = +P.speck.value/100;
+  const patchAmt = +P.patch.value/100;    // a second pigment pooled in soft patches
+  const eyeAmt = +P.eye.value/100;        // the peacock ocellus
 
   const pig1 = hexToRgb($('pig1').value);
   const pig2 = hexToRgb($('pig2').value);
@@ -483,9 +516,11 @@ function drawFeather(){
   // identity — its wear gaps, its jitter — stays exactly put.
   const nrng = mulberry((drawSeed ^ 0x51633E2D) >>> 0);
   const notches = [];
-  for(let i=0, n=Math.floor(wear*7); i<n; i++){
+  // wear is deliberately gentle: the moor mostly offers near-pristine finds, so
+  // even a full slider is a light fraying — a few shallow notches, not a ruin.
+  for(let i=0, n=Math.floor(wear*4); i<n; i++){
     notches.push({ tc: 0.15+nrng()*0.8, side: nrng()<0.5?1:-1,
-                   ht: 0.015+nrng()*0.05, dp: 0.3+nrng()*0.55 });
+                   ht: 0.014+nrng()*0.04, dp: 0.18+nrng()*0.32 });
   }
   function notchFactor(t, side){
     let f = 1;
@@ -508,11 +543,42 @@ function drawFeather(){
     for(let i=1;i<=40;i++){ const u=i/40, p=rachisPt(u);
       if(u<=RACHIS_END) shaftD+=` L ${p.x.toFixed(1)} ${p.y.toFixed(1)}`; } }
 
+  // broken bars — where Bar break is up, each dark band is seeded with a chain
+  // of blob centres strung along its own contour across the vane. They live on
+  // a dedicated stable stream so breaking a bar never stirs the vane's identity,
+  // and they shrink and gap as the break deepens: a clean band, then islands.
+  const barBlobs = [];
+  if(nBars>0 && barBreak>0){
+    const brng = mulberry((drawSeed ^ 0x2C1B3A57) >>> 0);
+    for(let m=0;m<nBars;m++){
+      const tC = (m+0.5)/nBars;                 // a dark band's centre in t
+      if(tC<0.06 || tC>0.985) continue;
+      const rp = rachisPt(tC);
+      const reach = sideWidth(tC,1)+sideWidth(tC,-1);
+      if(reach<4) continue;
+      const nAcross = Math.max(3, Math.round(reach/(6 + barBreak*10)));
+      for(let a=0;a<nAcross;a++){
+        if(brng() < barBreak*0.5) continue;     // punch the gaps of the broken chain
+        const f = nAcross>1 ? (a/(nAcross-1)-0.5)*2 : 0;   // -1..1 across the vane
+        const hw = sideWidth(tC, f<0?-1:1);
+        const jt = (brng()-0.5)*(0.42/nBars)*tipReach;     // wander along the band
+        const r = (2.2 + (1-barBreak)*7)*(0.7+brng()*0.6); // big & overlapping, then small islands
+        barBlobs.push({ x: rp.x + rp.norm.x*f*hw + rp.tan.x*jt,
+                        y: rp.y + rp.norm.y*f*hw + rp.tan.y*jt, r2: r*r });
+      }
+    }
+  }
+
   // barbs
   const barbLines = [];
   const leftPts=[], rightPts=[];   // vane outline for iridescence clip
   for(let i=0;i<nBarbs;i++){
-    const t = i/(nBarbs-1);
+    // the barbs are combed a touch denser toward the tip: the closing fan
+    // spreads the last rows over the whole dome, so an even spacing always
+    // read sparse right at the crown. Warping the row parameter toward 1 packs
+    // more strokes into the apex without thinning the body of the vane.
+    const raw = i/(nBarbs-1);
+    const t = 1 - Math.pow(1-raw, 1.14);
     if(t < 0.04) continue;
     const rp = rachisPt(t);
     const downy = t < downFrac;
@@ -538,11 +604,12 @@ function drawFeather(){
       const phase = Math.sin(t*Math.PI*nBars);
       bandDark = Math.max(0, (Math.abs(phase)-(0.45+wob))/0.55);
       if(bandDark>0 && barEdge>0) bandDark *= 1 - barEdge*rowN*0.8;   // mottle: some rows fade
+      if(barBreak>0) bandDark *= (1 - barBreak);   // the solid band gives way to splotches
     }
 
     for(const side of [1,-1]){
       const wearChance = wear * (0.4 + 0.6*t);
-      if(rng() < wearChance*0.5){ continue; }
+      if(rng() < wearChance*0.28){ continue; }
 
       const halfW = sideWidth(t, side);
       const dirx = norm.x*side*Math.cos(ang) + up.x*Math.sin(ang);
@@ -733,6 +800,65 @@ function drawFeather(){
     out += `<path d="${fluffD}" fill="none" stroke="${rgbStr(fc)}" stroke-width="0.36" stroke-linecap="round" opacity="0.35"/>`;
   }
 
+  // the loom every in-barb marking (broken bars, patches, the eye) weaves on:
+  // walk a vane barb along its own quadratic and hand each short segment to a
+  // visitor, so a mark is always made of the very barbs it happens to cross.
+  const qSeg=(a,b,c,s)=>{const mt=1-s;return mt*mt*a+2*mt*s*b+s*s*c;};
+  function eachSeg(b, SEG, visit){
+    let px=b.rpx, py=b.rpy;
+    for(let k=1;k<=SEG;k++){
+      const s=k/SEG, x=qSeg(b.rpx,b.mx,b.ex,s), y=qSeg(b.rpy,b.my,b.ey,s);
+      visit(px,py,x,y,(px+x)/2,(py+y)/2);
+      px=x; py=y;
+    }
+  }
+
+  // broken bars — the splotches the bands come apart into. The solid band above
+  // has already faded by (1−barBreak); these carry what is left, darkening only
+  // the barb-stretches that fall inside a band-blob.
+  if(barBlobs.length){
+    const breakCol = rgbStr(mix(pig1,pig2,0.9));
+    const bop = (0.5 + barBreak*0.4).toFixed(2);
+    const bw = (vaneStroke+0.4).toFixed(2);
+    let broke='';
+    for(const b of barbLines){
+      if(b.downy) continue;
+      eachSeg(b, 7, (px,py,x,y,mx,my)=>{
+        for(const sp of barBlobs){ const dx=mx-sp.x, dy=my-sp.y;
+          if(dx*dx+dy*dy<sp.r2){
+            broke+=`<path d="M ${px.toFixed(1)} ${py.toFixed(1)} L ${x.toFixed(1)} ${y.toFixed(1)}" fill="none" stroke="${breakCol}" stroke-width="${bw}" stroke-linecap="round" opacity="${bop}"/>`;
+            break; } }
+      });
+    }
+    out+=broke;
+  }
+
+  // colour patches — a second pigment pooling in soft blotches across the vane.
+  // Like the iridescent sheen this is a soft lens masked to the blade, but laid
+  // as pigment (multiply), not sheen (screen): the hue fills the pool while the
+  // barbs' own weave still reads through it, so it grows in the vane rather than
+  // sitting over it as a decal. (patchCol is read live so the well updates it.)
+  if(patchAmt>0 && haveVane){
+    const prng = mulberry((drawSeed ^ 0x6BE17A3D) >>> 0);
+    const nP = 1 + Math.floor(patchAmt*3.5);
+    const pcol = $('patchcol').value;
+    let rects='';
+    for(let i=0;i<nP;i++){
+      const pt=0.16+prng()*0.72, pf=(prng()-0.5)*1.4;
+      const rp=rachisPt(pt), hw=sideWidth(pt, pf<0?-1:1);
+      const rad=(vaneW*(0.3+patchAmt*0.55))*(0.6+prng()*0.7);
+      const px=(rp.x+rp.norm.x*pf*hw).toFixed(1), py=(rp.y+rp.norm.y*pf*hw).toFixed(1);
+      const pid=`patch${i}`;
+      defs += `<radialGradient id="${pid}" gradientUnits="userSpaceOnUse" cx="${px}" cy="${py}" r="${rad.toFixed(1)}">
+          <stop offset="0%" stop-color="${pcol}" stop-opacity="${(0.4+patchAmt*0.5).toFixed(2)}"/>
+          <stop offset="55%" stop-color="${pcol}" stop-opacity="${(0.2+patchAmt*0.35).toFixed(2)}"/>
+          <stop offset="100%" stop-color="${pcol}" stop-opacity="0"/>
+        </radialGradient>`;
+      rects += `<rect x="0" y="0" width="${W}" height="${H}" fill="url(#${pid})"/>`;
+    }
+    out += `<g mask="url(#vanemask)" style="mix-blend-mode:multiply">${rects}</g>`;
+  }
+
   // in-barb spots — flecks & splodges grown INTO the vane. Instead of ellipses
   // laid on top, we darken the stretch of each barb that passes through a
   // scattered spot, so the mark is made of the barbs themselves and moves with
@@ -795,6 +921,48 @@ function drawFeather(){
       }
     }
     out += band;
+  }
+
+  // the ocellus — a peacock eye grown into the vane. Its concentric rings are
+  // painted onto whichever barbs cross them, so the eye is woven of the same
+  // strokes as the feather. The ring radii step by φ — 0·236 · 0·382 · 0·618 —
+  // the Fibonacci spacing the real eye is built on. With iridescence lit the
+  // jewel rings take its two hues; unlit they hold a duller structural colour,
+  // and the soft sheen wash below (if any) settles over the whole eye.
+  if(eyeAmt>0.001 && barbLines.length>4){
+    const tEye = 0.72;                      // the eye rides high on the vane
+    const ec = rachisPt(tEye);
+    const rb = eyeAmt * Math.min(vaneW*1.35, tipReach*0.32);   // half-width across
+    const ra = rb*1.18;                                        // a touch taller than wide
+    const jewelI = iridOn ? hexToRgb($('iridcol').value)  : {r:31,g:96,b:120};
+    const jewelG = iridOn ? hexToRgb($('iridcol2').value) : {r:44,g:107,b:63};
+    // heart · iris · bronze · green · copper halo, on φ-spaced boundaries
+    const rings=[
+      {to:0.236, c:rgbStr({r:20,g:22,b:34})},   // the dark heart
+      {to:0.382, c:rgbStr(jewelI)},             // iris — blue
+      {to:0.560, c:rgbStr({r:138,g:106,b:30})}, // bronze
+      {to:0.780, c:rgbStr(jewelG)},             // green
+      {to:1.001, c:rgbStr({r:120,g:70,b:44})}   // copper halo
+    ];
+    const ew=(vaneStroke+0.55).toFixed(2), pad=Math.max(ra,rb)+30;
+    let iris='';
+    for(const b of barbLines){
+      if(b.downy) continue;
+      if(Math.min(b.rpy,b.ey) > ec.y+pad || Math.max(b.rpy,b.ey) < ec.y-pad ||
+         Math.min(b.rpx,b.ex) > ec.x+pad || Math.max(b.rpx,b.ex) < ec.x-pad) continue;
+      eachSeg(b, 10, (px,py,x,y,mx,my)=>{
+        const dx=mx-ec.x, dy=my-ec.y;
+        const al=(dx*ec.tan.x+dy*ec.tan.y)/ra;    // component along the shaft
+        const ac=(dx*ec.norm.x+dy*ec.norm.y)/rb;  // component across the vane
+        const rr=Math.sqrt(al*al+ac*ac);
+        if(rr>=1) return;
+        let ri=0; while(ri<rings.length && rr>rings[ri].to) ri++;
+        if(ri>=rings.length) return;
+        const fade = rr>0.86 ? (1-rr)/0.14 : 1;   // the halo melts into the vane
+        iris+=`<path d="M ${px.toFixed(1)} ${py.toFixed(1)} L ${x.toFixed(1)} ${y.toFixed(1)}" fill="none" stroke="${rings[ri].c}" stroke-width="${ew}" stroke-linecap="round" opacity="${(0.94*fade).toFixed(2)}"/>`;
+      });
+    }
+    out+=iris;
   }
 
   // (The self-shadow that once darkened the inner vane has been retired: with
@@ -865,8 +1033,11 @@ function updateReadouts(){
   $('bars-v').textContent = P.bars.value>0? P.bars.value : 'none';
   $('barside-v').textContent = P.barside.value>0? P.barside.value+'%' : 'both';
   $('baredge-v').textContent = P.baredge.value>0? P.baredge.value+'%' : 'crisp';
+  $('barbreak-v').textContent = P.barbreak.value>0? P.barbreak.value+'%' : 'solid';
   $('tipband-v').textContent = P.tipband.value>0? P.tipband.value+'%' : 'none';
   $('speck-v').textContent = P.speck.value>0? P.speck.value+'%' : 'none';
+  $('patch-v').textContent = P.patch.value>0? P.patch.value+'%' : 'none';
+  $('eye-v').textContent = P.eye.value>0? P.eye.value+'%' : 'none';
   $('iridpos-v').textContent = P.iridpos.value+'%';
   $('iridspread-v').textContent = P.iridspread.value+'%';
   $('iridstr-v').textContent = P.iridstr.value+'%';
@@ -890,9 +1061,9 @@ function conjureFrom(str){
   P.angle.value   = 28 + Math.floor(rng()*38);
   P.density.value = 60 + Math.floor(rng()*85);
   P.down.value    = Math.floor(rng()*40);
-  // the moor mostly offers pristine little finds; now and then a properly
-  // bedraggled one to leave behind — disappointment mild, and occasional
-  P.wear.value    = rng()<0.3 ? 12+Math.floor(rng()*53) : Math.floor(rng()*10);
+  // the moor mostly offers pristine little finds; only rarely a lightly frayed
+  // one, and even then gently — a feather is a fine thing that has just flown
+  P.wear.value    = rng()<0.18 ? 8+Math.floor(rng()*24) : Math.floor(rng()*5);
   P.bars.value    = rng()<0.4 ? Math.floor(rng()*8) : 0;
   P.barside.value = P.bars.value>0 && rng()<0.4 ? 40+Math.floor(rng()*60) : 0;
   P.baredge.value = P.bars.value>0 ? Math.floor(rng()*rng()*100) : 0;
@@ -917,6 +1088,21 @@ function conjureFrom(str){
     P.iridspread.value = 30+Math.floor(rng()*55);
     P.iridstr.value = 45+Math.floor(rng()*45);
   }
+
+  // ——— the newer markings, drawn from the tail of the stream so every grid
+  // reference keeps the exact shape and colour it always conjured, and only
+  // gains these on top ———
+  // faded barring now and then comes apart into a broken chain of splotches
+  P.barbreak.value = +P.bars.value>0 && rng()<0.4 ? Math.floor(rng()*rng()*100) : 0;
+  // a patch of a second pigment, set a little apart from the ground hue
+  if(rng()<0.2){
+    P.patch.value = 25+Math.floor(rng()*55);
+    const ph=(h1+38+rng()*170)%360;
+    $('patchcol').value = hslToHex(ph, 28+rng()*34, 34+rng()*26);
+  } else { P.patch.value = 0; }
+  // the ocellus — the moor's rarest treasure, a peacock come to the roof
+  P.eye.value = rng()<0.05 ? 55+Math.floor(rng()*40) : 0;
+
   render();
 }
 
@@ -934,10 +1120,47 @@ function toggleIrid(){
   [P.iridpos,P.iridspread,P.iridstr].forEach(el=>el.disabled=!on);
 }
 
+/* ---- the phi key ---------------------------------------------------------
+   Every tool in this little family carries one: a press that lays the golden
+   angle and Fibonacci over whatever you have. On a feather it goldens the
+   proportions — a broad vane held to the shaft as len/φ³, a full crown at the
+   golden section, a Fibonacci comb of 144 barbs — and lights the peacock eye,
+   whose rings are already spaced by φ. It keeps the current seed, so φ
+   transforms the feather in front of you rather than conjuring a new one. ---- */
+function applyPhi(){
+  const PHI = 1.6180339887, GOLD = 137.507;   // the golden ratio; the golden angle
+  const len = +P.len.value;
+  P.width.value   = Math.round(Math.max(60, Math.min(130, len/(PHI*PHI*PHI))));  // vane : shaft = 1 : φ³
+  apexType = 0;                       // a rounded, ocellate crown
+  P.apex.value    = 62;               // fullness at the golden section (1/φ)
+  P.asym.value    = 0;                // the eye wants a symmetric vane
+  P.angle.value   = Math.round(GOLD*0.42);   // a silky comb, off the golden angle (≈58°)
+  P.density.value = 144;              // a Fibonacci comb
+  P.down.value    = 5;
+  P.wear.value    = 0;                // a train feather in its prime
+  P.bars.value    = 0;                // clear the barring so the eye can rule
+  P.barside.value = 0;
+  P.baredge.value = 0;
+  P.barbreak.value= 0;
+  P.tipband.value = 0;
+  P.speck.value   = 0;
+  P.patch.value   = 0;
+  P.eye.value     = 78;               // the ocellus, boldly
+
+  $('irid').checked = true; toggleIrid();
+  $('iridcol').value  = '#1f6f8c';    // peacock blue
+  $('iridcol2').value = '#2c8a5a';    // peacock green
+  P.iridpos.value    = 70;            // the sheen pools over the eye
+  P.iridspread.value = 52;
+  P.iridstr.value    = 72;
+  render();
+}
+
 /* ---- wiring: manual tweaks keep drawSeed stable so nothing flickers ---- */
 Object.values(P).forEach(el => el.addEventListener('input', render));
-['pig1','pig2','iridcol','iridcol2'].forEach(id=>$(id).addEventListener('input', render));
+['pig1','pig2','iridcol','iridcol2','patchcol'].forEach(id=>$(id).addEventListener('input', render));
 $('irid').addEventListener('change', ()=>{ toggleIrid(); render(); });
+$('phi').addEventListener('click', applyPhi);
 
 /* the apex family card cycles rounded -> acuminate -> truncate */
 function turnApex(){ apexType = (apexType+1)%3; render(); }
