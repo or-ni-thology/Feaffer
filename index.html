@@ -818,7 +818,9 @@ function conjureFrom(str){
   P.angle.value   = 28 + Math.floor(rng()*38);
   P.density.value = 60 + Math.floor(rng()*85);
   P.down.value    = Math.floor(rng()*40);
-  P.wear.value    = Math.floor(rng()*65);
+  // the moor mostly offers pristine little finds; now and then a properly
+  // bedraggled one to leave behind — disappointment mild, and occasional
+  P.wear.value    = rng()<0.3 ? 12+Math.floor(rng()*53) : Math.floor(rng()*10);
   P.bars.value    = rng()<0.4 ? Math.floor(rng()*8) : 0;
   P.barside.value = P.bars.value>0 && rng()<0.4 ? 40+Math.floor(rng()*60) : 0;
   P.baredge.value = P.bars.value>0 ? Math.floor(rng()*rng()*100) : 0;
