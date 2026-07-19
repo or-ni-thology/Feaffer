@@ -354,14 +354,15 @@ function drawFeather(){
     const m=Math.hypot(dx,dy)||1; return {x:dx/m,y:dy/m}; };
 
   // SMOOTHED width envelope — single smooth curve, gentle shoulder.
-  // tipShape draws the widest point lower and stretches the upper falloff into
-  // a long fine taper (rounded apex at 0, snipe-point paintbrush at 1).
-  // tipShape moves the widest point lower and blends the upper falloff from a
-  // rounded apex (cos shoulder) toward a long, gently-convex straight taper —
-  // so a pointed feather narrows from lower down along a shallow line that
-  // never holds a shoulder and never curves concave (Mr Doodles' pheasant).
-  const peak = 0.58 - tipShape*0.16;
+  // A rounded feather carries its widest point well above the middle of the
+  // vane — a paddle, not a lens. tipShape draws that widest point lower and
+  // blends the upper falloff from a rounded apex (cos shoulder) toward a
+  // long, gently-convex straight taper — so a pointed feather narrows from
+  // lower down along a shallow line that never holds a shoulder and never
+  // curves concave (Mr Doodles' pheasant).
+  const peak = 0.63 - tipShape*0.21;
   function widthAt(t){
+    if(t >= 1) return 0;
     let w;
     if(t < peak){
       const u = t/peak;
@@ -381,6 +382,13 @@ function drawFeather(){
     if(side>0) return base * (1 - asym*0.62);   // leading edge narrower
     return base * (1 + asym*0.42);              // trailing edge broader
   }
+
+  // how hard the closing fan pulls barb tips toward the apex: a broad rounded
+  // apex at the default comb needs the full pull to dome shut, but a steep
+  // comb already runs its barbs up the axis (full pull stacked them into an
+  // opaque spearhead) and a fine point wants to stay an airy taper — both
+  // ask for far less. 0.768 = π/2 − 46°, the default comb's turning room.
+  const closeNeed = Math.min(1, (Math.PI/2 - barbAngle)/0.768) * (1 - tipShape*0.6);
 
   // rachis drifts toward the leading edge under asymmetry
   const rachisShift = asym * vaneW * 0.22;
@@ -404,12 +412,13 @@ function drawFeather(){
     const ang = downy ? barbAngle*1.5 : barbAngle;
     const up = rp.tan, norm = rp.norm;
 
-    // as a barb nears the tip it sweeps forward toward the shaft axis and
-    // lengthens, so the two sides fan over and close the tip with barbs
-    // rather than with the rachis (Streit & Heidrich's fanned tip).
+    // as a barb nears the tip its TIP is drawn toward the end of the rachis,
+    // so the two sides fan over and close the tip with barbs rather than
+    // with the rachis (Streit & Heidrich's fanned tip). The pull is on the
+    // endpoint, not the length — a lengthened barb at an unturned angle was
+    // what used to poke sideways past the envelope and bulge under the apex.
     const tf = t <= TIP_ZONE ? 0 : (t - TIP_ZONE) / (1 - TIP_ZONE);
-    const tfe = tf * tf;
-    const effAng = ang + (Math.PI/2 - ang) * tfe * 0.9;
+    const sw = tf*tf*(3 - 2*tf);   // smoothstepped, so the pull arrives seamlessly
 
     // barring: is this barb-row within a dark band? barEdge wobbles the band
     // boundary and mottles the fill using a deterministic per-row hash (kept off
@@ -430,21 +439,32 @@ function drawFeather(){
       if(rng() < wearChance*0.5){ continue; }
 
       const halfW = sideWidth(t, side);
-      const dirx = norm.x*side*Math.sin(Math.PI/2-effAng) + up.x*Math.cos(Math.PI/2-effAng);
-      const diry = norm.y*side*Math.sin(Math.PI/2-effAng) + up.y*Math.cos(Math.PI/2-effAng);
+      const dirx = norm.x*side*Math.cos(ang) + up.x*Math.sin(ang);
+      const diry = norm.y*side*Math.cos(ang) + up.y*Math.sin(ang);
       const m = Math.hypot(dirx,diry)||1;
-      let bl = halfW * (downy ? (1.1+rng()*0.5) : 1.0);
-      if(tf>0 && !downy){
-        // a rounded apex is barbs over-reaching to close a broad tip; a pointed
-        // tip wants them to hug the envelope, so the over-reach fades with taper.
-        const reachLen = (1-t) * tipReach * 1.12 * (1 - tipShape*0.85);
-        bl = bl*(1-tf) + Math.max(bl, reachLen)*tf;
-      }
-      const jitter = downy ? (rng()-0.5)*ang*0.9 : (rng()-0.5)*0.12;
+      const bl = halfW * (downy ? (1.1+rng()*0.5) : 1.0);
+
+      // jitter, held to a constant width of wobble: a steep barb runs nearly
+      // along the shaft, so the same angular shake used to swing its tip far
+      // wider of the vane edge — that was the scruff. Scale the shake back by
+      // the slope so the edge stays equally calm at every barb angle.
+      const jAmp = downy ? ang*0.9 : 0.12*Math.min(1, 1.035/Math.tan(ang));   // 1.035 = tan 46°
+      const jitter = (rng()-0.5)*jAmp;
       const ca=Math.cos(jitter), sa=Math.sin(jitter);
       const rx=(dirx*ca-diry*sa)/m, ry=(dirx*sa+diry*ca)/m;
-      const ex=rp.x+rx*bl, ey=rp.y+ry*bl;
-      const midx=rp.x+rx*bl*0.5+up.x*bl*0.18, midy=rp.y+ry*bl*0.5+up.y*bl*0.18;
+      let ex=rp.x+rx*bl, ey=rp.y+ry*bl;
+
+      if(sw>0 && !downy){
+        // the closing fan: the barb tip reaches for the end of the rachis —
+        // a breath past it when the apex is rounded, so the webs dome over
+        // the tip; short of it when pointed, so the taper stays a fine line.
+        const apex = rachisPt(t + (1-t)*(0.9 + (1-tipShape)*0.14));
+        const pull = sw*closeNeed;
+        ex += (apex.x-ex)*pull; ey += (apex.y-ey)*pull;
+      }
+
+      const vx=ex-rp.x, vy=ey-rp.y, vl=Math.hypot(vx,vy);
+      const midx=rp.x+vx*0.5+up.x*vl*0.18, midy=rp.y+vy*0.5+up.y*vl*0.18;
 
       // one-sided barring: fade the bars out on the leading (right) web as the
       // bias climbs, so at full bias the bars sit on one web of the vane only.
@@ -496,9 +516,13 @@ function drawFeather(){
     defs += `<mask id="vanemask" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}"><path d="${d}" fill="#fff" filter="url(#maskblur)"/></mask>`;
   }
 
-  // barbs
+  // barbs — a steeply-combed vane crowds them nearly parallel and a couple of
+  // pixels apart, so the strokes slim down a touch as the angle climbs,
+  // keeping the weave silky instead of clotted.
+  const crowd = Math.min(1, Math.cos(barbAngle)/0.695);   // 0.695 = cos 46°, the default comb
+  const vaneStroke = 0.95*(0.78 + 0.22*crowd);
   for(const b of barbLines){
-    const w = b.downy ? 0.7 : 0.95;
+    const w = b.downy ? 0.7 : vaneStroke;
     const op = b.downy ? 0.5 : 0.85;
     out += `<path d="${b.d}" fill="none" stroke="${b.col}" stroke-width="${w}" stroke-linecap="round" opacity="${op}"/>`;
   }
