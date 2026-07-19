@@ -202,6 +202,10 @@
       <div class="cap"><label for="tip">Tip taper</label><span class="val" id="tip-v"></span></div>
       <input type="range" id="tip" min="0" max="100" value="0">
     </div>
+    <div class="card" title="slender dome through to a fat blunt crown">
+      <div class="cap"><label for="apex">Apex fullness</label><span class="val" id="apex-v"></span></div>
+      <input type="range" id="apex" min="0" max="100" value="35">
+    </div>
     <div class="card" title="leading edge narrows — the mark of a flight feather">
       <div class="cap"><label for="asym">Vane asymmetry</label><span class="val" id="asym-v"></span></div>
       <input type="range" id="asym" min="0" max="100" value="0">
@@ -298,7 +302,7 @@ function freshDraw(){ return mulberry(drawSeed); }
 
 const $ = id => document.getElementById(id);
 const P = {
-  len:$('len'), curve:$('curve'), width:$('width'), tip:$('tip'), asym:$('asym'), angle:$('angle'),
+  len:$('len'), curve:$('curve'), width:$('width'), tip:$('tip'), apex:$('apex'), asym:$('asym'), angle:$('angle'),
   density:$('density'), down:$('down'), wear:$('wear'),
   bars:$('bars'), barside:$('barside'), baredge:$('baredge'), tipband:$('tipband'), speck:$('speck'),
   iridpos:$('iridpos'), iridspread:$('iridspread'), iridstr:$('iridstr')
@@ -323,6 +327,7 @@ function drawFeather(){
   const curvature = +P.curve.value;
   const vaneW = +P.width.value;
   const tipShape = +P.tip.value/100;              // 0 rounded apex .. 1 long snipe-point
+  const apexFull = +P.apex.value/100;             // 0 slender dome .. 1 fat blunt crown
   const asym = +P.asym.value/100;                 // 0 symmetric .. 1 strong flight feather
   const barbAngle = +P.angle.value * Math.PI/180;
   const nBarbs = +P.density.value;
@@ -402,23 +407,31 @@ function drawFeather(){
     const dx=2*(1-t)*(ctrlX-cx)+2*t*(cx-ctrlX), dy=2*(1-t)*(ctrlY-baseY)+2*t*(tipY-ctrlY);
     const m=Math.hypot(dx,dy)||1; return {x:dx/m,y:dy/m}; };
 
-  // SMOOTHED width envelope — single smooth curve, gentle shoulder.
+  // CONVEX width envelope — one curve from crest to apex, nowhere to hollow.
   // A rounded feather carries its widest point well above the middle of the
   // vane — a paddle, not a lens — and its roundness must live in PIXELS, not
-  // in the normalised parameter: the old cos falloff shed width across the
-  // whole upper vane, so the apex was a wedge whose angle was breadth over
-  // length and a long feather could never hold a curve at the tip. Now the
-  // rounded envelope eases to fSeam of its breadth (a flat-ended smoothstep,
-  // so the join is seamless) and turns over a quarter-ellipse cap as deep
-  // along the shaft as the vane is wide across — a true dome at any length
-  // (a magpie's tail). tipShape draws the widest point lower and blends the
-  // falloff toward a long, gently-convex taper that never holds a shoulder
-  // and never curves concave (Mr Doodles' pheasant).
+  // in the normalised parameter. The old envelope held breadth through a
+  // smoothstep shoulder and turned over a quarter-ellipse cap: the two met
+  // smoothly, but a smoothstep's easing-out tail is an inflection, and the
+  // outline went marginally hollow just before the dome — a concave whisper
+  // where body meets apex that no slider could round away. Now the whole
+  // upper vane is one superellipse, u^p + w² = 1, convex for every p ≥ 1:
+  // from the widest point to the apex the outline bulges outward the whole
+  // way. The exponent p is where the character lives, and Apex fullness
+  // sweeps it: low, below the ellipse, a slender parabolic dome; at the
+  // ellipse, the full egg-shaped crown of a little downy feather (the
+  // widest point stays put — lifting it only squashes the crown box, and
+  // any curve in a squat box reads flat-topped); high, breadth held late
+  // and turned over a cap — the blunt paddle. The pixel-roundness stays in
+  // hand too: the base exponent is sized so the dome turns over as deep
+  // along the shaft as the vane is wide across, so a magpie's tail stays
+  // round at any length. tipShape draws the widest point lower and blends
+  // toward a long, gently-convex taper that never holds a shoulder and
+  // never curves concave (Mr Doodles' pheasant).
   const peak = 0.63 - tipShape*0.21;
   const latK = Math.cos(barbAngle);   // the across-vane share of a barb's length
-  const fSeam = 0.62;                 // breadth still in hand when the dome begins
-  const capT = Math.min((1-peak)*0.6, fSeam*vaneW*latK/tipReach);
-  const capT0 = 1 - capT;
+  const pApex = Math.max(1.4 + apexFull*0.6,
+                         (1-peak)*tipReach/(vaneW*latK) * (0.6 + apexFull*1.2));
   function widthAt(t){
     if(t >= 1) return 0;
     let w;
@@ -427,15 +440,8 @@ function drawFeather(){
       w = Math.sin(u*Math.PI/2);          // ease up to full — rounded, not angular
       w = Math.pow(w, 0.85);
     } else {
-      let wRound;
-      if(t < capT0){
-        const s = (t-peak)/(capT0-peak);
-        wRound = 1 - (1-fSeam)*s*s*(3-2*s);           // hold breadth, easing to the cap
-      } else {
-        const v = (t-capT0)/capT;
-        wRound = fSeam*Math.sqrt(Math.max(0, 1-v*v)); // the dome
-      }
       const u = (t-peak)/(1-peak);
+      const wRound = Math.sqrt(Math.max(0, 1 - Math.pow(u, pApex)));
       const wPoint = Math.pow(1-u, 0.9);   // long, gently-convex taper, never concave
       w = wRound*(1-tipShape) + wPoint*tipShape;
     }
@@ -526,8 +532,25 @@ function drawFeather(){
       const dirx = norm.x*side*Math.cos(ang) + up.x*Math.sin(ang);
       const diry = norm.y*side*Math.cos(ang) + up.y*Math.sin(ang);
       const m = Math.hypot(dirx,diry)||1;
-      let bl = halfW * (downy ? (1.1+rng()*0.5) : 1.0);
-      if(!downy) bl *= notchFactor(t, side);   // the unzipped vane bites in
+      let bl = halfW;
+      if(downy){
+        bl *= 1.1+rng()*0.5;
+      } else {
+        // a barb is cut where it MEETS the outline, not to the envelope at
+        // its root: a barb climbs as it reaches out, and the silhouette is
+        // drawn by tips, not roots. Reading the envelope at the root let a
+        // shoulder-rooted barb on a short broad feather climb clean past
+        // the crown at full breadth — the square-shouldered fat head — so
+        // the length that lands the tip on the envelope is solved instead
+        // (damped fixed point; the envelope's tip-end steepness would make
+        // the bare iteration ring).
+        const climb = Math.sin(ang)/tipReach;
+        for(let it=0;it<4;it++){
+          const h = Math.min(1, t + bl*climb);
+          bl = 0.5*bl + 0.5*sideWidth(h, side);
+        }
+        bl *= notchFactor(t, side);   // the unzipped vane bites in
+      }
 
       // jitter, held to a constant width of wobble: a steep barb runs nearly
       // along the shaft, so the same angular shake used to swing its tip far
@@ -762,6 +785,7 @@ function updateReadouts(){
   $('curve-v').textContent = (P.curve.value>0?'+':'')+P.curve.value+'°';
   $('width-v').textContent = P.width.value+' u';
   $('tip-v').textContent = P.tip.value>0? P.tip.value+'%' : 'round';
+  $('apex-v').textContent = P.apex.value+'%';
   $('asym-v').textContent = P.asym.value+'%';
   $('angle-v').textContent = P.angle.value+'°';
   $('density-v').textContent = P.density.value;
@@ -787,6 +811,7 @@ function conjureFrom(str){
   P.curve.value   = Math.floor((rng()-0.5)*150);
   P.width.value   = 45 + Math.floor(rng()*75);
   P.tip.value     = rng()<0.5 ? Math.floor(rng()*rng()*110) : 0;  // often round, sometimes a fine point
+  P.apex.value    = 15 + Math.floor(rng()*75);
   P.asym.value    = rng()<0.45 ? Math.floor(rng()*90) : 0;  // some birds fly, some don't
   P.angle.value   = 28 + Math.floor(rng()*38);
   P.density.value = 60 + Math.floor(rng()*85);
