@@ -348,6 +348,10 @@ function drawFeather(){
   // wanders on its own replayable stream and faffing it never re-rolls the vane.
   const drng = mulberry((drawSeed ^ 0x9E3779B9) >>> 0);
 
+  // barbules pool here — one shared path for the whole feather, so a cloud
+  // of micro-wisps costs the SVG almost nothing.
+  let fluffD = '';
+
   // a wandering strand: chained gentle turns around a per-strand curl, with a
   // whisper of droop — the shape of down. Draws only from the fluff stream.
   function strand(x0, y0, dx0, dy0, len, wildness){
@@ -369,6 +373,23 @@ function drawFeather(){
       d+=` Q ${pts[k][0].toFixed(1)} ${pts[k][1].toFixed(1)} ${hx.toFixed(1)} ${hy.toFixed(1)}`;
     }
     d+=` L ${pts[segs][0].toFixed(1)} ${pts[segs][1].toFixed(1)}`;
+
+    // barbules — the micro-wisps that make down down. Interior points of the
+    // strand sprout a curl or two, curving away harder than they leave.
+    for(let k=1;k<pts.length;k++){
+      const pdx=pts[k][0]-pts[k-1][0], pdy=pts[k][1]-pts[k-1][1];
+      const pm=Math.hypot(pdx,pdy)||1;
+      for(const j of [1,-1]){
+        if(drng() > 0.85) continue;
+        const rot=j*(0.35+drng()*0.45), blen=len*(0.07+drng()*0.13);
+        const cr=Math.cos(rot), sr=Math.sin(rot);
+        const bdx=(pdx*cr-pdy*sr)/pm, bdy=(pdx*sr+pdy*cr)/pm;
+        const er=Math.cos(rot*1.7), es=Math.sin(rot*1.7);
+        const edx=(pdx*er-pdy*es)/pm, edy=(pdx*es+pdy*er)/pm;
+        const bx=pts[k][0], by=pts[k][1];
+        fluffD += `M ${bx.toFixed(1)} ${by.toFixed(1)} Q ${(bx+bdx*blen*0.6).toFixed(1)} ${(by+bdy*blen*0.6).toFixed(1)} ${(bx+edx*blen).toFixed(1)} ${(by+edy*blen).toFixed(1)}`;
+      }
+    }
     return d;
   }
 
@@ -383,12 +404,21 @@ function drawFeather(){
 
   // SMOOTHED width envelope — single smooth curve, gentle shoulder.
   // A rounded feather carries its widest point well above the middle of the
-  // vane — a paddle, not a lens. tipShape draws that widest point lower and
-  // blends the upper falloff from a rounded apex (cos shoulder) toward a
-  // long, gently-convex straight taper — so a pointed feather narrows from
-  // lower down along a shallow line that never holds a shoulder and never
-  // curves concave (Mr Doodles' pheasant).
+  // vane — a paddle, not a lens — and its roundness must live in PIXELS, not
+  // in the normalised parameter: the old cos falloff shed width across the
+  // whole upper vane, so the apex was a wedge whose angle was breadth over
+  // length and a long feather could never hold a curve at the tip. Now the
+  // rounded envelope eases to fSeam of its breadth (a flat-ended smoothstep,
+  // so the join is seamless) and turns over a quarter-ellipse cap as deep
+  // along the shaft as the vane is wide across — a true dome at any length
+  // (a magpie's tail). tipShape draws the widest point lower and blends the
+  // falloff toward a long, gently-convex taper that never holds a shoulder
+  // and never curves concave (Mr Doodles' pheasant).
   const peak = 0.63 - tipShape*0.21;
+  const latK = Math.cos(barbAngle);   // the across-vane share of a barb's length
+  const fSeam = 0.62;                 // breadth still in hand when the dome begins
+  const capT = Math.min((1-peak)*0.6, fSeam*vaneW*latK/tipReach);
+  const capT0 = 1 - capT;
   function widthAt(t){
     if(t >= 1) return 0;
     let w;
@@ -397,9 +427,16 @@ function drawFeather(){
       w = Math.sin(u*Math.PI/2);          // ease up to full — rounded, not angular
       w = Math.pow(w, 0.85);
     } else {
+      let wRound;
+      if(t < capT0){
+        const s = (t-peak)/(capT0-peak);
+        wRound = 1 - (1-fSeam)*s*s*(3-2*s);           // hold breadth, easing to the cap
+      } else {
+        const v = (t-capT0)/capT;
+        wRound = fSeam*Math.sqrt(Math.max(0, 1-v*v)); // the dome
+      }
       const u = (t-peak)/(1-peak);
-      const wRound = Math.cos(u*Math.PI/2);      // rounded apex
-      const wPoint = Math.pow(1-u, 0.9);         // long, gently-convex taper, never concave
+      const wPoint = Math.pow(1-u, 0.9);   // long, gently-convex taper, never concave
       w = wRound*(1-tipShape) + wPoint*tipShape;
     }
     return Math.max(0, w) * vaneW;
@@ -417,6 +454,26 @@ function drawFeather(){
   // opaque spearhead) and a fine point wants to stay an airy taper — both
   // ask for far less. 0.768 = π/2 − 46°, the default comb's turning room.
   const closeNeed = Math.min(1, (Math.PI/2 - barbAngle)/0.768) * (1 - tipShape*0.6);
+
+  // wear beyond missing barbs: a flown feather UNZIPS — neighbouring barbs
+  // let go of one another and the vane edge bites in a V-shaped notch. The
+  // notches live on their own stream (like the fluff) so a specimen's vane
+  // identity — its wear gaps, its jitter — stays exactly put.
+  const nrng = mulberry((drawSeed ^ 0x51633E2D) >>> 0);
+  const notches = [];
+  for(let i=0, n=Math.floor(wear*7); i<n; i++){
+    notches.push({ tc: 0.15+nrng()*0.8, side: nrng()<0.5?1:-1,
+                   ht: 0.015+nrng()*0.05, dp: 0.3+nrng()*0.55 });
+  }
+  function notchFactor(t, side){
+    let f = 1;
+    for(const nt of notches){
+      if(nt.side!==side) continue;
+      const dd = Math.abs(t-nt.tc);
+      if(dd < nt.ht) f = Math.min(f, 1 - nt.dp*(1-dd/nt.ht));
+    }
+    return f;
+  }
 
   // rachis drifts toward the leading edge under asymmetry
   const rachisShift = asym * vaneW * 0.22;
@@ -469,7 +526,8 @@ function drawFeather(){
       const dirx = norm.x*side*Math.cos(ang) + up.x*Math.sin(ang);
       const diry = norm.y*side*Math.cos(ang) + up.y*Math.sin(ang);
       const m = Math.hypot(dirx,diry)||1;
-      const bl = halfW * (downy ? (1.1+rng()*0.5) : 1.0);
+      let bl = halfW * (downy ? (1.1+rng()*0.5) : 1.0);
+      if(!downy) bl *= notchFactor(t, side);   // the unzipped vane bites in
 
       // jitter, held to a constant width of wobble: a steep barb runs nearly
       // along the shaft, so the same angular shake used to swing its tip far
@@ -482,12 +540,19 @@ function drawFeather(){
       let ex=rp.x+rx*bl, ey=rp.y+ry*bl;
 
       if(sw>0 && !downy){
-        // the closing fan: the barb tip reaches for the end of the rachis —
-        // a breath past it when the apex is rounded, so the webs dome over
-        // the tip; short of it when pointed, so the taper stays a fine line.
-        const apex = rachisPt(t + (1-t)*(0.9 + (1-tipShape)*0.14));
+        // the closing fan: each barb tip reaches for a landing ON THE OUTLINE
+        // a stretch ahead — the deeper into the zone, the further ahead, the
+        // last rows at the apex itself — so the fan closes the crown while
+        // tracing the dome (or the point) instead of collapsing every strand
+        // onto the axis and re-sharpening the tip.
+        const tEnd = t + (1-t)*(0.55 + 0.45*tf);
+        const ap = rachisPt(tEnd);
+        // the last rows tuck in toward the axis so the two webs meet over the
+        // crown instead of leaving a parted V above the rachis end.
+        const hw = sideWidth(tEnd, side)*latK*(1 - tf*tf*0.7);
         const pull = sw*closeNeed;
-        ex += (apex.x-ex)*pull; ey += (apex.y-ey)*pull;
+        ex += (ap.x + ap.norm.x*side*hw - ex)*pull;
+        ey += (ap.y + ap.norm.y*side*hw - ey)*pull;
       }
 
       const vx=ex-rp.x, vy=ey-rp.y, vl=Math.hypot(vx,vy);
@@ -578,6 +643,11 @@ function drawFeather(){
     const w = b.downy ? b.dw : vaneStroke;
     const op = b.downy ? b.dop : 0.85;
     out += `<path d="${b.d}" fill="none" stroke="${b.col}" stroke-width="${w}" stroke-linecap="round" opacity="${op}"/>`;
+  }
+  // the barbule cloud — every strand's micro-wisps in a single faint pass
+  if(fluffD){
+    const fc = mix(mix(pig1,pig2,0.35), {r:200,g:190,b:170}, 0.3);
+    out += `<path d="${fluffD}" fill="none" stroke="${rgbStr(fc)}" stroke-width="0.36" stroke-linecap="round" opacity="0.35"/>`;
   }
 
   // in-barb spots — flecks & splodges grown INTO the vane. Instead of ellipses
