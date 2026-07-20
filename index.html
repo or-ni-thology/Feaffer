@@ -260,9 +260,9 @@
       <div class="cap"><label for="speck">Spots &amp; splodges</label><span class="val" id="speck-v"></span></div>
       <input type="range" id="speck" min="0" max="100" value="0">
     </div>
-    <div class="card" title="the ocellus — a peacock's eye, grown into the barbs; past 100 it goes GIANT, a marking big enough to be the only marking anyone needs">
+    <div class="card" title="the ocellus — a peacock's eye, grown into the barbs; past 100 it goes GIANT, taking its scale from the feather's whole length, until the rings are country the feather merely crosses">
       <div class="cap"><label for="eye">Eyespot</label><span class="val" id="eye-v"></span></div>
-      <input type="range" id="eye" min="0" max="240" value="0">
+      <input type="range" id="eye" min="0" max="300" value="0">
     </div>
     <div class="card swatchcard" title="the heart of the eye &amp; the halo around it — a heart matched to the ground pigment sinks into the vane, leaving bare halo">
       <div class="cap"><span>Eye colours</span></div>
@@ -271,9 +271,9 @@
         <input type="color" id="eyecol2" value="#8a6a2f" aria-label="Eye halo colour">
       </div>
     </div>
-    <div class="card" title="where along the shaft the eye sits — past 100 it slips off the tip, until only its lower rim still clings to the vane">
+    <div class="card" title="where along the shaft the eye sits — past 100 it slips off the tip until only its lower rim clings on; below 0 it stands off the quill, and a giant's ring arcs cross the vane as bands">
       <div class="cap"><label for="eyepos">Eye position</label><span class="val" id="eyepos-v"></span></div>
-      <input type="range" id="eyepos" min="15" max="108" value="70">
+      <input type="range" id="eyepos" min="-40" max="108" value="70">
     </div>
     <div class="card" title="cast the eye toward one web — at full cast only its rings still lap the vane's edge; the jay's trick">
       <div class="cap"><label for="eyeside">Eye cast</label><span class="val" id="eyeside-v"></span></div>
@@ -363,7 +363,7 @@ function drawFeather(){
   const barBias = +P.barside.value/100;   // 0 bars on both webs .. 1 one web only
   const barEdge = +P.baredge.value/100;   // 0 crisp bands .. 1 ragged, mottled
   const speck = +P.speck.value/100;
-  const eyeSize = +P.eye.value/100;       // 0 no ocellus .. 1 the vane's breadth .. 2.4 giant
+  const eyeSize = +P.eye.value/100;       // 0 no ocellus .. 1 the vane's breadth .. 3 truly giant
   const eyeT = +P.eyepos.value/100;       // where along the shaft the eye sits
   const eyeSide = +P.eyeside.value/100;   // the cast: 0 a true eye .. ±1 sent off a web
 
@@ -854,7 +854,14 @@ function drawFeather(){
   // place wearing the right colours. Not perfect — better than that.
   if(eyeSize>0){
     const ec = rachisPt(eyeT);
-    const eRb = vaneW*latK*(0.30 + eyeSize*0.58);   // past eye=100 this outgrows the vane: the giant
+    // to 100 the eye is the vane's creature, sized by BREADTH — the spot, the
+    // halo, the partridge's semicircle. Past 100 it changes allegiance and
+    // takes its scale from the feather's whole LENGTH, growing quadratically
+    // until it is truly giant: the rings become country the feather merely
+    // crosses, and a cast tips just the touch of one ring's arc onto the
+    // vane — a pheasant's band from an eye too big to see.
+    const giant = Math.max(0, eyeSize-1);
+    const eRb = vaneW*latK*(0.30 + Math.min(eyeSize,1)*0.58) + giant*giant*tipReach*0.6;
     const PHI = 1.6180339887;
     const eRa = eRb*PHI;                            // the golden ellipse, long axis up the shaft
     const IPHI = 1/PHI, IPHI2 = 1/(PHI*PHI);        // the golden rings: 0.618, 0.382
