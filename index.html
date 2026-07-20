@@ -164,6 +164,54 @@
     color: var(--faint);
   }
 
+  /* ——— the colour wells & Feaffer's own HSL picker ———
+     The native swatch still holds and shows the tone, but a clear overlay
+     catches the tap and opens our picker instead of the operating system's
+     one — which hid lightness and made the vague, greyed-off feather colours
+     all but unreachable. */
+  .stage { position: relative; }   /* the picker floats within the stage */
+  .well { position: relative; display: inline-block; line-height: 0; }
+  .well input[type=color] { pointer-events: none; }   /* the overlay does the talking */
+  .wellhit { position: absolute; inset: 0; display: block; cursor: pointer; }
+  .wellhit:focus-visible { outline: 2px solid var(--rust); outline-offset: 2px; }
+  .wellhit[aria-disabled=true] { cursor: not-allowed; }
+
+  .hslpop {
+    position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%);
+    z-index: 10; width: min(300px, 92%);
+    background: var(--sheet); border: 1px solid var(--line);
+    box-shadow: 0 6px 22px #2b2a2422;
+    padding: .7rem .8rem .65rem;
+    display: flex; flex-direction: column; gap: .5rem;
+  }
+  .hslpop[hidden] { display: none; }
+  .hsltitle {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: .58rem; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--sepia);
+  }
+  .hslrow { display: flex; align-items: center; gap: .6rem; }
+  .hslrow > label {
+    font-family: 'IBM Plex Mono', monospace; font-size: .74rem;
+    color: var(--sepia); width: 1ch; flex: 0 0 auto; text-align: center;
+  }
+  .hslrow .hslv {
+    font-family: 'IBM Plex Mono', monospace; font-size: .6rem;
+    color: var(--rust); width: 3.4em; text-align: right; flex: 0 0 auto;
+  }
+  /* the gradient tracks — taller than the field sliders, and painted live so
+     you slide toward a colour you can already see */
+  .hslrow input[type=range] {
+    flex: 1; width: auto; height: 12px; border-radius: 6px;
+    border: 1px solid var(--line); margin: 0;
+  }
+  .hslfoot { display: flex; align-items: center; justify-content: space-between; margin-top: .1rem; }
+  .hslhex {
+    font-family: 'IBM Plex Mono', monospace; font-size: .72rem;
+    color: var(--ink); letter-spacing: .06em;
+  }
+  .hslpop button#hsldone { flex: 0 0 auto; width: auto; padding: .42rem .95rem; }
+
 </style>
 </head>
 <body>
@@ -174,12 +222,28 @@
     <div class="btns">
       <button id="conjure">Conjure from grid</button>
       <button id="random" class="ghost">Wander</button>
-      <button id="save" class="ghost">Take specimen &darr;</button>
+      <button id="restore" class="ghost" title="open a saved Record and reconjure that exact feather — or drop the .txt anywhere on the tool">Restore &uarr;</button>
+    </div>
+    <input type="file" id="recordfile" accept=".txt,text/plain" hidden aria-hidden="true">
+    <div class="btns">
+      <button id="save" class="ghost" title="the vector original, on a transparent ground">Specimen &darr;</button>
+      <button id="png" class="ghost" title="a specimen card to share — the feather on the sky-grey, its grid reference at the foot">Portrait &darr;</button>
+      <button id="receipt" class="ghost" title="the full record as text — every parameter, so the tool can reconjure this exact feather">Record &darr;</button>
     </div>
   </header>
 
   <section class="stage">
     <svg id="feather" viewBox="0 0 400 640" preserveAspectRatio="xMidYMid meet" aria-label="A generated feather specimen"></svg>
+
+    <!-- ——— Feaffer's own HSL picker — floats here so the feather stays in
+         view above it and recolours live as you slide ——— -->
+    <div class="hslpop" id="hslpop" hidden role="dialog" aria-label="Colour picker">
+      <div class="hsltitle" id="hsltitle">colour</div>
+      <div class="hslrow"><label for="hslH" title="Hue">H</label><input type="range" id="hslH" min="0" max="360" value="0"><span class="hslv" id="hslH-v"></span></div>
+      <div class="hslrow"><label for="hslS" title="Saturation">S</label><input type="range" id="hslS" min="0" max="100" value="0"><span class="hslv" id="hslS-v"></span></div>
+      <div class="hslrow"><label for="hslL" title="Lightness">L</label><input type="range" id="hslL" min="0" max="100" value="0"><span class="hslv" id="hslL-v"></span></div>
+      <div class="hslfoot"><span class="hslhex" id="hslhex">#000000</span><button type="button" id="hsldone">Done</button></div>
+    </div>
   </section>
 
   <!-- ——— FORM: the shape of the thing you swipe through ——— -->
@@ -236,8 +300,8 @@
     <div class="card swatchcard" title="base &amp; shadow of the barbs">
       <div class="cap"><span>Ground &amp; shade</span></div>
       <div class="swatches">
-        <input type="color" id="pig1" value="#6a5333" aria-label="Ground tone">
-        <input type="color" id="pig2" value="#3a2c18" aria-label="Shade tone">
+        <span class="well"><input type="color" id="pig1" value="#6a5333" tabindex="-1" aria-hidden="true"><span class="wellhit" data-for="pig1" role="button" tabindex="0" aria-label="Ground tone"></span></span>
+        <span class="well"><input type="color" id="pig2" value="#3a2c18" tabindex="-1" aria-hidden="true"><span class="wellhit" data-for="pig2" role="button" tabindex="0" aria-label="Shade tone"></span></span>
       </div>
     </div>
     <div class="card" title="dark bands across the vane">
@@ -267,8 +331,8 @@
     <div class="card swatchcard" title="the heart of the eye &amp; the halo around it — a heart matched to the ground pigment sinks into the vane, leaving bare halo">
       <div class="cap"><span>Eye colours</span></div>
       <div class="swatches">
-        <input type="color" id="eyecol" value="#1d3f8f" aria-label="Eye heart colour">
-        <input type="color" id="eyecol2" value="#8a6a2f" aria-label="Eye halo colour">
+        <span class="well"><input type="color" id="eyecol" value="#1d3f8f" tabindex="-1" aria-hidden="true"><span class="wellhit" data-for="eyecol" role="button" tabindex="0" aria-label="Eye heart colour"></span></span>
+        <span class="well"><input type="color" id="eyecol2" value="#8a6a2f" tabindex="-1" aria-hidden="true"><span class="wellhit" data-for="eyecol2" role="button" tabindex="0" aria-label="Eye halo colour"></span></span>
       </div>
     </div>
     <div class="card" title="where along the shaft the eye sits — past 100 it slips off the tip until only its lower rim clings on; below 0 it stands off the quill, and a giant's ring arcs cross the vane as bands">
@@ -287,8 +351,8 @@
     <div class="card swatchcard" title="two hues it shifts between">
       <div class="cap"><span>Sheen colours</span></div>
       <div class="swatches">
-        <input type="color" id="iridcol" value="#1f6f8c" aria-label="Sheen colour" disabled>
-        <input type="color" id="iridcol2" value="#5e2f7a" aria-label="Second sheen colour" disabled>
+        <span class="well"><input type="color" id="iridcol" value="#1f6f8c" tabindex="-1" aria-hidden="true" disabled><span class="wellhit" data-for="iridcol" role="button" tabindex="0" aria-label="Sheen colour" aria-disabled="true"></span></span>
+        <span class="well"><input type="color" id="iridcol2" value="#5e2f7a" tabindex="-1" aria-hidden="true" disabled><span class="wellhit" data-for="iridcol2" role="button" tabindex="0" aria-label="Second sheen colour" aria-disabled="true"></span></span>
       </div>
     </div>
     <div class="card" title="where along the vane it pools">
@@ -336,6 +400,18 @@ const P = {
 
 /* colour helpers */
 function hexToRgb(h){ const n=parseInt(h.slice(1),16); return {r:n>>16&255,g:n>>8&255,b:n&255}; }
+// hex -> HSL (h 0..360, s/l 0..100), the reading the picker and records show
+function hexToHsl(hex){
+  let {r,g,b} = hexToRgb(hex); r/=255; g/=255; b/=255;
+  const max=Math.max(r,g,b), min=Math.min(r,g,b), d=max-min;
+  let h=0, s=0, l=(max+min)/2;
+  if(d){
+    s = l>0.5 ? d/(2-max-min) : d/(max+min);
+    h = max===r ? (g-b)/d + (g<b?6:0) : max===g ? (b-r)/d + 2 : (r-g)/d + 4;
+    h/=6;
+  }
+  return { h:Math.round(h*360), s:Math.round(s*100), l:Math.round(l*100) };
+}
 function mix(a,b,t){ return {r:a.r+(b.r-a.r)*t, g:a.g+(b.g-a.g)*t, b:a.b+(b.b-a.b)*t}; }
 function rgbStr(c){ return `rgb(${c.r|0} ${c.g|0} ${c.b|0})`; }
 function darken(c,f){ return {r:c.r*f,g:c.g*f,b:c.b*f}; }
@@ -1081,7 +1157,12 @@ function hslToHex(h,s,l){ s/=100; l/=100;
 /* iridescence enable/disable */
 function toggleIrid(){
   const on = $('irid').checked;
-  ['iridcol','iridcol2'].forEach(id=>$(id).disabled=!on);
+  ['iridcol','iridcol2'].forEach(id=>{
+    $(id).disabled=!on;
+    const hit=document.querySelector('.wellhit[data-for="'+id+'"]');
+    if(hit) hit.setAttribute('aria-disabled', String(!on));
+    if(!on && hslTarget===id) $('hslpop').hidden=true;   // don't dial a dimmed sheen
+  });
   [P.iridpos,P.iridspread,P.iridstr].forEach(el=>el.disabled=!on);
 }
 
@@ -1090,6 +1171,56 @@ Object.values(P).forEach(el => el.addEventListener('input', render));
 ['pig1','pig2','eyecol','eyecol2','iridcol','iridcol2'].forEach(id=>$(id).addEventListener('input', render));
 $('irid').addEventListener('change', ()=>{ toggleIrid(); render(); });
 
+/* ---- Feaffer's own HSL colour picker ----
+   The six swatches still store and show their hex (everything downstream reads
+   $(id).value), but a tap opens THIS instead of the operating system's picker:
+   three H/S/L sliders whose tracks are painted live, so the greyed-off, vague
+   colours a feather actually wears are there to see and slide toward — not
+   hunted for in the corner of a saturation square with no lightness at all. */
+let hslTarget = null;
+const HSLNAME = { pig1:'ground tone', pig2:'shade tone', eyecol:'eye heart',
+                  eyecol2:'eye halo', iridcol:'sheen colour', iridcol2:'second sheen' };
+function paintHslTracks(){
+  const h=+$('hslH').value, s=+$('hslS').value, l=+$('hslL').value;
+  $('hslH-v').textContent = h+'°';
+  $('hslS-v').textContent = s+'%';
+  $('hslL-v').textContent = l+'%';
+  const hue=[]; for(let i=0;i<=6;i++) hue.push(`hsl(${i*60},${s}%,${l}%)`);
+  $('hslH').style.background = `linear-gradient(90deg,${hue.join(',')})`;
+  $('hslS').style.background = `linear-gradient(90deg,hsl(${h},0%,${l}%),hsl(${h},100%,${l}%))`;
+  $('hslL').style.background = `linear-gradient(90deg,#000,hsl(${h},${s}%,50%),#fff)`;
+  const hex = hslToHex(h,s,l);
+  $('hslhex').textContent = hex;
+  return hex;
+}
+function openHsl(id){
+  hslTarget = id;
+  const {h,s,l} = hexToHsl($(id).value);
+  $('hslH').value=h; $('hslS').value=s; $('hslL').value=l;
+  $('hsltitle').textContent = HSLNAME[id] || 'colour';
+  paintHslTracks();                 // seed the view; the swatch is untouched until you slide
+  $('hslpop').hidden = false;
+}
+// sliding writes the new hex back to the swatch and lets the feather recolour
+['hslH','hslS','hslL'].forEach(id=> $(id).addEventListener('input', ()=>{
+  const hex = paintHslTracks();
+  if(hslTarget){ $(hslTarget).value = hex; $(hslTarget).dispatchEvent(new Event('input',{bubbles:true})); }
+}));
+$('hsldone').addEventListener('click', ()=> $('hslpop').hidden = true);
+document.querySelectorAll('.wellhit').forEach(hit=>{
+  const go = ()=>{ if(hit.getAttribute('aria-disabled')!=='true') openHsl(hit.dataset.for); };
+  hit.addEventListener('click', go);
+  hit.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); go(); } });
+});
+// dismiss on Escape, or a tap anywhere off it — but not on a swatch, so tapping
+// straight from one colour to the next just moves the picker along
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') $('hslpop').hidden=true; });
+document.addEventListener('pointerdown', e=>{
+  if($('hslpop').hidden) return;
+  if(e.target.closest('#hslpop') || e.target.closest('.wellhit')) return;
+  $('hslpop').hidden = true;
+});
+
 /* the apex family card cycles rounded -> acuminate -> truncate */
 function turnApex(){ apexType = (apexType+1)%3; render(); }
 $('apexcard').addEventListener('click', turnApex);
@@ -1097,28 +1228,221 @@ $('apexcard').addEventListener('keydown', e=>{
   if(e.key==='Enter'||e.key===' '){ e.preventDefault(); turnApex(); }
 });
 
-$('conjure').addEventListener('click', ()=> conjureFrom($('coord').value.trim() || 'origin'));
-$('random').addEventListener('click', ()=>{
+// a wander: roll a fresh grid reference, show it, and conjure its feather
+function wander(){
   const letters='ABCDEFGHJKLMNPRSTUVWXYZ';
   const g=letters[Math.floor(Math.random()*letters.length)]+letters[Math.floor(Math.random()*letters.length)];
   const e=Math.floor(Math.random()*9999).toString().padStart(4,'0');
   const n=Math.floor(Math.random()*9999).toString().padStart(4,'0');
   $('coord').value=`${g} ${e} ${n}`; conjureFrom($('coord').value);
-});
+}
+$('conjure').addEventListener('click', ()=> conjureFrom($('coord').value.trim() || 'origin'));
+$('random').addEventListener('click', wander);
 $('coord').addEventListener('keydown', e=>{ if(e.key==='Enter') conjureFrom($('coord').value.trim()||'origin'); });
 
+/* ---- taking a specimen: three forms of the same feather ---- */
+// a tidy filename stem from the grid reference
+function stem(){ return 'feaffer_'+($('coord').value.replace(/\s+/g,'-')||'specimen'); }
+// send a blob to the browser as a download
+function download(blob, name){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download=name; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
+}
+function escXml(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+// SPECIMEN — the vector original, on a transparent ground
 $('save').addEventListener('click', ()=>{
   const clone=$('feather').cloneNode(true);
   clone.setAttribute('xmlns','http://www.w3.org/2000/svg');
-  // no background rect — the specimen leaves on a transparent ground
-  const blob=new Blob([clone.outerHTML],{type:'image/svg+xml'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download='feaffer_'+($('coord').value.replace(/\s+/g,'-')||'specimen')+'.svg';
-  a.click();
+  download(new Blob([clone.outerHTML],{type:'image/svg+xml'}), stem()+'.svg');
 });
 
-conjureFrom($('coord').value);
+// PORTRAIT — a specimen card for sharing: the feather stood on the website's
+// sky-grey, framed with a hairline, its grid reference set in mono at the foot
+// like a museum tag. The live SVG is nested whole (its blend-modes and blurs
+// come along inside it), then rasterised through an <img> onto a canvas at 3×
+// so it lands crisp in a phone chat. Nothing external is referenced, so the
+// canvas stays untainted and PNG export is clean.
+$('png').addEventListener('click', ()=>{
+  const W=480, H=720, S=3;
+  const label = escXml($('coord').value.trim() || 'specimen');
+  const card =
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`
+    + `<rect width="${W}" height="${H}" fill="#e6eaec"/>`
+    + `<rect x="0.5" y="0.5" width="${W-1}" height="${H-1}" fill="none" stroke="#c3c7c3" stroke-width="1"/>`
+    + `<svg x="40" y="24" width="400" height="640" viewBox="0 0 400 640" preserveAspectRatio="xMidYMid meet">`
+    +   $('feather').innerHTML
+    + `</svg>`
+    + `<line x1="150" y1="666" x2="330" y2="666" stroke="#c3c7c3" stroke-width="1"/>`
+    + `<text x="${W/2}" y="692" text-anchor="middle" `
+    +   `font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="17" `
+    +   `letter-spacing="3" fill="#6f5f43">${label}</text>`
+    + `</svg>`;
+  const url = URL.createObjectURL(new Blob([card],{type:'image/svg+xml;charset=utf-8'}));
+  const img = new Image();
+  img.onload = ()=>{
+    const cv=document.createElement('canvas'); cv.width=W*S; cv.height=H*S;
+    cv.getContext('2d').drawImage(img,0,0,W*S,H*S);
+    URL.revokeObjectURL(url);
+    cv.toBlob(b=> download(b, stem()+'.png'), 'image/png');
+  };
+  img.onerror = ()=>{ URL.revokeObjectURL(url); alert('Could not draw the portrait.'); };
+  img.src = url;
+});
+
+// RECORD — the round-trippable receipt. A readable field record up top (every
+// parameter with its on-screen readout, so specimens line up for comparing as
+// you map the morphospace), and below it a machine block Feaffer can read
+// straight back in to reconjure this exact feather — INCLUDING the draw seed,
+// which carries a hand-faffed specimen's own identity (its wear gaps, its barb
+// jitter, the wander of its down) that no grid reference alone can recover.
+$('receipt').addEventListener('click', ()=>{
+  const rd = id => $(id).textContent;                       // an on-screen readout
+  const pad = (s,n) => (s+' '.repeat(n)).slice(0,n);
+  const row = (name, val) => '  '+pad(name,18)+val+'\n';
+  const today = new Date().toISOString().slice(0,10);
+  const apexName = ['rounded','acuminate','truncate'][apexType];
+  const iridOn = $('irid').checked;
+
+  let t = 'FEAFFER\n';
+  t += 'field record of an imaginary feather\n';
+  t += '═'.repeat(38)+'\n\n';
+  t += row('grid', $('coord').value.trim() || '—');
+  t += row('collected', today);
+  t += '\n  ── form ──\n';
+  t += row('rachis length', rd('len-v'));
+  t += row('shaft curvature', rd('curve-v'));
+  t += row('vane breadth', rd('width-v'));
+  t += row('apex', apexName);
+  t += row($('apex-label').textContent.toLowerCase(), rd('apex-v'));
+  t += row('vane asymmetry', rd('asym-v'));
+  t += row('barb angle', rd('angle-v'));
+  t += row('barb density', rd('density-v'));
+  t += row('plumaceous down', rd('down-v'));
+  t += row('age & wear', rd('wear-v'));
+  // colour rows carry HSL beside the hex — the reading that lines feathers up
+  // for comparing (a clutch of real finds all sitting at low saturation, say)
+  const hsl = hex => { const c=hexToHsl(hex); return `h${c.h} s${c.s} l${c.l}`; };
+  const crow = (name,hex) => row(name, hex+' · '+hsl(hex));
+  t += '\n  ── colour ──\n';
+  t += crow('ground', $('pig1').value);
+  t += crow('shade', $('pig2').value);
+  t += row('barring', rd('bars-v'));
+  t += row('bar side', rd('barside-v'));
+  t += row('bar edge', rd('baredge-v'));
+  t += row('terminal band', rd('tipband-v'));
+  t += row('spots & splodges', rd('speck-v'));
+  t += row('eyespot', rd('eye-v'));
+  t += crow('eye heart', $('eyecol').value);
+  t += crow('eye halo', $('eyecol2').value);
+  t += row('eye position', rd('eyepos-v'));
+  t += row('eye cast', rd('eyeside-v'));
+  t += row('iridescence', iridOn ? 'on' : 'off');
+  t += crow('sheen', $('iridcol').value);
+  t += crow('sheen 2', $('iridcol2').value);
+  t += row('sheen position', rd('iridpos-v'));
+  t += row('sheen spread', rd('iridspread-v'));
+  t += row('sheen strength', rd('iridstr-v'));
+
+  // the machine block: split each line on the FIRST '=', so a grid reference
+  // with spaces survives whole. Keep this intact and Feaffer can reconjure it.
+  const m = {
+    grid: $('coord').value, seed: drawSeed, apex: apexType,
+    len:P.len.value, curve:P.curve.value, width:P.width.value, apexdeg:P.apex.value,
+    asym:P.asym.value, angle:P.angle.value, density:P.density.value, down:P.down.value, wear:P.wear.value,
+    pig1:$('pig1').value, pig2:$('pig2').value,
+    bars:P.bars.value, barside:P.barside.value, baredge:P.baredge.value,
+    tipband:P.tipband.value, speck:P.speck.value,
+    eye:P.eye.value, eyecol:$('eyecol').value, eyecol2:$('eyecol2').value,
+    eyepos:P.eyepos.value, eyeside:P.eyeside.value,
+    irid: iridOn ? 1 : 0, iridcol:$('iridcol').value, iridcol2:$('iridcol2').value,
+    iridpos:P.iridpos.value, iridspread:P.iridspread.value, iridstr:P.iridstr.value
+  };
+  t += '\n'+'─'.repeat(38)+'\n';
+  t += 'machine record — keep intact to reconjure\n';
+  t += '─'.repeat(38)+'\n';
+  t += 'feaffer.v1\n';
+  for(const k in m) t += k+'='+m[k]+'\n';
+
+  download(new Blob([t],{type:'text/plain;charset=utf-8'}), stem()+'.txt');
+});
+
+/* ---- RESTORE: read a Record back in and reconjure its exact feather ----
+   The receipt's machine block is the source of truth. We scan for its lines
+   (key=value, split on the first '=' so a spaced grid reference survives) and
+   pour them back into every control — INCLUDING the draw seed, so a feather
+   hand-faffed while the kettle boiled comes back whole: its wear gaps, its barb
+   jitter, the wander of its down, none of which a grid reference alone holds.
+   The human list above the block has no '=' signs, so it's ignored for free —
+   even a receipt with its marker line lost still restores from the block. */
+function parseRecord(text){
+  const m = {};
+  for(const line of String(text).split(/\r?\n/)){
+    const i = line.indexOf('=');
+    if(i < 0) continue;
+    const k = line.slice(0,i).trim();
+    if(k) m[k] = line.slice(i+1).trim();
+  }
+  return m;
+}
+function applyRecord(m){
+  const numOk = s => s!=null && s!=='' && !isNaN(+s);
+  // a record must carry at least the two measures that make a feather a feather
+  if(!numOk(m.len) || !numOk(m.width)){
+    alert("That doesn't look like a Feaffer record — no feather in it.");
+    return false;
+  }
+  const hex = /^#[0-9a-fA-F]{6}$/;
+  const setR = (el,k) => { if(numOk(m[k])) el.value = +m[k]; };   // ranges self-clamp
+  const setC = (id,k) => { if(hex.test(m[k]||'')) $(id).value = m[k]; };
+
+  if(m.grid != null) $('coord').value = m.grid;
+  drawSeed = numOk(m.seed) ? (+m.seed >>> 0) : hashStr(m.grid || 'origin')();
+  apexType = numOk(m.apex) ? ((+m.apex % 3) + 3) % 3 : 0;
+
+  setR(P.len,'len'); setR(P.curve,'curve'); setR(P.width,'width'); setR(P.apex,'apexdeg');
+  setR(P.asym,'asym'); setR(P.angle,'angle'); setR(P.density,'density'); setR(P.down,'down'); setR(P.wear,'wear');
+  setR(P.bars,'bars'); setR(P.barside,'barside'); setR(P.baredge,'baredge'); setR(P.tipband,'tipband'); setR(P.speck,'speck');
+  setR(P.eye,'eye'); setR(P.eyepos,'eyepos'); setR(P.eyeside,'eyeside');
+  setR(P.iridpos,'iridpos'); setR(P.iridspread,'iridspread'); setR(P.iridstr,'iridstr');
+  setC('pig1','pig1'); setC('pig2','pig2'); setC('eyecol','eyecol'); setC('eyecol2','eyecol2');
+  setC('iridcol','iridcol'); setC('iridcol2','iridcol2');
+
+  $('irid').checked = (m.irid==='1' || m.irid==='true');
+  toggleIrid();
+  render();
+  return true;
+}
+function readRecordFile(file){
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => applyRecord(parseRecord(reader.result));
+  reader.readAsText(file);
+}
+// the Restore button opens a hidden file picker
+$('restore').addEventListener('click', ()=> $('recordfile').click());
+$('recordfile').addEventListener('change', e=>{
+  readRecordFile(e.target.files[0]);
+  e.target.value = '';   // let the same file be chosen again
+});
+// …and a record dropped anywhere on the tool restores too — drop your feather here
+(function(){
+  const frame = document.querySelector('.frame');
+  const stop = e => { e.preventDefault(); e.stopPropagation(); };
+  frame.addEventListener('dragover', e=>{ stop(e); frame.style.outline='2px dashed var(--moor)'; frame.style.outlineOffset='-6px'; });
+  frame.addEventListener('dragleave', e=>{ stop(e); frame.style.outline=''; });
+  frame.addEventListener('drop', e=>{ stop(e); frame.style.outline=''; readRecordFile(e.dataTransfer.files[0]); });
+})();
+
+// open on a different feather every time — the tool greets you with a wander,
+// not the same specimen twice. A grid reference in the URL hash (e.g.
+// #SD 9421 7638) still wins, so a shared link always lands on its own feather.
+(function(){
+  const fromHash = decodeURIComponent(location.hash.replace(/^#/,'')).trim();
+  if(fromHash){ $('coord').value = fromHash; conjureFrom(fromHash); }
+  else wander();
+})();
 
 /* ---- whisper our height to an embedding page, so the iframe can size itself
    exactly to the tool — no guessed height, no inner scrollbar. The parent
