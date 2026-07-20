@@ -1005,9 +1005,16 @@ function conjureFrom(str){
   P.angle.value   = 28 + Math.floor(rng()*38);
   P.density.value = 60 + Math.floor(rng()*85);
   P.down.value    = Math.floor(rng()*40);
-  // the moor mostly offers pristine little finds; now and then a properly
-  // bedraggled one to leave behind — disappointment mild, and occasional
-  P.wear.value    = rng()<0.3 ? 12+Math.floor(rng()*53) : Math.floor(rng()*10);
+  // age & wear no longer travels with the wander. The feathers we conjure
+  // are strange enough on their own; even a little damage catches the eye
+  // and distracts from the odd bird underneath. It stays a manual control
+  // for hands-on faffing, and every wander arrives pristine.
+  //   We still BURN the two draws wear used to make, so the draw order is
+  // untouched: every coordinate keeps the exact feather it always had
+  // downstream — the bars, the specks, the roof-bird's eye — none of it
+  // shifts. Only the damage is gone.
+  rng()<0.3 ? 12+Math.floor(rng()*53) : Math.floor(rng()*10);
+  P.wear.value    = 0;
   P.bars.value    = rng()<0.4 ? Math.floor(rng()*8) : 0;
   P.barside.value = P.bars.value>0 && rng()<0.4 ? 40+Math.floor(rng()*60) : 0;
   P.baredge.value = P.bars.value>0 ? Math.floor(rng()*rng()*100) : 0;
