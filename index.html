@@ -174,7 +174,9 @@
     <div class="btns">
       <button id="conjure">Conjure from grid</button>
       <button id="random" class="ghost">Wander</button>
+      <button id="restore" class="ghost" title="open a saved Record and reconjure that exact feather — or drop the .txt anywhere on the tool">Restore &uarr;</button>
     </div>
+    <input type="file" id="recordfile" accept=".txt,text/plain" hidden aria-hidden="true">
     <div class="btns">
       <button id="save" class="ghost" title="the vector original, on a transparent ground">Specimen &darr;</button>
       <button id="png" class="ghost" title="a specimen card to share — the feather on the sky-grey, its grid reference at the foot">Portrait &darr;</button>
@@ -1101,14 +1103,16 @@ $('apexcard').addEventListener('keydown', e=>{
   if(e.key==='Enter'||e.key===' '){ e.preventDefault(); turnApex(); }
 });
 
-$('conjure').addEventListener('click', ()=> conjureFrom($('coord').value.trim() || 'origin'));
-$('random').addEventListener('click', ()=>{
+// a wander: roll a fresh grid reference, show it, and conjure its feather
+function wander(){
   const letters='ABCDEFGHJKLMNPRSTUVWXYZ';
   const g=letters[Math.floor(Math.random()*letters.length)]+letters[Math.floor(Math.random()*letters.length)];
   const e=Math.floor(Math.random()*9999).toString().padStart(4,'0');
   const n=Math.floor(Math.random()*9999).toString().padStart(4,'0');
   $('coord').value=`${g} ${e} ${n}`; conjureFrom($('coord').value);
-});
+}
+$('conjure').addEventListener('click', ()=> conjureFrom($('coord').value.trim() || 'origin'));
+$('random').addEventListener('click', wander);
 $('coord').addEventListener('keydown', e=>{ if(e.key==='Enter') conjureFrom($('coord').value.trim()||'origin'); });
 
 /* ---- taking a specimen: three forms of the same feather ---- */
@@ -1232,7 +1236,81 @@ $('receipt').addEventListener('click', ()=>{
   download(new Blob([t],{type:'text/plain;charset=utf-8'}), stem()+'.txt');
 });
 
-conjureFrom($('coord').value);
+/* ---- RESTORE: read a Record back in and reconjure its exact feather ----
+   The receipt's machine block is the source of truth. We scan for its lines
+   (key=value, split on the first '=' so a spaced grid reference survives) and
+   pour them back into every control — INCLUDING the draw seed, so a feather
+   hand-faffed while the kettle boiled comes back whole: its wear gaps, its barb
+   jitter, the wander of its down, none of which a grid reference alone holds.
+   The human list above the block has no '=' signs, so it's ignored for free —
+   even a receipt with its marker line lost still restores from the block. */
+function parseRecord(text){
+  const m = {};
+  for(const line of String(text).split(/\r?\n/)){
+    const i = line.indexOf('=');
+    if(i < 0) continue;
+    const k = line.slice(0,i).trim();
+    if(k) m[k] = line.slice(i+1).trim();
+  }
+  return m;
+}
+function applyRecord(m){
+  const numOk = s => s!=null && s!=='' && !isNaN(+s);
+  // a record must carry at least the two measures that make a feather a feather
+  if(!numOk(m.len) || !numOk(m.width)){
+    alert("That doesn't look like a Feaffer record — no feather in it.");
+    return false;
+  }
+  const hex = /^#[0-9a-fA-F]{6}$/;
+  const setR = (el,k) => { if(numOk(m[k])) el.value = +m[k]; };   // ranges self-clamp
+  const setC = (id,k) => { if(hex.test(m[k]||'')) $(id).value = m[k]; };
+
+  if(m.grid != null) $('coord').value = m.grid;
+  drawSeed = numOk(m.seed) ? (+m.seed >>> 0) : hashStr(m.grid || 'origin')();
+  apexType = numOk(m.apex) ? ((+m.apex % 3) + 3) % 3 : 0;
+
+  setR(P.len,'len'); setR(P.curve,'curve'); setR(P.width,'width'); setR(P.apex,'apexdeg');
+  setR(P.asym,'asym'); setR(P.angle,'angle'); setR(P.density,'density'); setR(P.down,'down'); setR(P.wear,'wear');
+  setR(P.bars,'bars'); setR(P.barside,'barside'); setR(P.baredge,'baredge'); setR(P.tipband,'tipband'); setR(P.speck,'speck');
+  setR(P.eye,'eye'); setR(P.eyepos,'eyepos'); setR(P.eyeside,'eyeside');
+  setR(P.iridpos,'iridpos'); setR(P.iridspread,'iridspread'); setR(P.iridstr,'iridstr');
+  setC('pig1','pig1'); setC('pig2','pig2'); setC('eyecol','eyecol'); setC('eyecol2','eyecol2');
+  setC('iridcol','iridcol'); setC('iridcol2','iridcol2');
+
+  $('irid').checked = (m.irid==='1' || m.irid==='true');
+  toggleIrid();
+  render();
+  return true;
+}
+function readRecordFile(file){
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => applyRecord(parseRecord(reader.result));
+  reader.readAsText(file);
+}
+// the Restore button opens a hidden file picker
+$('restore').addEventListener('click', ()=> $('recordfile').click());
+$('recordfile').addEventListener('change', e=>{
+  readRecordFile(e.target.files[0]);
+  e.target.value = '';   // let the same file be chosen again
+});
+// …and a record dropped anywhere on the tool restores too — drop your feather here
+(function(){
+  const frame = document.querySelector('.frame');
+  const stop = e => { e.preventDefault(); e.stopPropagation(); };
+  frame.addEventListener('dragover', e=>{ stop(e); frame.style.outline='2px dashed var(--moor)'; frame.style.outlineOffset='-6px'; });
+  frame.addEventListener('dragleave', e=>{ stop(e); frame.style.outline=''; });
+  frame.addEventListener('drop', e=>{ stop(e); frame.style.outline=''; readRecordFile(e.dataTransfer.files[0]); });
+})();
+
+// open on a different feather every time — the tool greets you with a wander,
+// not the same specimen twice. A grid reference in the URL hash (e.g.
+// #SD 9421 7638) still wins, so a shared link always lands on its own feather.
+(function(){
+  const fromHash = decodeURIComponent(location.hash.replace(/^#/,'')).trim();
+  if(fromHash){ $('coord').value = fromHash; conjureFrom(fromHash); }
+  else wander();
+})();
 
 /* ---- whisper our height to an embedding page, so the iframe can size itself
    exactly to the tool — no guessed height, no inner scrollbar. The parent
