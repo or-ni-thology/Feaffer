@@ -271,9 +271,9 @@
         <input type="color" id="eyecol2" value="#8a6a2f" aria-label="Eye halo colour">
       </div>
     </div>
-    <div class="card" title="where along the shaft the eye sits">
+    <div class="card" title="where along the shaft the eye sits — past 100 it slips off the tip, until only its lower rim still clings to the vane">
       <div class="cap"><label for="eyepos">Eye position</label><span class="val" id="eyepos-v"></span></div>
-      <input type="range" id="eyepos" min="30" max="88" value="70">
+      <input type="range" id="eyepos" min="30" max="108" value="70">
     </div>
 
     <label class="card actcard" title="a structural sheen">
@@ -824,31 +824,40 @@ function drawFeather(){
     out += band;
   }
 
-  // THE OCELLUS — the peacock's eye, and the reason the Maybe-peacock
+  // THE PHI EYE — the peacock's ocellus, and the reason the Maybe-peacock
   // branch was ever named. Like the specks and the terminal band it is not
   // laid on top but grown into the vane: each barb is sampled along its own
   // curve and the stretches that pass through the eye are redrawn in its
   // rings — a dark heart at the centre, the heart colour blazing round it,
   // the halo beyond, and a rim mixed toward the ground pigment so the eye
   // settles into the feather instead of sitting on it. The eye rides the
-  // rachis frame (along-shaft × across-vane), an ellipse held longer than
-  // wide, the way the train wears them. Ring boundaries get a whisper of
-  // per-row wobble — an eye grown barb by barb, not stamped.
+  // rachis frame (along-shaft × across-vane), and its proportions are
+  // GOLDEN, because the real spot's are: the ring boundaries sit at 1/φ²
+  // and 1/φ of the radius (the first cut here fumbled toward 0.36 and 0.66
+  // before the googling showed the spot knew better), and the ellipse
+  // holds its axes in the ratio φ. Ring boundaries get a whisper of
+  // per-row wobble — an eye grown barb by barb, not stamped. Past the end
+  // of the shaft the frame simply extrapolates, so an eye can slip off the
+  // tip until only its lower rim clings on — the snipe's trick, and the
+  // partridge's.
   if(eyeSize>0){
     const ec = rachisPt(eyeT);
     // across the vane the eye tops out SHORT of the edge — push it wider and
     // the vane clips the halo away, leaving a heart with no eye around it
     const eRb = vaneW*latK*(0.30 + eyeSize*0.58);
-    const eRa = eRb*1.45;                           // along the shaft
+    const PHI = 1.6180339887;
+    const eRa = eRb*PHI;                            // the golden ellipse, long axis up the shaft
+    const IPHI = 1/PHI, IPHI2 = 1/(PHI*PHI);        // the golden rings: 0.618, 0.382
+    const BL = 0.06;                                // half-breadth of each ring's blend
     const heart = hexToRgb($('eyecol').value), halo = hexToRgb($('eyecol2').value);
     const eCore = darken(heart, 0.35), eRim = mix(halo, pig2, 0.55);
     const paint = re =>
-        re<0.30 ? eCore
-      : re<0.42 ? mix(eCore, heart, (re-0.30)/0.12)
-      : re<0.60 ? heart
-      : re<0.72 ? mix(heart, halo, (re-0.60)/0.12)
-      : re<0.88 ? halo
-      :           mix(halo, eRim, (re-0.88)/0.12);
+        re<IPHI2-BL ? eCore
+      : re<IPHI2+BL ? mix(eCore, heart, (re-IPHI2+BL)/(2*BL))
+      : re<IPHI-BL  ? heart
+      : re<IPHI+BL  ? mix(heart, halo, (re-IPHI+BL)/(2*BL))
+      : re<0.88     ? halo
+      :               mix(halo, eRim, (re-0.88)/0.12);
     const qe=(a,b,c,s)=>{const mt=1-s;return mt*mt*a+2*mt*s*b+s*s*c;};
     let eyeMarks='';
     for(const b of barbLines){
@@ -863,7 +872,7 @@ function drawFeather(){
                               (dxp*ec.norm.x+dyp*ec.norm.y)/eRb) * wob;
         if(re<1){
           const o = re>0.86 ? 0.95*(1-(re-0.86)/0.14) : 0.95;   // the rim melts into the vane
-          const ew = re<0.62 ? 1.9 : 1.6;                       // the heart weaves solider
+          const ew = re<IPHI ? 1.9 : 1.6;                       // inside the golden ring the weave goes solider
           eyeMarks += `<path d="M ${px.toFixed(1)} ${py.toFixed(1)} L ${x.toFixed(1)} ${y.toFixed(1)}" fill="none" stroke="${rgbStr(paint(re))}" stroke-width="${ew}" stroke-linecap="round" opacity="${o.toFixed(2)}"/>`;
         }
         px=x; py=y;
