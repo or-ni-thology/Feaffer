@@ -164,6 +164,54 @@
     color: var(--faint);
   }
 
+  /* ——— the colour wells & Feaffer's own HSL picker ———
+     The native swatch still holds and shows the tone, but a clear overlay
+     catches the tap and opens our picker instead of the operating system's
+     one — which hid lightness and made the vague, greyed-off feather colours
+     all but unreachable. */
+  .stage { position: relative; }   /* the picker floats within the stage */
+  .well { position: relative; display: inline-block; line-height: 0; }
+  .well input[type=color] { pointer-events: none; }   /* the overlay does the talking */
+  .wellhit { position: absolute; inset: 0; display: block; cursor: pointer; }
+  .wellhit:focus-visible { outline: 2px solid var(--rust); outline-offset: 2px; }
+  .wellhit[aria-disabled=true] { cursor: not-allowed; }
+
+  .hslpop {
+    position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%);
+    z-index: 10; width: min(300px, 92%);
+    background: var(--sheet); border: 1px solid var(--line);
+    box-shadow: 0 6px 22px #2b2a2422;
+    padding: .7rem .8rem .65rem;
+    display: flex; flex-direction: column; gap: .5rem;
+  }
+  .hslpop[hidden] { display: none; }
+  .hsltitle {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: .58rem; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--sepia);
+  }
+  .hslrow { display: flex; align-items: center; gap: .6rem; }
+  .hslrow > label {
+    font-family: 'IBM Plex Mono', monospace; font-size: .74rem;
+    color: var(--sepia); width: 1ch; flex: 0 0 auto; text-align: center;
+  }
+  .hslrow .hslv {
+    font-family: 'IBM Plex Mono', monospace; font-size: .6rem;
+    color: var(--rust); width: 3.4em; text-align: right; flex: 0 0 auto;
+  }
+  /* the gradient tracks — taller than the field sliders, and painted live so
+     you slide toward a colour you can already see */
+  .hslrow input[type=range] {
+    flex: 1; width: auto; height: 12px; border-radius: 6px;
+    border: 1px solid var(--line); margin: 0;
+  }
+  .hslfoot { display: flex; align-items: center; justify-content: space-between; margin-top: .1rem; }
+  .hslhex {
+    font-family: 'IBM Plex Mono', monospace; font-size: .72rem;
+    color: var(--ink); letter-spacing: .06em;
+  }
+  .hslpop button#hsldone { flex: 0 0 auto; width: auto; padding: .42rem .95rem; }
+
 </style>
 </head>
 <body>
@@ -186,6 +234,16 @@
 
   <section class="stage">
     <svg id="feather" viewBox="0 0 400 640" preserveAspectRatio="xMidYMid meet" aria-label="A generated feather specimen"></svg>
+
+    <!-- ——— Feaffer's own HSL picker — floats here so the feather stays in
+         view above it and recolours live as you slide ——— -->
+    <div class="hslpop" id="hslpop" hidden role="dialog" aria-label="Colour picker">
+      <div class="hsltitle" id="hsltitle">colour</div>
+      <div class="hslrow"><label for="hslH" title="Hue">H</label><input type="range" id="hslH" min="0" max="360" value="0"><span class="hslv" id="hslH-v"></span></div>
+      <div class="hslrow"><label for="hslS" title="Saturation">S</label><input type="range" id="hslS" min="0" max="100" value="0"><span class="hslv" id="hslS-v"></span></div>
+      <div class="hslrow"><label for="hslL" title="Lightness">L</label><input type="range" id="hslL" min="0" max="100" value="0"><span class="hslv" id="hslL-v"></span></div>
+      <div class="hslfoot"><span class="hslhex" id="hslhex">#000000</span><button type="button" id="hsldone">Done</button></div>
+    </div>
   </section>
 
   <!-- ——— FORM: the shape of the thing you swipe through ——— -->
@@ -242,8 +300,8 @@
     <div class="card swatchcard" title="base &amp; shadow of the barbs">
       <div class="cap"><span>Ground &amp; shade</span></div>
       <div class="swatches">
-        <input type="color" id="pig1" value="#6a5333" aria-label="Ground tone">
-        <input type="color" id="pig2" value="#3a2c18" aria-label="Shade tone">
+        <span class="well"><input type="color" id="pig1" value="#6a5333" tabindex="-1" aria-hidden="true"><span class="wellhit" data-for="pig1" role="button" tabindex="0" aria-label="Ground tone"></span></span>
+        <span class="well"><input type="color" id="pig2" value="#3a2c18" tabindex="-1" aria-hidden="true"><span class="wellhit" data-for="pig2" role="button" tabindex="0" aria-label="Shade tone"></span></span>
       </div>
     </div>
     <div class="card" title="dark bands across the vane">
@@ -273,8 +331,8 @@
     <div class="card swatchcard" title="the heart of the eye &amp; the halo around it — a heart matched to the ground pigment sinks into the vane, leaving bare halo">
       <div class="cap"><span>Eye colours</span></div>
       <div class="swatches">
-        <input type="color" id="eyecol" value="#1d3f8f" aria-label="Eye heart colour">
-        <input type="color" id="eyecol2" value="#8a6a2f" aria-label="Eye halo colour">
+        <span class="well"><input type="color" id="eyecol" value="#1d3f8f" tabindex="-1" aria-hidden="true"><span class="wellhit" data-for="eyecol" role="button" tabindex="0" aria-label="Eye heart colour"></span></span>
+        <span class="well"><input type="color" id="eyecol2" value="#8a6a2f" tabindex="-1" aria-hidden="true"><span class="wellhit" data-for="eyecol2" role="button" tabindex="0" aria-label="Eye halo colour"></span></span>
       </div>
     </div>
     <div class="card" title="where along the shaft the eye sits — past 100 it slips off the tip until only its lower rim clings on; below 0 it stands off the quill, and a giant's ring arcs cross the vane as bands">
@@ -293,8 +351,8 @@
     <div class="card swatchcard" title="two hues it shifts between">
       <div class="cap"><span>Sheen colours</span></div>
       <div class="swatches">
-        <input type="color" id="iridcol" value="#1f6f8c" aria-label="Sheen colour" disabled>
-        <input type="color" id="iridcol2" value="#5e2f7a" aria-label="Second sheen colour" disabled>
+        <span class="well"><input type="color" id="iridcol" value="#1f6f8c" tabindex="-1" aria-hidden="true" disabled><span class="wellhit" data-for="iridcol" role="button" tabindex="0" aria-label="Sheen colour" aria-disabled="true"></span></span>
+        <span class="well"><input type="color" id="iridcol2" value="#5e2f7a" tabindex="-1" aria-hidden="true" disabled><span class="wellhit" data-for="iridcol2" role="button" tabindex="0" aria-label="Second sheen colour" aria-disabled="true"></span></span>
       </div>
     </div>
     <div class="card" title="where along the vane it pools">
@@ -342,6 +400,18 @@ const P = {
 
 /* colour helpers */
 function hexToRgb(h){ const n=parseInt(h.slice(1),16); return {r:n>>16&255,g:n>>8&255,b:n&255}; }
+// hex -> HSL (h 0..360, s/l 0..100), the reading the picker and records show
+function hexToHsl(hex){
+  let {r,g,b} = hexToRgb(hex); r/=255; g/=255; b/=255;
+  const max=Math.max(r,g,b), min=Math.min(r,g,b), d=max-min;
+  let h=0, s=0, l=(max+min)/2;
+  if(d){
+    s = l>0.5 ? d/(2-max-min) : d/(max+min);
+    h = max===r ? (g-b)/d + (g<b?6:0) : max===g ? (b-r)/d + 2 : (r-g)/d + 4;
+    h/=6;
+  }
+  return { h:Math.round(h*360), s:Math.round(s*100), l:Math.round(l*100) };
+}
 function mix(a,b,t){ return {r:a.r+(b.r-a.r)*t, g:a.g+(b.g-a.g)*t, b:a.b+(b.b-a.b)*t}; }
 function rgbStr(c){ return `rgb(${c.r|0} ${c.g|0} ${c.b|0})`; }
 function darken(c,f){ return {r:c.r*f,g:c.g*f,b:c.b*f}; }
@@ -1087,7 +1157,12 @@ function hslToHex(h,s,l){ s/=100; l/=100;
 /* iridescence enable/disable */
 function toggleIrid(){
   const on = $('irid').checked;
-  ['iridcol','iridcol2'].forEach(id=>$(id).disabled=!on);
+  ['iridcol','iridcol2'].forEach(id=>{
+    $(id).disabled=!on;
+    const hit=document.querySelector('.wellhit[data-for="'+id+'"]');
+    if(hit) hit.setAttribute('aria-disabled', String(!on));
+    if(!on && hslTarget===id) $('hslpop').hidden=true;   // don't dial a dimmed sheen
+  });
   [P.iridpos,P.iridspread,P.iridstr].forEach(el=>el.disabled=!on);
 }
 
@@ -1095,6 +1170,56 @@ function toggleIrid(){
 Object.values(P).forEach(el => el.addEventListener('input', render));
 ['pig1','pig2','eyecol','eyecol2','iridcol','iridcol2'].forEach(id=>$(id).addEventListener('input', render));
 $('irid').addEventListener('change', ()=>{ toggleIrid(); render(); });
+
+/* ---- Feaffer's own HSL colour picker ----
+   The six swatches still store and show their hex (everything downstream reads
+   $(id).value), but a tap opens THIS instead of the operating system's picker:
+   three H/S/L sliders whose tracks are painted live, so the greyed-off, vague
+   colours a feather actually wears are there to see and slide toward — not
+   hunted for in the corner of a saturation square with no lightness at all. */
+let hslTarget = null;
+const HSLNAME = { pig1:'ground tone', pig2:'shade tone', eyecol:'eye heart',
+                  eyecol2:'eye halo', iridcol:'sheen colour', iridcol2:'second sheen' };
+function paintHslTracks(){
+  const h=+$('hslH').value, s=+$('hslS').value, l=+$('hslL').value;
+  $('hslH-v').textContent = h+'°';
+  $('hslS-v').textContent = s+'%';
+  $('hslL-v').textContent = l+'%';
+  const hue=[]; for(let i=0;i<=6;i++) hue.push(`hsl(${i*60},${s}%,${l}%)`);
+  $('hslH').style.background = `linear-gradient(90deg,${hue.join(',')})`;
+  $('hslS').style.background = `linear-gradient(90deg,hsl(${h},0%,${l}%),hsl(${h},100%,${l}%))`;
+  $('hslL').style.background = `linear-gradient(90deg,#000,hsl(${h},${s}%,50%),#fff)`;
+  const hex = hslToHex(h,s,l);
+  $('hslhex').textContent = hex;
+  return hex;
+}
+function openHsl(id){
+  hslTarget = id;
+  const {h,s,l} = hexToHsl($(id).value);
+  $('hslH').value=h; $('hslS').value=s; $('hslL').value=l;
+  $('hsltitle').textContent = HSLNAME[id] || 'colour';
+  paintHslTracks();                 // seed the view; the swatch is untouched until you slide
+  $('hslpop').hidden = false;
+}
+// sliding writes the new hex back to the swatch and lets the feather recolour
+['hslH','hslS','hslL'].forEach(id=> $(id).addEventListener('input', ()=>{
+  const hex = paintHslTracks();
+  if(hslTarget){ $(hslTarget).value = hex; $(hslTarget).dispatchEvent(new Event('input',{bubbles:true})); }
+}));
+$('hsldone').addEventListener('click', ()=> $('hslpop').hidden = true);
+document.querySelectorAll('.wellhit').forEach(hit=>{
+  const go = ()=>{ if(hit.getAttribute('aria-disabled')!=='true') openHsl(hit.dataset.for); };
+  hit.addEventListener('click', go);
+  hit.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); go(); } });
+});
+// dismiss on Escape, or a tap anywhere off it — but not on a swatch, so tapping
+// straight from one colour to the next just moves the picker along
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') $('hslpop').hidden=true; });
+document.addEventListener('pointerdown', e=>{
+  if($('hslpop').hidden) return;
+  if(e.target.closest('#hslpop') || e.target.closest('.wellhit')) return;
+  $('hslpop').hidden = true;
+});
 
 /* the apex family card cycles rounded -> acuminate -> truncate */
 function turnApex(){ apexType = (apexType+1)%3; render(); }
@@ -1196,19 +1321,26 @@ $('receipt').addEventListener('click', ()=>{
   t += row('barb density', rd('density-v'));
   t += row('plumaceous down', rd('down-v'));
   t += row('age & wear', rd('wear-v'));
+  // colour rows carry HSL beside the hex — the reading that lines feathers up
+  // for comparing (a clutch of real finds all sitting at low saturation, say)
+  const hsl = hex => { const c=hexToHsl(hex); return `h${c.h} s${c.s} l${c.l}`; };
+  const crow = (name,hex) => row(name, hex+' · '+hsl(hex));
   t += '\n  ── colour ──\n';
-  t += row('ground / shade', $('pig1').value+' / '+$('pig2').value);
+  t += crow('ground', $('pig1').value);
+  t += crow('shade', $('pig2').value);
   t += row('barring', rd('bars-v'));
   t += row('bar side', rd('barside-v'));
   t += row('bar edge', rd('baredge-v'));
   t += row('terminal band', rd('tipband-v'));
   t += row('spots & splodges', rd('speck-v'));
   t += row('eyespot', rd('eye-v'));
-  t += row('eye heart / halo', $('eyecol').value+' / '+$('eyecol2').value);
+  t += crow('eye heart', $('eyecol').value);
+  t += crow('eye halo', $('eyecol2').value);
   t += row('eye position', rd('eyepos-v'));
   t += row('eye cast', rd('eyeside-v'));
   t += row('iridescence', iridOn ? 'on' : 'off');
-  t += row('sheen colours', $('iridcol').value+' / '+$('iridcol2').value);
+  t += crow('sheen', $('iridcol').value);
+  t += crow('sheen 2', $('iridcol2').value);
   t += row('sheen position', rd('iridpos-v'));
   t += row('sheen spread', rd('iridspread-v'));
   t += row('sheen strength', rd('iridstr-v'));
