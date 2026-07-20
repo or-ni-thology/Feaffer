@@ -217,7 +217,7 @@
     </div>
     <div class="card" title="how many barbs comb the vane">
       <div class="cap"><label for="density">Barb density</label><span class="val" id="density-v"></span></div>
-      <input type="range" id="density" min="30" max="150" value="100">
+      <input type="range" id="density" min="30" max="170" value="100">
     </div>
     <div class="card" title="soft, disordered barbs at the base">
       <div class="cap"><label for="down">Plumaceous down</label><span class="val" id="down-v"></span></div>
@@ -259,6 +259,21 @@
     <div class="card" title="flecks &amp; splodges grown into the barbs themselves">
       <div class="cap"><label for="speck">Spots &amp; splodges</label><span class="val" id="speck-v"></span></div>
       <input type="range" id="speck" min="0" max="100" value="0">
+    </div>
+    <div class="card" title="the ocellus — a peacock's eye, grown into the barbs like every other marking here">
+      <div class="cap"><label for="eye">Eyespot</label><span class="val" id="eye-v"></span></div>
+      <input type="range" id="eye" min="0" max="100" value="0">
+    </div>
+    <div class="card swatchcard" title="the dark heart of the eye &amp; the halo around it">
+      <div class="cap"><span>Eye colours</span></div>
+      <div class="swatches">
+        <input type="color" id="eyecol" value="#1d3f8f" aria-label="Eye heart colour">
+        <input type="color" id="eyecol2" value="#8a6a2f" aria-label="Eye halo colour">
+      </div>
+    </div>
+    <div class="card" title="where along the shaft the eye sits">
+      <div class="cap"><label for="eyepos">Eye position</label><span class="val" id="eyepos-v"></span></div>
+      <input type="range" id="eyepos" min="30" max="88" value="70">
     </div>
 
     <label class="card actcard" title="a structural sheen">
@@ -311,6 +326,7 @@ const P = {
   len:$('len'), curve:$('curve'), width:$('width'), apex:$('apex'), asym:$('asym'), angle:$('angle'),
   density:$('density'), down:$('down'), wear:$('wear'),
   bars:$('bars'), barside:$('barside'), baredge:$('baredge'), tipband:$('tipband'), speck:$('speck'),
+  eye:$('eye'), eyepos:$('eyepos'),
   iridpos:$('iridpos'), iridspread:$('iridspread'), iridstr:$('iridstr')
 };
 
@@ -343,6 +359,8 @@ function drawFeather(){
   const barBias = +P.barside.value/100;   // 0 bars on both webs .. 1 one web only
   const barEdge = +P.baredge.value/100;   // 0 crisp bands .. 1 ragged, mottled
   const speck = +P.speck.value/100;
+  const eyeSize = +P.eye.value/100;       // 0 no ocellus .. 1 an eye the breadth of the vane
+  const eyeT = +P.eyepos.value/100;       // where along the shaft the eye sits
 
   const pig1 = hexToRgb($('pig1').value);
   const pig2 = hexToRgb($('pig2').value);
@@ -508,11 +526,20 @@ function drawFeather(){
     for(let i=1;i<=40;i++){ const u=i/40, p=rachisPt(u);
       if(u<=RACHIS_END) shaftD+=` L ${p.x.toFixed(1)} ${p.y.toFixed(1)}`; } }
 
-  // barbs
-  const barbLines = [];
-  const leftPts=[], rightPts=[];   // vane outline for iridescence clip
+  // barbs — the rows they comb from. Over a ROUNDED crown the closing fan
+  // spreads each row across more outline than the shaft-spacing supplies
+  // (the same strokes, swept over the whole dome), so the tip of a rounded
+  // feather used to thin out just where it turned over. The crown drinks
+  // interleaved half-step rows to keep the weave even up and across it.
+  const rows = [];
   for(let i=0;i<nBarbs;i++){
     const t = i/(nBarbs-1);
+    rows.push(t);
+    if(apexType===0 && t>TIP_ZONE && i<nBarbs-1) rows.push(t + 0.5/(nBarbs-1));
+  }
+  const barbLines = [];
+  const leftPts=[], rightPts=[];   // vane outline for iridescence clip
+  for(const t of rows){
     if(t < 0.04) continue;
     const rp = rachisPt(t);
     const downy = t < downFrac;
@@ -797,6 +824,54 @@ function drawFeather(){
     out += band;
   }
 
+  // THE OCELLUS — the peacock's eye, and the reason the Maybe-peacock
+  // branch was ever named. Like the specks and the terminal band it is not
+  // laid on top but grown into the vane: each barb is sampled along its own
+  // curve and the stretches that pass through the eye are redrawn in its
+  // rings — a dark heart at the centre, the heart colour blazing round it,
+  // the halo beyond, and a rim mixed toward the ground pigment so the eye
+  // settles into the feather instead of sitting on it. The eye rides the
+  // rachis frame (along-shaft × across-vane), an ellipse held longer than
+  // wide, the way the train wears them. Ring boundaries get a whisper of
+  // per-row wobble — an eye grown barb by barb, not stamped.
+  if(eyeSize>0){
+    const ec = rachisPt(eyeT);
+    // across the vane the eye tops out SHORT of the edge — push it wider and
+    // the vane clips the halo away, leaving a heart with no eye around it
+    const eRb = vaneW*latK*(0.30 + eyeSize*0.58);
+    const eRa = eRb*1.45;                           // along the shaft
+    const heart = hexToRgb($('eyecol').value), halo = hexToRgb($('eyecol2').value);
+    const eCore = darken(heart, 0.35), eRim = mix(halo, pig2, 0.55);
+    const paint = re =>
+        re<0.30 ? eCore
+      : re<0.42 ? mix(eCore, heart, (re-0.30)/0.12)
+      : re<0.60 ? heart
+      : re<0.72 ? mix(heart, halo, (re-0.60)/0.12)
+      : re<0.88 ? halo
+      :           mix(halo, eRim, (re-0.88)/0.12);
+    const qe=(a,b,c,s)=>{const mt=1-s;return mt*mt*a+2*mt*s*b+s*s*c;};
+    let eyeMarks='';
+    for(const b of barbLines){
+      if(b.downy) continue;
+      const wob = 1 + (b.rowN-0.5)*0.08;
+      const SEG=9; let px=b.rpx, py=b.rpy;
+      for(let k=1;k<=SEG;k++){
+        const s=k/SEG, x=qe(b.rpx,b.mx,b.ex,s), y=qe(b.rpy,b.my,b.ey,s);
+        const cxp=(px+x)/2, cyp=(py+y)/2;
+        const dxp=cxp-ec.x, dyp=cyp-ec.y;
+        const re = Math.hypot((dxp*ec.tan.x+dyp*ec.tan.y)/eRa,
+                              (dxp*ec.norm.x+dyp*ec.norm.y)/eRb) * wob;
+        if(re<1){
+          const o = re>0.86 ? 0.95*(1-(re-0.86)/0.14) : 0.95;   // the rim melts into the vane
+          const ew = re<0.62 ? 1.9 : 1.6;                       // the heart weaves solider
+          eyeMarks += `<path d="M ${px.toFixed(1)} ${py.toFixed(1)} L ${x.toFixed(1)} ${y.toFixed(1)}" fill="none" stroke="${rgbStr(paint(re))}" stroke-width="${ew}" stroke-linecap="round" opacity="${o.toFixed(2)}"/>`;
+        }
+        px=x; py=y;
+      }
+    }
+    out += eyeMarks;
+  }
+
   // (The self-shadow that once darkened the inner vane has been retired: with
   // markings now growing into the barbs — and shiftable side to side — a fixed
   // central darkening only got in their way. The soft iridescent wash below can
@@ -867,6 +942,8 @@ function updateReadouts(){
   $('baredge-v').textContent = P.baredge.value>0? P.baredge.value+'%' : 'crisp';
   $('tipband-v').textContent = P.tipband.value>0? P.tipband.value+'%' : 'none';
   $('speck-v').textContent = P.speck.value>0? P.speck.value+'%' : 'none';
+  $('eye-v').textContent = P.eye.value>0? P.eye.value+'%' : 'none';
+  $('eyepos-v').textContent = P.eyepos.value+'%';
   $('iridpos-v').textContent = P.iridpos.value+'%';
   $('iridspread-v').textContent = P.iridspread.value+'%';
   $('iridstr-v').textContent = P.iridstr.value+'%';
@@ -917,6 +994,29 @@ function conjureFrom(str){
     P.iridspread.value = 30+Math.floor(rng()*55);
     P.iridstr.value = 45+Math.floor(rng()*45);
   }
+
+  // the peacock possibility. Eight years ago one landed on Dad's roof, so
+  // the odds are real — but roof-rare. It arrives LAST in the draw order on
+  // purpose: every coordinate conjured before this feature keeps the exact
+  // feather it always had, and a lucky few simply gain the eye.
+  const roofBird = rng() < 0.09;
+  if(roofBird){
+    P.eye.value = 40 + Math.floor(rng()*55);
+    P.eyepos.value = 55 + Math.floor(rng()*28);
+    const eyes = [['#1d3f8f','#8a6a2f'],['#232a6e','#7c8a2f'],['#12406e','#8a5a3c'],['#0f5a52','#8a6a2f']];
+    const pe = eyes[Math.floor(rng()*eyes.length)];
+    $('eyecol').value = pe[0]; $('eyecol2').value = pe[1];
+    if(!$('irid').checked){
+      // an eye almost never travels without its sheen
+      $('irid').checked = true; toggleIrid();
+      $('iridcol').value = '#1f6f8c'; $('iridcol2').value = '#2f7a4a';
+      P.iridpos.value = P.eyepos.value;
+      P.iridspread.value = 35 + Math.floor(rng()*30);
+      P.iridstr.value = 40 + Math.floor(rng()*30);
+    }
+  } else {
+    P.eye.value = 0;
+  }
   render();
 }
 
@@ -936,7 +1036,7 @@ function toggleIrid(){
 
 /* ---- wiring: manual tweaks keep drawSeed stable so nothing flickers ---- */
 Object.values(P).forEach(el => el.addEventListener('input', render));
-['pig1','pig2','iridcol','iridcol2'].forEach(id=>$(id).addEventListener('input', render));
+['pig1','pig2','eyecol','eyecol2','iridcol','iridcol2'].forEach(id=>$(id).addEventListener('input', render));
 $('irid').addEventListener('change', ()=>{ toggleIrid(); render(); });
 
 /* the apex family card cycles rounded -> acuminate -> truncate */
