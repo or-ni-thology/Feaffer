@@ -260,11 +260,11 @@
       <div class="cap"><label for="speck">Spots &amp; splodges</label><span class="val" id="speck-v"></span></div>
       <input type="range" id="speck" min="0" max="100" value="0">
     </div>
-    <div class="card" title="the ocellus — a peacock's eye, grown into the barbs like every other marking here">
+    <div class="card" title="the ocellus — a peacock's eye, grown into the barbs; past 100 it goes GIANT, a marking big enough to be the only marking anyone needs">
       <div class="cap"><label for="eye">Eyespot</label><span class="val" id="eye-v"></span></div>
-      <input type="range" id="eye" min="0" max="100" value="0">
+      <input type="range" id="eye" min="0" max="240" value="0">
     </div>
-    <div class="card swatchcard" title="the dark heart of the eye &amp; the halo around it">
+    <div class="card swatchcard" title="the heart of the eye &amp; the halo around it — a heart matched to the ground pigment sinks into the vane, leaving bare halo">
       <div class="cap"><span>Eye colours</span></div>
       <div class="swatches">
         <input type="color" id="eyecol" value="#1d3f8f" aria-label="Eye heart colour">
@@ -273,7 +273,11 @@
     </div>
     <div class="card" title="where along the shaft the eye sits — past 100 it slips off the tip, until only its lower rim still clings to the vane">
       <div class="cap"><label for="eyepos">Eye position</label><span class="val" id="eyepos-v"></span></div>
-      <input type="range" id="eyepos" min="30" max="108" value="70">
+      <input type="range" id="eyepos" min="15" max="108" value="70">
+    </div>
+    <div class="card" title="cast the eye toward one web — at full cast only its rings still lap the vane's edge; the jay's trick">
+      <div class="cap"><label for="eyeside">Eye cast</label><span class="val" id="eyeside-v"></span></div>
+      <input type="range" id="eyeside" min="-100" max="100" value="0">
     </div>
 
     <label class="card actcard" title="a structural sheen">
@@ -326,7 +330,7 @@ const P = {
   len:$('len'), curve:$('curve'), width:$('width'), apex:$('apex'), asym:$('asym'), angle:$('angle'),
   density:$('density'), down:$('down'), wear:$('wear'),
   bars:$('bars'), barside:$('barside'), baredge:$('baredge'), tipband:$('tipband'), speck:$('speck'),
-  eye:$('eye'), eyepos:$('eyepos'),
+  eye:$('eye'), eyepos:$('eyepos'), eyeside:$('eyeside'),
   iridpos:$('iridpos'), iridspread:$('iridspread'), iridstr:$('iridstr')
 };
 
@@ -359,8 +363,9 @@ function drawFeather(){
   const barBias = +P.barside.value/100;   // 0 bars on both webs .. 1 one web only
   const barEdge = +P.baredge.value/100;   // 0 crisp bands .. 1 ragged, mottled
   const speck = +P.speck.value/100;
-  const eyeSize = +P.eye.value/100;       // 0 no ocellus .. 1 an eye the breadth of the vane
+  const eyeSize = +P.eye.value/100;       // 0 no ocellus .. 1 the vane's breadth .. 2.4 giant
   const eyeT = +P.eyepos.value/100;       // where along the shaft the eye sits
+  const eyeSide = +P.eyeside.value/100;   // the cast: 0 a true eye .. ±1 sent off a web
 
   const pig1 = hexToRgb($('pig1').value);
   const pig2 = hexToRgb($('pig2').value);
@@ -840,17 +845,32 @@ function drawFeather(){
   // of the shaft the frame simply extrapolates, so an eye can slip off the
   // tip until only its lower rim clings on — the snipe's trick, and the
   // partridge's.
+  //
+  // And then the daft idea, which was the right idea: the eye is THE ONE
+  // MARK. Grown to GIANT and CAST toward a web it stops being a spot and
+  // becomes a field — its rings turn to bands lapping an edge (the jay),
+  // its halo to a wash, its rim to a crescent. Not a slider for every
+  // pattern a feather can wear; one primitive, sent to stand in the right
+  // place wearing the right colours. Not perfect — better than that.
   if(eyeSize>0){
     const ec = rachisPt(eyeT);
-    // across the vane the eye tops out SHORT of the edge — push it wider and
-    // the vane clips the halo away, leaving a heart with no eye around it
-    const eRb = vaneW*latK*(0.30 + eyeSize*0.58);
+    const eRb = vaneW*latK*(0.30 + eyeSize*0.58);   // past eye=100 this outgrows the vane: the giant
     const PHI = 1.6180339887;
     const eRa = eRb*PHI;                            // the golden ellipse, long axis up the shaft
     const IPHI = 1/PHI, IPHI2 = 1/(PHI*PHI);        // the golden rings: 0.618, 0.382
     const BL = 0.06;                                // half-breadth of each ring's blend
+    // the cast — the eye sent toward one web. Full cast carries the centre a
+    // whole eye-radius past the vane's edge, so the last thing to leave is
+    // the rim's ring lapping the margin.
+    const ecx = ec.x + ec.norm.x*eyeSide*(vaneW*latK + eRb);
+    const ecy = ec.y + ec.norm.y*eyeSide*(vaneW*latK + eRb);
     const heart = hexToRgb($('eyecol').value), halo = hexToRgb($('eyecol2').value);
-    const eCore = darken(heart, 0.35), eRim = mix(halo, pig2, 0.55);
+    // the pupil darkens toward the SHADE pigment rather than toward black: a
+    // jewel heart still earns its dark core, but a heart matched to the
+    // ground sinks clean into the vane and the eye becomes bare halo — which
+    // is how a russet ring, a pale crescent and a jay's edge all turn out to
+    // be one large eye wearing different colours.
+    const eCore = mix(heart, pig2, 0.55), eRim = mix(halo, pig2, 0.55);
     const paint = re =>
         re<IPHI2-BL ? eCore
       : re<IPHI2+BL ? mix(eCore, heart, (re-IPHI2+BL)/(2*BL))
@@ -867,7 +887,7 @@ function drawFeather(){
       for(let k=1;k<=SEG;k++){
         const s=k/SEG, x=qe(b.rpx,b.mx,b.ex,s), y=qe(b.rpy,b.my,b.ey,s);
         const cxp=(px+x)/2, cyp=(py+y)/2;
-        const dxp=cxp-ec.x, dyp=cyp-ec.y;
+        const dxp=cxp-ecx, dyp=cyp-ecy;
         const re = Math.hypot((dxp*ec.tan.x+dyp*ec.tan.y)/eRa,
                               (dxp*ec.norm.x+dyp*ec.norm.y)/eRb) * wob;
         if(re<1){
@@ -953,6 +973,8 @@ function updateReadouts(){
   $('speck-v').textContent = P.speck.value>0? P.speck.value+'%' : 'none';
   $('eye-v').textContent = P.eye.value>0? P.eye.value+'%' : 'none';
   $('eyepos-v').textContent = P.eyepos.value+'%';
+  const cast = +P.eyeside.value;
+  $('eyeside-v').textContent = cast===0 ? 'true' : (cast>0?'→ ':'← ')+Math.abs(cast)+'%';
   $('iridpos-v').textContent = P.iridpos.value+'%';
   $('iridspread-v').textContent = P.iridspread.value+'%';
   $('iridstr-v').textContent = P.iridstr.value+'%';
@@ -1025,6 +1047,12 @@ function conjureFrom(str){
     }
   } else {
     P.eye.value = 0;
+  }
+  // the cast arrives after everything, so every find before it keeps its
+  // feather; among the roof-birds, a few now wear the eye sent off a web
+  P.eyeside.value = 0;
+  if(roofBird && rng() < 0.25){
+    P.eyeside.value = (rng()<0.5?-1:1)*(30+Math.floor(rng()*55));
   }
   render();
 }
