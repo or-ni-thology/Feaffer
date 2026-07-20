@@ -174,7 +174,11 @@
     <div class="btns">
       <button id="conjure">Conjure from grid</button>
       <button id="random" class="ghost">Wander</button>
-      <button id="save" class="ghost">Take specimen &darr;</button>
+    </div>
+    <div class="btns">
+      <button id="save" class="ghost" title="the vector original, on a transparent ground">Specimen &darr;</button>
+      <button id="png" class="ghost" title="a specimen card to share — the feather on the sky-grey, its grid reference at the foot">Portrait &darr;</button>
+      <button id="receipt" class="ghost" title="the full record as text — every parameter, so the tool can reconjure this exact feather">Record &darr;</button>
     </div>
   </header>
 
@@ -1107,15 +1111,125 @@ $('random').addEventListener('click', ()=>{
 });
 $('coord').addEventListener('keydown', e=>{ if(e.key==='Enter') conjureFrom($('coord').value.trim()||'origin'); });
 
+/* ---- taking a specimen: three forms of the same feather ---- */
+// a tidy filename stem from the grid reference
+function stem(){ return 'feaffer_'+($('coord').value.replace(/\s+/g,'-')||'specimen'); }
+// send a blob to the browser as a download
+function download(blob, name){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download=name; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
+}
+function escXml(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+// SPECIMEN — the vector original, on a transparent ground
 $('save').addEventListener('click', ()=>{
   const clone=$('feather').cloneNode(true);
   clone.setAttribute('xmlns','http://www.w3.org/2000/svg');
-  // no background rect — the specimen leaves on a transparent ground
-  const blob=new Blob([clone.outerHTML],{type:'image/svg+xml'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download='feaffer_'+($('coord').value.replace(/\s+/g,'-')||'specimen')+'.svg';
-  a.click();
+  download(new Blob([clone.outerHTML],{type:'image/svg+xml'}), stem()+'.svg');
+});
+
+// PORTRAIT — a specimen card for sharing: the feather stood on the website's
+// sky-grey, framed with a hairline, its grid reference set in mono at the foot
+// like a museum tag. The live SVG is nested whole (its blend-modes and blurs
+// come along inside it), then rasterised through an <img> onto a canvas at 3×
+// so it lands crisp in a phone chat. Nothing external is referenced, so the
+// canvas stays untainted and PNG export is clean.
+$('png').addEventListener('click', ()=>{
+  const W=480, H=720, S=3;
+  const label = escXml($('coord').value.trim() || 'specimen');
+  const card =
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`
+    + `<rect width="${W}" height="${H}" fill="#e6eaec"/>`
+    + `<rect x="0.5" y="0.5" width="${W-1}" height="${H-1}" fill="none" stroke="#c3c7c3" stroke-width="1"/>`
+    + `<svg x="40" y="24" width="400" height="640" viewBox="0 0 400 640" preserveAspectRatio="xMidYMid meet">`
+    +   $('feather').innerHTML
+    + `</svg>`
+    + `<line x1="150" y1="666" x2="330" y2="666" stroke="#c3c7c3" stroke-width="1"/>`
+    + `<text x="${W/2}" y="692" text-anchor="middle" `
+    +   `font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="17" `
+    +   `letter-spacing="3" fill="#6f5f43">${label}</text>`
+    + `</svg>`;
+  const url = URL.createObjectURL(new Blob([card],{type:'image/svg+xml;charset=utf-8'}));
+  const img = new Image();
+  img.onload = ()=>{
+    const cv=document.createElement('canvas'); cv.width=W*S; cv.height=H*S;
+    cv.getContext('2d').drawImage(img,0,0,W*S,H*S);
+    URL.revokeObjectURL(url);
+    cv.toBlob(b=> download(b, stem()+'.png'), 'image/png');
+  };
+  img.onerror = ()=>{ URL.revokeObjectURL(url); alert('Could not draw the portrait.'); };
+  img.src = url;
+});
+
+// RECORD — the round-trippable receipt. A readable field record up top (every
+// parameter with its on-screen readout, so specimens line up for comparing as
+// you map the morphospace), and below it a machine block Feaffer can read
+// straight back in to reconjure this exact feather — INCLUDING the draw seed,
+// which carries a hand-faffed specimen's own identity (its wear gaps, its barb
+// jitter, the wander of its down) that no grid reference alone can recover.
+$('receipt').addEventListener('click', ()=>{
+  const rd = id => $(id).textContent;                       // an on-screen readout
+  const pad = (s,n) => (s+' '.repeat(n)).slice(0,n);
+  const row = (name, val) => '  '+pad(name,18)+val+'\n';
+  const today = new Date().toISOString().slice(0,10);
+  const apexName = ['rounded','acuminate','truncate'][apexType];
+  const iridOn = $('irid').checked;
+
+  let t = 'FEAFFER\n';
+  t += 'field record of an imaginary feather\n';
+  t += '═'.repeat(38)+'\n\n';
+  t += row('grid', $('coord').value.trim() || '—');
+  t += row('collected', today);
+  t += '\n  ── form ──\n';
+  t += row('rachis length', rd('len-v'));
+  t += row('shaft curvature', rd('curve-v'));
+  t += row('vane breadth', rd('width-v'));
+  t += row('apex', apexName);
+  t += row($('apex-label').textContent.toLowerCase(), rd('apex-v'));
+  t += row('vane asymmetry', rd('asym-v'));
+  t += row('barb angle', rd('angle-v'));
+  t += row('barb density', rd('density-v'));
+  t += row('plumaceous down', rd('down-v'));
+  t += row('age & wear', rd('wear-v'));
+  t += '\n  ── colour ──\n';
+  t += row('ground / shade', $('pig1').value+' / '+$('pig2').value);
+  t += row('barring', rd('bars-v'));
+  t += row('bar side', rd('barside-v'));
+  t += row('bar edge', rd('baredge-v'));
+  t += row('terminal band', rd('tipband-v'));
+  t += row('spots & splodges', rd('speck-v'));
+  t += row('eyespot', rd('eye-v'));
+  t += row('eye heart / halo', $('eyecol').value+' / '+$('eyecol2').value);
+  t += row('eye position', rd('eyepos-v'));
+  t += row('eye cast', rd('eyeside-v'));
+  t += row('iridescence', iridOn ? 'on' : 'off');
+  t += row('sheen colours', $('iridcol').value+' / '+$('iridcol2').value);
+  t += row('sheen position', rd('iridpos-v'));
+  t += row('sheen spread', rd('iridspread-v'));
+  t += row('sheen strength', rd('iridstr-v'));
+
+  // the machine block: split each line on the FIRST '=', so a grid reference
+  // with spaces survives whole. Keep this intact and Feaffer can reconjure it.
+  const m = {
+    grid: $('coord').value, seed: drawSeed, apex: apexType,
+    len:P.len.value, curve:P.curve.value, width:P.width.value, apexdeg:P.apex.value,
+    asym:P.asym.value, angle:P.angle.value, density:P.density.value, down:P.down.value, wear:P.wear.value,
+    pig1:$('pig1').value, pig2:$('pig2').value,
+    bars:P.bars.value, barside:P.barside.value, baredge:P.baredge.value,
+    tipband:P.tipband.value, speck:P.speck.value,
+    eye:P.eye.value, eyecol:$('eyecol').value, eyecol2:$('eyecol2').value,
+    eyepos:P.eyepos.value, eyeside:P.eyeside.value,
+    irid: iridOn ? 1 : 0, iridcol:$('iridcol').value, iridcol2:$('iridcol2').value,
+    iridpos:P.iridpos.value, iridspread:P.iridspread.value, iridstr:P.iridstr.value
+  };
+  t += '\n'+'─'.repeat(38)+'\n';
+  t += 'machine record — keep intact to reconjure\n';
+  t += '─'.repeat(38)+'\n';
+  t += 'feaffer.v1\n';
+  for(const k in m) t += k+'='+m[k]+'\n';
+
+  download(new Blob([t],{type:'text/plain;charset=utf-8'}), stem()+'.txt');
 });
 
 conjureFrom($('coord').value);
