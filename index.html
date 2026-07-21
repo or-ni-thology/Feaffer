@@ -335,6 +335,10 @@
         <span class="well"><input type="color" id="eyecol2" value="#8a6a2f" tabindex="-1" aria-hidden="true"><span class="wellhit" data-for="eyecol2" role="button" tabindex="0" aria-label="Eye halo colour"></span></span>
       </div>
     </div>
+    <div class="card" title="open a window in the heart of the eye — at 0 the pupil is a solid disc, the peacock's true way; wound up, the centre clears to nothing and the vane's own pattern shows through, hazing at the edge. A trick for magpies and other made-up birds">
+      <div class="cap"><label for="eyepupil">Pupil window</label><span class="val" id="eyepupil-v"></span></div>
+      <input type="range" id="eyepupil" min="0" max="100" value="0">
+    </div>
     <div class="card" title="where along the shaft the eye sits — past 100 it slips off the tip until only its lower rim clings on; below 0 it stands off the quill, and a giant's ring arcs cross the vane as bands">
       <div class="cap"><label for="eyepos">Eye position</label><span class="val" id="eyepos-v"></span></div>
       <input type="range" id="eyepos" min="-40" max="108" value="70">
@@ -394,7 +398,7 @@ const P = {
   len:$('len'), curve:$('curve'), width:$('width'), apex:$('apex'), asym:$('asym'), angle:$('angle'),
   density:$('density'), down:$('down'), wear:$('wear'),
   bars:$('bars'), barside:$('barside'), baredge:$('baredge'), tipband:$('tipband'), speck:$('speck'),
-  eye:$('eye'), eyepos:$('eyepos'), eyeside:$('eyeside'),
+  eye:$('eye'), eyepupil:$('eyepupil'), eyepos:$('eyepos'), eyeside:$('eyeside'),
   iridpos:$('iridpos'), iridspread:$('iridspread'), iridstr:$('iridstr')
 };
 
@@ -962,6 +966,11 @@ function drawFeather(){
       : re<0.88     ? halo
       :               mix(halo, eRim, (re-0.88)/0.12);
     const qe=(a,b,c,s)=>{const mt=1-s;return mt*mt*a+2*mt*s*b+s*s*c;};
+    // the pupil — 0 a solid heart, the peacock's true way; wound up, the centre
+    // clears to a window and the vane's own pattern shows through, hazing out to
+    // the inner golden ring where the solid heart resumes. Not a peacock's trick,
+    // but a gift to magpies and every other made-up bird.
+    const pupil = +P.eyepupil.value/100;
     let eyeMarks='';
     for(const b of barbLines){
       if(b.downy) continue;
@@ -974,7 +983,12 @@ function drawFeather(){
         const re = Math.hypot((dxp*ec.tan.x+dyp*ec.tan.y)/eRa,
                               (dxp*ec.norm.x+dyp*ec.norm.y)/eRb) * wob;
         if(re<1){
-          const o = re>0.86 ? 0.95*(1-(re-0.86)/0.14) : 0.95;   // the rim melts into the vane
+          let o = re>0.86 ? 0.95*(1-(re-0.86)/0.14) : 0.95;    // the rim melts into the vane
+          if(pupil>0){
+            const t = Math.max(0, 1 - re/IPHI2), haze = t*t*(3-2*t);   // 1 dead centre .. 0 at the ring
+            o *= 1 - pupil*haze;
+          }
+          if(o<0.02){ px=x; py=y; continue; }                 // the window: no mark laid, the vane shows through
           const ew = vaneStroke*(re<IPHI ? 1.8 : 1.5);          // the eye follows the barbs it's grown from — a touch solider inside the golden ring, and slimming with the comb like the rest of the vane, so small feathers aren't overwhelmed
           eyeMarks += `<path d="M ${px.toFixed(1)} ${py.toFixed(1)} L ${x.toFixed(1)} ${y.toFixed(1)}" fill="none" stroke="${rgbStr(paint(re))}" stroke-width="${ew}" stroke-linecap="round" opacity="${o.toFixed(2)}"/>`;
         }
@@ -1055,6 +1069,7 @@ function updateReadouts(){
   $('tipband-v').textContent = P.tipband.value>0? P.tipband.value+'%' : 'none';
   $('speck-v').textContent = P.speck.value>0? P.speck.value+'%' : 'none';
   $('eye-v').textContent = P.eye.value>0? P.eye.value+'%' : 'none';
+  $('eyepupil-v').textContent = P.eyepupil.value>0? P.eyepupil.value+'%' : 'solid';
   $('eyepos-v').textContent = P.eyepos.value+'%';
   const cast = +P.eyeside.value;
   $('eyeside-v').textContent = cast===0 ? 'true' : (cast>0?'→ ':'← ')+Math.abs(cast)+'%';
@@ -1141,6 +1156,7 @@ function conjureFrom(str){
   // the cast arrives after everything, so every find before it keeps its
   // feather; among the roof-birds, a few now wear the eye sent off a web
   P.eyeside.value = 0;
+  P.eyepupil.value = 0;   // the peacock keeps its solid heart; the window is a hand-tuned trick
   if(roofBird && rng() < 0.25){
     P.eyeside.value = (rng()<0.5?-1:1)*(30+Math.floor(rng()*55));
   }
@@ -1336,6 +1352,7 @@ $('receipt').addEventListener('click', ()=>{
   t += row('eyespot', rd('eye-v'));
   t += crow('eye heart', $('eyecol').value);
   t += crow('eye halo', $('eyecol2').value);
+  t += row('eye pupil', rd('eyepupil-v'));
   t += row('eye position', rd('eyepos-v'));
   t += row('eye cast', rd('eyeside-v'));
   t += row('iridescence', iridOn ? 'on' : 'off');
@@ -1355,7 +1372,7 @@ $('receipt').addEventListener('click', ()=>{
     bars:P.bars.value, barside:P.barside.value, baredge:P.baredge.value,
     tipband:P.tipband.value, speck:P.speck.value,
     eye:P.eye.value, eyecol:$('eyecol').value, eyecol2:$('eyecol2').value,
-    eyepos:P.eyepos.value, eyeside:P.eyeside.value,
+    eyepupil:P.eyepupil.value, eyepos:P.eyepos.value, eyeside:P.eyeside.value,
     irid: iridOn ? 1 : 0, iridcol:$('iridcol').value, iridcol2:$('iridcol2').value,
     iridpos:P.iridpos.value, iridspread:P.iridspread.value, iridstr:P.iridstr.value
   };
@@ -1404,7 +1421,8 @@ function applyRecord(m){
   setR(P.len,'len'); setR(P.curve,'curve'); setR(P.width,'width'); setR(P.apex,'apexdeg');
   setR(P.asym,'asym'); setR(P.angle,'angle'); setR(P.density,'density'); setR(P.down,'down'); setR(P.wear,'wear');
   setR(P.bars,'bars'); setR(P.barside,'barside'); setR(P.baredge,'baredge'); setR(P.tipband,'tipband'); setR(P.speck,'speck');
-  setR(P.eye,'eye'); setR(P.eyepos,'eyepos'); setR(P.eyeside,'eyeside');
+  setR(P.eye,'eye'); setR(P.eyepupil,'eyepupil'); setR(P.eyepos,'eyepos'); setR(P.eyeside,'eyeside');
+  if(!numOk(m.eyepupil)) P.eyepupil.value = 0;   // feathers saved before the window reload with a solid heart
   setR(P.iridpos,'iridpos'); setR(P.iridspread,'iridspread'); setR(P.iridstr,'iridstr');
   setC('pig1','pig1'); setC('pig2','pig2'); setC('eyecol','eyecol'); setC('eyecol2','eyecol2');
   setC('iridcol','iridcol'); setC('iridcol2','iridcol2');
