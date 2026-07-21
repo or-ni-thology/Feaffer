@@ -46,12 +46,14 @@
     border: 1px solid var(--line);
     overflow: hidden;
   }
-  /* On a phone the frame already fills its iframe, so the two side hairlines
-     are all that stand between the instrument and the edge. Shed them for a
-     full-bleed embed; the top and bottom lines stay, a perch for the feathers. */
-  @media (max-width: 560px) {
-    .frame { border-left: none; border-right: none; }
-  }
+  /* When Feaffer truly fills the device edge to edge, the two side hairlines
+     are all that stand between the instrument and the screen. Shed them for a
+     full-bleed embed; the top and bottom lines stay, a perch for the feathers.
+     A bare width test won't do: a narrow column on a wide laptop is also under
+     560px, yet there the frame sits beside its neighbours and the sides read as
+     intentional. So the class is set by the width-check at the foot of the
+     script, which asks the sharper question — am I as wide as the whole device? */
+  .frame.bleed { border-left: none; border-right: none; }
 
   /* ——— the provenance header: seed a feather, or take the one you have ——— */
   .head {
@@ -1475,6 +1477,12 @@ $('recordfile').addEventListener('change', e=>{
   const frame = document.querySelector('.frame');
   let last = 0;
   function whisper(){
+    // Full bleed only when we ARE the device — the iframe as wide as the screen
+    // itself — not merely narrow. A half-width column on a laptop is narrow too,
+    // but there the frame keeps its sides. screen.width is the whole device and
+    // ignores the iframe; innerWidth is our own slice of it. Within a whisker of
+    // each other means nothing else shares the width: shed the side hairlines.
+    frame.classList.toggle('bleed', window.innerWidth >= window.screen.width * 0.9);
     if(window.parent === window) return;           // standalone: nobody to tell
     const h = Math.ceil(frame.getBoundingClientRect().height);
     if(h && h !== last){ last = h; window.parent.postMessage({ feaffer:'height', height:h }, '*'); }
