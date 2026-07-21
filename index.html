@@ -975,7 +975,7 @@ function drawFeather(){
                               (dxp*ec.norm.x+dyp*ec.norm.y)/eRb) * wob;
         if(re<1){
           const o = re>0.86 ? 0.95*(1-(re-0.86)/0.14) : 0.95;   // the rim melts into the vane
-          const ew = re<IPHI ? 1.9 : 1.6;                       // inside the golden ring the weave goes solider
+          const ew = vaneStroke*(re<IPHI ? 1.8 : 1.5);          // the eye follows the barbs it's grown from — a touch solider inside the golden ring, and slimming with the comb like the rest of the vane, so small feathers aren't overwhelmed
           eyeMarks += `<path d="M ${px.toFixed(1)} ${py.toFixed(1)} L ${x.toFixed(1)} ${y.toFixed(1)}" fill="none" stroke="${rgbStr(paint(re))}" stroke-width="${ew}" stroke-linecap="round" opacity="${o.toFixed(2)}"/>`;
         }
         px=x; py=y;
