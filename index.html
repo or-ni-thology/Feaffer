@@ -46,6 +46,12 @@
     border: 1px solid var(--line);
     overflow: hidden;
   }
+  /* On a phone the frame already fills its iframe, so the two side hairlines
+     are all that stand between the instrument and the edge. Shed them for a
+     full-bleed embed; the top and bottom lines stay, a perch for the feathers. */
+  @media (max-width: 560px) {
+    .frame { border-left: none; border-right: none; }
+  }
 
   /* ——— the provenance header: seed a feather, or take the one you have ——— */
   .head {
