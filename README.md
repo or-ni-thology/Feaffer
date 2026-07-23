@@ -43,8 +43,8 @@ A Record is round-trippable: **Restore** reads one back and reconjures that exac
 
 ---
 
-<details>
-<summary><h2>How the feather is made</h2></summary>
+
+<h2>How the feather is made</h2>
 
 Feaffer draws no bitmaps and stamps no textures. A feather is a few hundred thin strokes on an SVG, each one placed by the same handful of equations a real feather more or less obeys. What follows is the whole of it, plainly — because the pleasure of the thing is partly in seeing the grain of the maths through the finish, and because someone may want to grow their own.
 
@@ -106,7 +106,7 @@ Every colour is a hex triple under the bonnet — the thing the drawing actually
 
 Randomness is seeded: a hash of the grid reference feeds a mulberry32 generator, so a coordinate always grows the same feather. The draw is deterministic, and its order is the specimen's identity — the exact sequence in which barbs are dropped for wear, jittered, and fluffed *is* the feather. So new features are always appended at the end of the draw order, and every coordinate conjured before a feature keeps the feather it always had (the peacock's eye arrives last of all). Three streams are forked off the one seed by XOR (`⊕ 0x9E3779B9` for the down, `⊕ 0x51633E2D` for the wear-notches), so faffing the fluff never re-rolls the vane, and adding wear never disturbs the barbs.
 
-</details>
+
 
 ---
 
