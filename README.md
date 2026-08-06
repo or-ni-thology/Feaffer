@@ -106,6 +106,10 @@ Every colour is a hex triple under the bonnet — the thing the drawing actually
 
 Randomness is seeded: a hash of the grid reference feeds a mulberry32 generator, so a coordinate always grows the same feather. The draw is deterministic, and its order is the specimen's identity — the exact sequence in which barbs are dropped for wear, jittered, and fluffed *is* the feather. So new features are always appended at the end of the draw order, and every coordinate conjured before a feature keeps the feather it always had (the peacock's eye arrives last of all). Three streams are forked off the one seed by XOR (`⊕ 0x9E3779B9` for the down, `⊕ 0x51633E2D` for the wear-notches), so faffing the fluff never re-rolls the vane, and adding wear never disturbs the barbs.
 
+### The dyer — colourways for the conjure
+
+The conjure once dressed every coordinate from one earthy corner of the wheel, and the moor came out brown, and brown, and brown. Now a dyer takes the last turn of the dice, after all the form and marks are settled: about two in five feathers keep their old brown untouched, and the rest wear one of five other colourways — pale dove-greys and off-whites, the blackbird's dense near-black, the oystercatcher's pied (always given a mark to carry the black), warm fawn with spots, and a small gaudy share whose marks come out jewel blue, teal or violet, these being imaginary feathers after all. The sheen was retuned in the same turn — most conjured sheens let go, the kept ones burn lower, and only the roof-bird's is guaranteed — while everything dialled by hand stays exactly as you dial it.
+
 
 
 ---

@@ -1168,6 +1168,74 @@ function conjureFrom(str){
   if(roofBird && rng() < 0.25){
     P.eyeside.value = (rng()<0.5?-1:1)*(30+Math.floor(rng()*55));
   }
+
+  // THE DYER'S TURN — colour, at last, for the conjure. Walked honestly,
+  // the old dice dressed every coordinate from one earthy corner of the
+  // wheel (h 26..50): lovely, but brown, and brown, and brown. The pale
+  // grey downies, the blackbird's dense black, the oystercatcher's pied —
+  // all of them designable by hand and none of them findable. So the dyer
+  // takes the LAST turn, by the house convention: form, bars, specks,
+  // sheen and the roof-bird's eye are all settled above, and not one of
+  // their draws moves — the dyer only decides what colours the feather
+  // that was always there now wears. The brown colourway touches nothing
+  // at all: the moor keeps its ground note, bit for bit.
+  const dye = rng();
+  const coat = dye<0.40 ? 'brown' : dye<0.56 ? 'pale' : dye<0.68 ? 'dark'
+             : dye<0.78 ? 'pied'  : dye<0.92 ? 'fawn' : 'gaudy';
+  if(coat==='pale'){
+    // dove-greys and off-whites — the curly little ones from under
+    // everything. A whisper of warmth keeps them feather, not paper.
+    const hp = 30 + rng()*30;
+    $('pig1').value = hslToHex(hp, 4 + rng()*10, 74 + rng()*12);
+    $('pig2').value = hslToHex(hp, 3 + rng()*8, 34 + rng()*16);
+  } else if(coat==='dark'){
+    // the blackbird's undercarriage — near-black over true black, warm-
+    // tinged or oil-cool by the toss. And DENSE: a black feather is a
+    // solid pointy job, not a wisp, so a thin weave thickens.
+    const hd = rng()<0.4 ? 210 + rng()*50 : 18 + rng()*24;
+    $('pig1').value = hslToHex(hd, 6 + rng()*14, 14 + rng()*10);
+    $('pig2').value = hslToHex(hd, 8 + rng()*12, 4 + rng()*5);
+    if(+P.density.value < 105) P.density.value = 105 + Math.floor(rng()*45);
+  } else if(coat==='pied'){
+    // oystercatcher country — a white ground under a black shade, and
+    // always a mark to carry the black: its own bars if it drew them,
+    // else a bold terminal band. Dense, so the white reads as vane.
+    $('pig1').value = hslToHex(35 + rng()*20, 2 + rng()*6, 86 + rng()*8);
+    $('pig2').value = hslToHex(20 + rng()*30, 2 + rng()*8, 6 + rng()*7);
+    if(+P.bars.value===0 && +P.tipband.value===0) P.tipband.value = 22 + Math.floor(rng()*16);
+    if(+P.density.value < 100) P.density.value = 100 + Math.floor(rng()*45);
+  } else if(coat==='fawn'){
+    // warm buff over deep sepia, and never plain: the woodcock's
+    // shoulder, the thrush's breast — spotty unless already barred.
+    const hf = 30 + rng()*16;
+    $('pig1').value = hslToHex(hf, 28 + rng()*17, 58 + rng()*14);
+    $('pig2').value = hslToHex(hf - 4 + rng()*8, 35 + rng()*15, 16 + rng()*10);
+    if(+P.speck.value===0 && +P.bars.value===0) P.speck.value = 25 + Math.floor(rng()*40);
+  } else if(coat==='gaudy'){
+    // and these being imaginary feathers, a few coordinates may as well
+    // say so: a pale ground whose marks — spots, bars, band, the darkened
+    // base, all of them the shade's creatures — come out jewel blue, teal,
+    // violet. No moor bird grew these. No matter; no moor did either.
+    const hj = 160 + rng()*160;
+    $('pig1').value = hslToHex(30 + rng()*30, 6 + rng()*12, 70 + rng()*16);
+    $('pig2').value = hslToHex(hj, 45 + rng()*25, 24 + rng()*16);
+    if(+P.speck.value===0 && +P.bars.value===0) P.speck.value = 30 + Math.floor(rng()*40);
+  }
+
+  // and the sheen, retuned. "iridescence: rare", says the draw above, at
+  // better than one coordinate in four — out on the moor the peacock was
+  // crowding out the pigeon. So most conjured sheens now let go, the kept
+  // ones burn lower, and the pale and the pied lose theirs outright —
+  // screen-blent light has nothing to say over white. The roof-bird alone
+  // keeps its sheen regardless: an eye almost never travels without it.
+  // (Only the conjure is tempered. Dialled by hand, the sheen still burns
+  // exactly as hard as you ask it to.)
+  if($('irid').checked && !roofBird){
+    if(coat==='pale' || coat==='pied' || rng() >= 0.30){
+      $('irid').checked = false; toggleIrid();
+    }
+  }
+  if($('irid').checked) P.iridstr.value = Math.round(+P.iridstr.value*0.62);
   render();
 }
 
