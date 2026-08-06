@@ -1104,29 +1104,113 @@ function conjureFrom(str){
   P.angle.value   = 28 + Math.floor(rng()*38);
   P.density.value = 60 + Math.floor(rng()*85);
   P.down.value    = Math.floor(rng()*40);
-  // age & wear no longer travels with the wander. The feathers we conjure
-  // are strange enough on their own; even a little damage catches the eye
-  // and distracts from the odd bird underneath. It stays a manual control
-  // for hands-on faffing, and every wander arrives pristine.
-  //   We still BURN the two draws wear used to make, so the draw order is
-  // untouched: every coordinate keeps the exact feather it always had
-  // downstream — the bars, the specks, the roof-bird's eye — none of it
-  // shifts. Only the damage is gone.
-  rng()<0.3 ? 12+Math.floor(rng()*53) : Math.floor(rng()*10);
+  // age & wear stays a hand control, off the wander entirely: even a
+  // little damage catches the eye and distracts from the odd bird
+  // underneath. Every conjured feather arrives pristine.
   P.wear.value    = 0;
-  P.bars.value    = rng()<0.4 ? Math.floor(rng()*8) : 0;
-  P.barside.value = P.bars.value>0 && rng()<0.4 ? 40+Math.floor(rng()*60) : 0;
-  P.baredge.value = P.bars.value>0 ? Math.floor(rng()*rng()*100) : 0;
-  P.tipband.value = rng()<0.3 ? 10+Math.floor(rng()*25) : 0;
-  P.speck.value   = rng()<0.35 ? Math.floor(rng()*70) : 0;
 
-  // pigment: earthy by default, seeded
-  const h1 = 26 + rng()*24, s1 = 25 + rng()*30, l1 = 28 + rng()*20;
-  $('pig1').value = hslToHex(h1, s1, l1);
-  $('pig2').value = hslToHex(h1-4+rng()*8, s1*0.8, l1*0.45);
+  // THE PLUMAGE — coat first, and the pattern dice loaded to suit it,
+  // because a colourway mostly IS its pattern: the hand-made feathers
+  // that sing are white-and-black, white-and-brown, white-and-anything,
+  // the dark carried in bold bars and heavy tips. (For a long while
+  // every coordinate rolled its pigment from one earthy corner of the
+  // wheel — lovely, but brown, and brown, and brown. No longer. And no
+  // apology to the feathers redrawn today: until the day we declare the
+  // moor DEFINED, a fettle is a feather free-for-all, and nobody is
+  // owed the feather a coordinate grew last week.)
+  P.bars.value = 0; P.barside.value = 0; P.baredge.value = 0;
+  P.tipband.value = 0; P.speck.value = 0;
+  const dye = rng();
+  const coat = dye<0.20 ? 'brown' : dye<0.32 ? 'pale' : dye<0.46 ? 'dark'
+             : dye<0.72 ? 'twotone' : dye<0.88 ? 'fawn' : 'gaudy';
+  if(coat==='brown'){
+    // the moor's own ground note — kept, but patterned more often than plain
+    const h1 = 26 + rng()*24, s1 = 25 + rng()*30, l1 = 28 + rng()*20;
+    $('pig1').value = hslToHex(h1, s1, l1);
+    $('pig2').value = hslToHex(h1-4+rng()*8, s1*0.8, l1*0.45);
+    if(rng()<0.55){
+      P.bars.value = 3 + Math.floor(rng()*7);
+      P.baredge.value = Math.floor(rng()*rng()*100);
+      if(rng()<0.35) P.barside.value = 40 + Math.floor(rng()*60);
+    }
+    if(rng()<0.35) P.tipband.value = 10 + Math.floor(rng()*28);
+    if(rng()<0.4)  P.speck.value = 15 + Math.floor(rng()*55);
+  } else if(coat==='pale'){
+    // dove-greys and off-whites — the curly little ones from under
+    // everything, softly barred or faintly freckled when marked at all
+    const hp = 30 + rng()*30;
+    $('pig1').value = hslToHex(hp, 4 + rng()*10, 74 + rng()*12);
+    $('pig2').value = hslToHex(hp, 3 + rng()*8, 34 + rng()*16);
+    if(rng()<0.35){
+      P.bars.value = 2 + Math.floor(rng()*5);
+      P.baredge.value = 20 + Math.floor(rng()*60);
+    } else if(rng()<0.35) P.speck.value = 10 + Math.floor(rng()*30);
+  } else if(coat==='dark'){
+    // the blackbird's undercarriage — near-black over true black, warm-
+    // tinged or oil-cool by the toss. And DENSE: a black feather is a
+    // solid pointy job, not a wisp, so a thin weave thickens.
+    const hd = rng()<0.4 ? 210 + rng()*50 : 18 + rng()*24;
+    $('pig1').value = hslToHex(hd, 6 + rng()*14, 14 + rng()*10);
+    $('pig2').value = hslToHex(hd, 8 + rng()*12, 4 + rng()*5);
+    if(rng()<0.25) P.bars.value = 3 + Math.floor(rng()*6);   // self-coloured, barely-there
+    if(+P.density.value < 105) P.density.value = 105 + Math.floor(rng()*45);
+  } else if(coat==='twotone'){
+    // WHITE-AND-ANYTHING — the contrasty ones, the biggest share on the
+    // moor now because they simply work: a white ground and one dark to
+    // carry — black first, then brown, rust, slate, or a jewel. Pattern
+    // is not optional here; a two-tone IS its pattern. Bold bars, a
+    // heavy terminal band, or both at once — sometimes on one web only.
+    const u = rng();
+    const sh = u<0.40 ? [ 20+rng()*20,  2+rng()*8,   5+rng()*9 ]    // black
+             : u<0.65 ? [ 22+rng()*14, 35+rng()*20, 15+rng()*11]    // brown
+             : u<0.77 ? [ 12+rng()*12, 55+rng()*20, 27+rng()*11]    // rust
+             : u<0.89 ? [205+rng()*30, 15+rng()*20, 21+rng()*11]    // slate
+             :          [160+rng()*160,45+rng()*25, 22+rng()*14];   // jewel
+    $('pig1').value = hslToHex(35 + rng()*20, 2 + rng()*7, 84 + rng()*10);
+    $('pig2').value = hslToHex(sh[0], sh[1], sh[2]);
+    const pat = rng();
+    if(pat<0.45)      P.bars.value = 4 + Math.floor(rng()*7);
+    else if(pat<0.75) P.tipband.value = 18 + Math.floor(rng()*22);
+    else { P.bars.value = 3 + Math.floor(rng()*5); P.tipband.value = 12 + Math.floor(rng()*16); }
+    if(+P.bars.value>0){
+      P.baredge.value = Math.floor(rng()*rng()*80);
+      if(rng()<0.4) P.barside.value = 50 + Math.floor(rng()*50);
+    }
+    if(rng()<0.25) P.speck.value = 15 + Math.floor(rng()*35);
+    if(+P.density.value < 100) P.density.value = 100 + Math.floor(rng()*45);
+  } else if(coat==='fawn'){
+    // warm buff over deep sepia, and never plain — barred like a
+    // woodcock's wing as often as spotted like a thrush's breast
+    const hf = 30 + rng()*16;
+    $('pig1').value = hslToHex(hf, 28 + rng()*17, 58 + rng()*14);
+    $('pig2').value = hslToHex(hf - 4 + rng()*8, 35 + rng()*15, 16 + rng()*10);
+    if(rng()<0.5){
+      P.bars.value = 3 + Math.floor(rng()*6);
+      P.baredge.value = 20 + Math.floor(rng()*60);
+      if(rng()<0.3) P.barside.value = 40 + Math.floor(rng()*60);
+    } else P.speck.value = 25 + Math.floor(rng()*45);
+    if(rng()<0.3) P.tipband.value = 10 + Math.floor(rng()*24);
+  } else {
+    // and these being imaginary feathers, a few may as well say so: a
+    // pale ground whose marks — spots, bars, band, the darkened base,
+    // all of them the shade's creatures — come out jewel blue, teal,
+    // violet. No moor bird grew these. No matter; no moor did either.
+    const hj = 160 + rng()*160;
+    $('pig1').value = hslToHex(30 + rng()*30, 6 + rng()*12, 70 + rng()*16);
+    $('pig2').value = hslToHex(hj, 45 + rng()*25, 24 + rng()*16);
+    if(rng()<0.5){
+      P.bars.value = 3 + Math.floor(rng()*7);
+      P.baredge.value = Math.floor(rng()*rng()*80);
+    } else P.speck.value = 30 + Math.floor(rng()*40);
+    if(rng()<0.3) P.tipband.value = 14 + Math.floor(rng()*20);
+  }
 
-  // iridescence: rare
-  const dazzling = rng() < 0.28;
+  // iridescence: properly rare now, and tempered when it comes — at the
+  // old odds the peacock was crowding out the pigeon. The pale and the
+  // two-tones never conjure a sheen at all: screen-blent light has
+  // nothing to say over white. (Dialled by hand it still burns exactly
+  // as hard as you ask it to.)
+  const dazzling = rng() < 0.10 && coat!=='pale' && coat!=='twotone';
   $('irid').checked = dazzling;
   toggleIrid();
   if(dazzling){
@@ -1136,13 +1220,11 @@ function conjureFrom(str){
     $('iridcol').value = pair[0]; $('iridcol2').value = pair[1];
     P.iridpos.value = 45+Math.floor(rng()*45);
     P.iridspread.value = 30+Math.floor(rng()*55);
-    P.iridstr.value = 45+Math.floor(rng()*45);
+    P.iridstr.value = 30+Math.floor(rng()*28);
   }
 
   // the peacock possibility. Eight years ago one landed on Dad's roof, so
-  // the odds are real — but roof-rare. It arrives LAST in the draw order on
-  // purpose: every coordinate conjured before this feature keeps the exact
-  // feather it always had, and a lucky few simply gain the eye.
+  // the odds are real — but roof-rare.
   const roofBird = rng() < 0.09;
   if(roofBird){
     P.eye.value = 40 + Math.floor(rng()*55);
@@ -1156,86 +1238,18 @@ function conjureFrom(str){
       $('iridcol').value = '#1f6f8c'; $('iridcol2').value = '#2f7a4a';
       P.iridpos.value = P.eyepos.value;
       P.iridspread.value = 35 + Math.floor(rng()*30);
-      P.iridstr.value = 40 + Math.floor(rng()*30);
+      P.iridstr.value = 28 + Math.floor(rng()*20);
     }
   } else {
     P.eye.value = 0;
   }
-  // the cast arrives after everything, so every find before it keeps its
-  // feather; among the roof-birds, a few now wear the eye sent off a web
+  // the cast: among the roof-birds, a few wear the eye sent off a web
   P.eyeside.value = 0;
   P.eyepupil.value = 0;   // the peacock keeps its solid heart; the window is a hand-tuned trick
   if(roofBird && rng() < 0.25){
     P.eyeside.value = (rng()<0.5?-1:1)*(30+Math.floor(rng()*55));
   }
 
-  // THE DYER'S TURN — colour, at last, for the conjure. Walked honestly,
-  // the old dice dressed every coordinate from one earthy corner of the
-  // wheel (h 26..50): lovely, but brown, and brown, and brown. The pale
-  // grey downies, the blackbird's dense black, the oystercatcher's pied —
-  // all of them designable by hand and none of them findable. So the dyer
-  // takes the LAST turn, by the house convention: form, bars, specks,
-  // sheen and the roof-bird's eye are all settled above, and not one of
-  // their draws moves — the dyer only decides what colours the feather
-  // that was always there now wears. The brown colourway touches nothing
-  // at all: the moor keeps its ground note, bit for bit.
-  const dye = rng();
-  const coat = dye<0.40 ? 'brown' : dye<0.56 ? 'pale' : dye<0.68 ? 'dark'
-             : dye<0.78 ? 'pied'  : dye<0.92 ? 'fawn' : 'gaudy';
-  if(coat==='pale'){
-    // dove-greys and off-whites — the curly little ones from under
-    // everything. A whisper of warmth keeps them feather, not paper.
-    const hp = 30 + rng()*30;
-    $('pig1').value = hslToHex(hp, 4 + rng()*10, 74 + rng()*12);
-    $('pig2').value = hslToHex(hp, 3 + rng()*8, 34 + rng()*16);
-  } else if(coat==='dark'){
-    // the blackbird's undercarriage — near-black over true black, warm-
-    // tinged or oil-cool by the toss. And DENSE: a black feather is a
-    // solid pointy job, not a wisp, so a thin weave thickens.
-    const hd = rng()<0.4 ? 210 + rng()*50 : 18 + rng()*24;
-    $('pig1').value = hslToHex(hd, 6 + rng()*14, 14 + rng()*10);
-    $('pig2').value = hslToHex(hd, 8 + rng()*12, 4 + rng()*5);
-    if(+P.density.value < 105) P.density.value = 105 + Math.floor(rng()*45);
-  } else if(coat==='pied'){
-    // oystercatcher country — a white ground under a black shade, and
-    // always a mark to carry the black: its own bars if it drew them,
-    // else a bold terminal band. Dense, so the white reads as vane.
-    $('pig1').value = hslToHex(35 + rng()*20, 2 + rng()*6, 86 + rng()*8);
-    $('pig2').value = hslToHex(20 + rng()*30, 2 + rng()*8, 6 + rng()*7);
-    if(+P.bars.value===0 && +P.tipband.value===0) P.tipband.value = 22 + Math.floor(rng()*16);
-    if(+P.density.value < 100) P.density.value = 100 + Math.floor(rng()*45);
-  } else if(coat==='fawn'){
-    // warm buff over deep sepia, and never plain: the woodcock's
-    // shoulder, the thrush's breast — spotty unless already barred.
-    const hf = 30 + rng()*16;
-    $('pig1').value = hslToHex(hf, 28 + rng()*17, 58 + rng()*14);
-    $('pig2').value = hslToHex(hf - 4 + rng()*8, 35 + rng()*15, 16 + rng()*10);
-    if(+P.speck.value===0 && +P.bars.value===0) P.speck.value = 25 + Math.floor(rng()*40);
-  } else if(coat==='gaudy'){
-    // and these being imaginary feathers, a few coordinates may as well
-    // say so: a pale ground whose marks — spots, bars, band, the darkened
-    // base, all of them the shade's creatures — come out jewel blue, teal,
-    // violet. No moor bird grew these. No matter; no moor did either.
-    const hj = 160 + rng()*160;
-    $('pig1').value = hslToHex(30 + rng()*30, 6 + rng()*12, 70 + rng()*16);
-    $('pig2').value = hslToHex(hj, 45 + rng()*25, 24 + rng()*16);
-    if(+P.speck.value===0 && +P.bars.value===0) P.speck.value = 30 + Math.floor(rng()*40);
-  }
-
-  // and the sheen, retuned. "iridescence: rare", says the draw above, at
-  // better than one coordinate in four — out on the moor the peacock was
-  // crowding out the pigeon. So most conjured sheens now let go, the kept
-  // ones burn lower, and the pale and the pied lose theirs outright —
-  // screen-blent light has nothing to say over white. The roof-bird alone
-  // keeps its sheen regardless: an eye almost never travels without it.
-  // (Only the conjure is tempered. Dialled by hand, the sheen still burns
-  // exactly as hard as you ask it to.)
-  if($('irid').checked && !roofBird){
-    if(coat==='pale' || coat==='pied' || rng() >= 0.30){
-      $('irid').checked = false; toggleIrid();
-    }
-  }
-  if($('irid').checked) P.iridstr.value = Math.round(+P.iridstr.value*0.62);
   render();
 }
 
