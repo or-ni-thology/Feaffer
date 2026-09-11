@@ -666,12 +666,6 @@ function drawFeather(){
   const seamR = crownR ? crownArcAt(crownR, landAt(TIP_ZONE, 1, barbAngle)) : 0;
   const seamL = crownL ? crownArcAt(crownL, landAt(TIP_ZONE,-1, barbAngle)) : 0;
 
-  // the VISIBLE quill stops at RACHIS_END so the tip is closed by barbs.
-  let shaftD = '';
-  { const p0=rachisPt(0); shaftD=`M ${p0.x.toFixed(1)} ${p0.y.toFixed(1)}`;
-    for(let i=1;i<=40;i++){ const u=i/40, p=rachisPt(u);
-      if(u<=RACHIS_END) shaftD+=` L ${p.x.toFixed(1)} ${p.y.toFixed(1)}`; } }
-
   // barbs — the rows they comb from. Over a ROUNDED crown the dome is a longer
   // road than the shaft it is combed from, so the same rows may have more
   // outline to cover and the weave can thin where the tip turns over. How much
@@ -930,7 +924,12 @@ function drawFeather(){
         }
         if(seen) reach = Math.max(reach, sum/seen);
       }
-      b.reach = reach ? Math.min(reach, fallback*2.6) : fallback;
+      // and never longer than the barb it branches from: at an acuminate tip
+      // the rows still stand a full pitch apart while the barbs themselves are
+      // down to a few pixels, and an unbounded ribbon there swells into a
+      // chain of lobes where there should be a needle
+      const vl = Math.hypot(b.ex-b.rpx, b.ey-b.rpy);
+      b.reach = Math.min(reach ? Math.min(reach, fallback*2.6) : fallback, vl*0.6);
     }
   }
 
@@ -1267,22 +1266,54 @@ function drawFeather(){
   // in the colour of the strokes themselves, and a Specimen is plain paths all
   // the way down.
 
-  // rachis on top
+  // THE QUILL — a SPINDLE, not a stripe.
+  //
+  // A rachis is thickest where the vane first leans on it and thins the whole
+  // way to the tip; it was drawn at one width from end to end, which is the
+  // most drawn-looking thing left on the page — a ruled line with a feather
+  // attached. So it is built as a tapered ribbon instead: a run of half-widths
+  // laid along the rachis frame, up one flank and back down the other. The
+  // taper then serves three things that were three separate pieces of code —
+  // the quill, the acuminate's fine sprig past the vane, and the calamus —
+  // because they are not three things. They are one quill, read at three
+  // thicknesses.
   const hueQuill = `rgb(${(pig1.r*0.6+150)|0} ${(pig1.g*0.6+140)|0} ${(pig1.b*0.6+120)|0})`;
-  out += `<path d="${shaftD}" fill="none" stroke="${hueQuill}" stroke-width="3.4" stroke-linecap="round"/>`;
-  out += `<path d="${shaftD}" fill="none" stroke="${rgbStr(darken(pig2,0.9))}" stroke-width="1" stroke-linecap="round"/>`;
-  if(apexType===1){
-    // the sprig: on an acuminate feather the shaft itself runs to the very
-    // tip, the vane hugging it in whiskers — so a fine tapering reach of
-    // quill carries the point past where drawable barbs give out.
-    let sprigD='';
-    for(let i=0;i<=8;i++){ const u=RACHIS_END + (i/8)*(1-RACHIS_END)*0.99;
-      const p=rachisPt(u); sprigD += (i?' L':'M')+` ${p.x.toFixed(1)} ${p.y.toFixed(1)}`; }
-    out += `<path d="${sprigD}" fill="none" stroke="${hueQuill}" stroke-width="1.7" stroke-linecap="round"/>`;
-    out += `<path d="${sprigD}" fill="none" stroke="${rgbStr(darken(pig2,0.9))}" stroke-width="0.7" stroke-linecap="round"/>`;
+  const quillDark = rgbStr(darken(pig2,0.9));
+  function spindle(t0, t1, wf, N){
+    const L=[], R=[];
+    for(let i=0;i<=N;i++){
+      const u = t0 + (t1-t0)*(i/N), p = rachisPt(u), w = Math.max(0.04, wf(i/N, u));
+      L.push(`${(p.x+p.norm.x*w).toFixed(2)} ${(p.y+p.norm.y*w).toFixed(2)}`);
+      R.push(`${(p.x-p.norm.x*w).toFixed(2)} ${(p.y-p.norm.y*w).toFixed(2)}`);
+    }
+    return `M ${L.join(' L ')} L ${R.reverse().join(' L ')} Z`;
   }
-  const b0=rachisPt(0), b1=rachisPt(0.05);
-  out += `<line x1="${b0.x}" y1="${b0.y+10}" x2="${b1.x}" y2="${b1.y}" stroke="${hueQuill}" stroke-width="5" stroke-linecap="round" opacity="0.8"/>`;
+  // a quill's stoutness is the feather's, not a constant: a magpie's tail
+  // carries a heavier shaft than a wren's flank feather
+  const qHW = 1.0 + vaneW*latK*0.020;
+  const quillHW = u => qHW*(0.16 + 0.84*Math.pow(Math.max(0, 1-u), 0.85));
+  // on an ACUMINATE feather the shaft runs to the very tip, the vane hugging
+  // it in whiskers; on the others the visible quill stops at RACHIS_END and
+  // the barbs close the tip. Same taper, read further along.
+  const quillEnd = apexType===1 ? 0.995 : RACHIS_END;
+  out += `<path d="${spindle(0, quillEnd, (f,u)=>quillHW(u), 44)}" fill="${hueQuill}"/>`;
+  // the umbilical groove runs the length of the rachis and closes at both
+  // ends, so it is a spindle too — pointed, not a line cut off at the shoulder
+  out += `<path d="${spindle(0, quillEnd, (f,u)=>quillHW(u)*0.32*Math.min(1, f*9, (1-f)*7), 44)}" fill="${quillDark}"/>`;
+
+  // THE CALAMUS — the bare quill below the vane, which is a tube and not a
+  // stub of line: a touch stouter than the rachis it carries, and rounded off
+  // at its foot, where the inferior umbilicus sits as a dark point. The frame
+  // simply extrapolates below t = 0, so the quill leaves the feather along the
+  // same curve it grew on.
+  const calPx = Math.min(22, 10 + tipReach*0.018);
+  const calT = -calPx/tipReach;
+  // a swell through its middle that comes back to the rachis's own width at
+  // the top, so the quill is one continuous thing and not two stuck together
+  out += `<path d="${spindle(calT, 0, f => qHW*(1 + 0.13*Math.sin(f*Math.PI))
+              * (f<0.2 ? Math.sqrt(1-Math.pow(1-f/0.2,2)) : 1), 24)}" fill="${hueQuill}"/>`;
+  const uw = rachisPt(calT*0.88);
+  out += `<circle cx="${uw.x.toFixed(1)}" cy="${uw.y.toFixed(1)}" r="${(qHW*0.42).toFixed(2)}" fill="${quillDark}" opacity="0.55"/>`;
 
   svg.innerHTML = (defs?`<defs>${defs}</defs>`:'') + out;
 }
