@@ -588,6 +588,46 @@ function drawFeather(){
     return { x: p.x + p.norm.x*side*w, y: p.y + p.norm.y*side*w };
   }
 
+  // THE LANDING — where a barb, combed off the shaft at t and running at its
+  // own angle, MEETS the vane's outline. Solved by BISECTION on the landing
+  // parameter: the residual (h−t)/climb − width(h) starts negative at the root
+  // and ends positive at the apex, and rises all the way, so a bracket can
+  // always be halved onto the crossing. The old damped fixed point was fine
+  // down the shaft and rang wherever the envelope turned steep — which is the
+  // whole of a crown — so the last rows of a rounded tip landed out of order,
+  // some of them BELOW the row beneath. That was the lumps.
+  function landAt(t, side, ang){
+    const climb = Math.sin(ang)/tipReach;
+    let lo = t, hi = Math.min(1, t + vaneW*1.7*climb);
+    for(let i=0;i<16;i++){
+      const mh = (lo+hi)/2;
+      if((mh-t)/climb - sideWidth(mh, side) < 0) lo = mh; else hi = mh;
+    }
+    return (lo+hi)/2;
+  }
+
+  // THE CROWN — a rounded apex closes by WRAP, and a wrap has a LENGTH. Sample
+  // the outline from the tip zone up over the apex and keep its running arc, so
+  // the fan can share the dome out evenly among the barbs that have to cover
+  // it. Two things were wrong before, and both were about that length: the old
+  // fan hauled every tip-zone barb toward one point near the axis — the knot at
+  // the crown, and the nested chevrons combed down the middle of it — while the
+  // top sixth of the dome's arc was never reached by anything at all, which is
+  // why a fan was wanted in the first place.
+  const CROWN_N = 64;
+  function buildCrown(side){
+    const pts = [], cum = [0];
+    for(let i=0;i<=CROWN_N;i++) pts.push(outlineAt(TIP_ZONE + (i/CROWN_N)*(1-TIP_ZONE), side));
+    for(let i=1;i<=CROWN_N;i++) cum.push(cum[i-1] + Math.hypot(pts[i].x-pts[i-1].x, pts[i].y-pts[i-1].y));
+    return { pts, cum, total: cum[CROWN_N] };
+  }
+  // the map runs both ways: a landing parameter to its arc, and an arc back to
+  // a point with the outline's own heading, so a barb can ARRIVE along the dome
+  function crownArcAt(cr, h){
+    const f = Math.max(0, Math.min(CROWN_N, (h-TIP_ZONE)/(1-TIP_ZONE)*CROWN_N));
+    const i = Math.min(CROWN_N-1, Math.floor(f));
+    return cr.cum[i] + (cr.cum[i+1]-cr.cum[i])*(f-i);
+  }
   // wear beyond missing barbs: a flown feather UNZIPS — neighbouring barbs
   // let go of one another and the vane edge bites in a V-shaped notch. The
   // notches live on their own stream (like the fluff) so a specimen's vane
@@ -613,22 +653,40 @@ function drawFeather(){
   function rachisPt(t){ const p=rachis(t); const tan=rachisTangent(t); const norm={x:-tan.y,y:tan.x};
     return { x:p.x + norm.x*rachisShift, y:p.y + norm.y*rachisShift, tan, norm }; }
 
+  // the crown is measured now the rachis frame it hangs on is settled
+  const crownR = apexType===0 ? buildCrown(1)  : null;
+  const crownL = apexType===0 ? buildCrown(-1) : null;
+  // the seam: where the last UNFANNED barb already lands, so the fan's share of
+  // the dome starts exactly where the plain comb left off and the join is invisible
+  const seamR = crownR ? crownArcAt(crownR, landAt(TIP_ZONE, 1, barbAngle)) : 0;
+  const seamL = crownL ? crownArcAt(crownL, landAt(TIP_ZONE,-1, barbAngle)) : 0;
+
   // the VISIBLE quill stops at RACHIS_END so the tip is closed by barbs.
   let shaftD = '';
   { const p0=rachisPt(0); shaftD=`M ${p0.x.toFixed(1)} ${p0.y.toFixed(1)}`;
     for(let i=1;i<=40;i++){ const u=i/40, p=rachisPt(u);
       if(u<=RACHIS_END) shaftD+=` L ${p.x.toFixed(1)} ${p.y.toFixed(1)}`; } }
 
-  // barbs — the rows they comb from. Over a ROUNDED crown the closing fan
-  // spreads each row across more outline than the shaft-spacing supplies
-  // (the same strokes, swept over the whole dome), so the tip of a rounded
-  // feather used to thin out just where it turned over. The crown drinks
-  // interleaved half-step rows to keep the weave even up and across it.
+  // barbs — the rows they comb from. Over a ROUNDED crown the dome is a longer
+  // road than the shaft it is combed from, so the same rows may have more
+  // outline to cover and the weave can thin where the tip turns over. How much
+  // more is a thing we can now MEASURE rather than assume: the crown drinks as
+  // many interleaved sub-rows as its arc actually asks for, and usually that is
+  // none. (It used to double every row above the tip zone, flatly — twice the
+  // strokes laid on the stretch that was already the densest part of the vane.
+  // That was the other half of the clotted tip.)
+  let tipSub = 1;
+  if(apexType===0){
+    const crownRun = ((crownR.total-seamR) + (crownL.total-seamL))/2;   // dome left to cover
+    const shaftRun = (1-TIP_ZONE)*tipReach;                             // shaft it is combed from
+    tipSub = Math.max(1, Math.min(3, Math.round(crownRun/shaftRun)));
+  }
   const rows = [];
   for(let i=0;i<nBarbs;i++){
     const t = i/(nBarbs-1);
     rows.push(t);
-    if(apexType===0 && t>TIP_ZONE && i<nBarbs-1) rows.push(t + 0.5/(nBarbs-1));
+    if(tipSub>1 && t>TIP_ZONE && i<nBarbs-1)
+      for(let k=1;k<tipSub;k++) rows.push(t + (k/tipSub)/(nBarbs-1));
   }
   const barbLines = [];
   const leftPts=[], rightPts=[];   // vane outline for iridescence clip
@@ -668,7 +726,7 @@ function drawFeather(){
       const dirx = norm.x*side*Math.cos(ang) + up.x*Math.sin(ang);
       const diry = norm.y*side*Math.cos(ang) + up.y*Math.sin(ang);
       const m = Math.hypot(dirx,diry)||1;
-      let bl = halfW;
+      let bl = halfW, hLand = t;
       if(downy){
         bl *= 1.1+rng()*0.5;
       } else {
@@ -677,14 +735,10 @@ function drawFeather(){
         // drawn by tips, not roots. Reading the envelope at the root let a
         // shoulder-rooted barb on a short broad feather climb clean past
         // the crown at full breadth — the square-shouldered fat head — so
-        // the length that lands the tip on the envelope is solved instead
-        // (damped fixed point; the envelope's tip-end steepness would make
-        // the bare iteration ring).
-        const climb = Math.sin(ang)/tipReach;
-        for(let it=0;it<4;it++){
-          const h = Math.min(1, t + bl*climb);
-          bl = 0.5*bl + 0.5*sideWidth(h, side);
-        }
+        // the landing is solved instead (see landAt: bisection, which holds
+        // where the old damped iteration rang itself apart on a steep crown).
+        hLand = landAt(t, side, ang);
+        bl = (hLand - t)*tipReach/Math.sin(ang);
         if(apexType===2){
           // the truncate shear: a barb grows only until the scissors'
           // contour — level with the cut at the rachis, drooping gently
@@ -699,8 +753,10 @@ function drawFeather(){
         bl *= notchFactor(t, side);   // the unzipped vane bites in
         // a barb too short to read as a stroke renders as a floating dot —
         // the acuminate needle's last reaches are carried by the sprig of
-        // bare shaft instead (drawn with the quill), so let the dots go.
-        if(bl < 1.4) continue;
+        // bare shaft instead (drawn with the quill), so let the dots go. In a
+        // rounded tip zone the judgement waits: there a barb's REACH is the
+        // fan's to give, and the last rows are near nothing until it does.
+        if(bl < 1.4 && !(apexType===0 && sw>0)) continue;
       }
 
       // jitter, held to a constant width of wobble: a steep barb runs nearly
@@ -713,51 +769,48 @@ function drawFeather(){
       const rx=(dirx*ca-diry*sa)/m, ry=(dirx*sa+diry*ca)/m;
       let ex=rp.x+rx*bl, ey=rp.y+ry*bl;
 
-      // the closing fan — the ROUNDED family only. A dome is the one apex
-      // that closes by WRAP; a point closes by taper and a cut by shear,
-      // and neither wants its barbs bent toward the crown at all. Serving
-      // one master, the fan can serve it properly.
+      // the closing fan — the ROUNDED family only. A dome is the one apex that
+      // closes by WRAP; a point closes by taper and a cut by shear, and neither
+      // wants its barbs bent toward the crown at all.
+      //
+      // And the fan turns out to want LESS than it was taking. It used to drag
+      // every tip-zone barb's endpoint toward a target near the axis, because
+      // the old landing solve gave out over a crown and left the top sixth of
+      // the dome unreached — so something had to haul the strokes up there. With
+      // the landing solved properly (see landAt) the plain comb walks the whole
+      // dome by itself, right over the apex, at an even three pixels a tip; the
+      // haul was fixing a solve, and it cost a knot at the crown and a ladder of
+      // nested chevrons down the middle of it. So the fan keeps only the part
+      // that was ever its own: a barb LEAVES the shaft like its unfanned
+      // neighbours and ARRIVES skimming the crown, which is curvature, not
+      // position. Its tip is where the comb put it.
       let fanPull = 0, ftx = 0, fty = 0;
       if(apexType===0 && sw>0 && !downy){
-        // each barb tip reaches for a landing ON THE OUTLINE a stretch
-        // ahead — the deeper into the zone, the further ahead, the last
-        // rows at the apex itself — so the fan closes the crown while
-        // tracing the dome instead of collapsing every strand onto the
-        // axis and re-sharpening the tip.
-        const tEnd = t + (1-t)*(0.55 + 0.45*tf);
-        const ap = rachisPt(tEnd);
-        // the last rows tuck in toward the axis so the two webs meet over the
-        // crown instead of leaving a parted V above the rachis end.
-        const hw = sideWidth(tEnd, side)*latK*(1 - tf*tf*0.7);
-        fanPull = sw;
-        ex += (ap.x + ap.norm.x*side*hw - ex)*fanPull;
-        ey += (ap.y + ap.norm.y*side*hw - ey)*fanPull;
-        // the outline's own direction at the landing, so the arc can ARRIVE
-        // along the crown rather than merely touch down on it
-        const dd = 0.015;
-        const o1 = outlineAt(Math.max(peak, tEnd-dd), side);
-        const o2 = outlineAt(Math.min(1, tEnd+dd), side);
+        const dd = 0.006;
+        const o1 = outlineAt(Math.max(peak, hLand-dd), side);
+        const o2 = outlineAt(Math.min(1, hLand+dd), side);
         ftx = o2.x-o1.x; fty = o2.y-o1.y;
         const fm = Math.hypot(ftx,fty)||1; ftx/=fm; fty/=fm;
+        fanPull = sw;
       }
 
       const vx=ex-rp.x, vy=ey-rp.y, vl=Math.hypot(vx,vy);
+      if(!downy && vl < 1.4) continue;    // the dots go, measured on what is drawn
       let midx=rp.x+vx*0.5+up.x*vl*0.18, midy=rp.y+vy*0.5+up.y*vl*0.18;
       if(fanPull>0){
         // a fanned barb LEAVES the shaft like its unfanned neighbours and
         // ARRIVES skimming the outline: the arc's control point is where
-        // those two directions cross. It fades in with the pull so the
-        // zone's edge stays seamless, and a wild intersection (near-
-        // parallel directions) keeps the plain arc — this coherence is
-        // what dissolves the fan's old habit of forming its own central
-        // plume with a cleft against each web.
+        // those two directions cross. It fades in with the pull so the zone's
+        // edge stays seamless. A wild crossing (near-parallel directions, which
+        // is every barb once the dome turns over) is CLAMPED back into range
+        // rather than thrown away — thrown away, it snapped the barb back to a
+        // plain straight chord partway up the crown, and the seam between the
+        // bent ones and the straight ones was its own kind of lump.
         const den = ry*ftx - rx*fty;
-        if(Math.abs(den) > 0.02){
-          const a = (vy*ftx - vx*fty)/den;
-          if(a > 0.15*vl && a < 1.6*vl){
-            midx += (rp.x + rx*a - midx)*fanPull;
-            midy += (rp.y + ry*a - midy)*fanPull;
-          }
+        if(Math.abs(den) > 0.004){
+          const a = Math.max(0.2*vl, Math.min(1.15*vl, (vy*ftx - vx*fty)/den));
+          midx += (rp.x + rx*a - midx)*fanPull;
+          midy += (rp.y + ry*a - midy)*fanPull;
         }
       }
 
