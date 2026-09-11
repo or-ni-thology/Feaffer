@@ -291,6 +291,10 @@
       <div class="cap"><label for="density">Barb density</label><span class="val" id="density-v"></span></div>
       <input type="range" id="density" min="30" max="170" value="100">
     </div>
+    <div class="card" title="the barbules that zip neighbouring barbs into a single web — far too fine to draw at this size, so they are laid as the tone they average to: a soft ribbon along each barb, about a barb-spacing wide. At nothing, the bare comb">
+      <div class="cap"><label for="knit">Barbule knit</label><span class="val" id="knit-v"></span></div>
+      <input type="range" id="knit" min="0" max="100" value="45">
+    </div>
     <div class="card" title="soft, disordered barbs at the base">
       <div class="cap"><label for="down">Plumaceous down</label><span class="val" id="down-v"></span></div>
       <input type="range" id="down" min="0" max="45" value="18">
@@ -404,7 +408,7 @@ function freshDraw(){ return mulberry(drawSeed); }
 const $ = id => document.getElementById(id);
 const P = {
   len:$('len'), curve:$('curve'), width:$('width'), apex:$('apex'), asym:$('asym'), angle:$('angle'),
-  density:$('density'), down:$('down'), wear:$('wear'),
+  density:$('density'), knit:$('knit'), down:$('down'), wear:$('wear'),
   bars:$('bars'), barside:$('barside'), baredge:$('baredge'), tipband:$('tipband'), speck:$('speck'),
   eye:$('eye'), eyepupil:$('eyepupil'), eyepos:$('eyepos'), eyeside:$('eyeside'),
   iridpos:$('iridpos'), iridspread:$('iridspread'), iridstr:$('iridstr')
@@ -444,6 +448,7 @@ function drawFeather(){
   const asym = +P.asym.value/100;                 // 0 symmetric .. 1 strong flight feather
   const barbAngle = +P.angle.value * Math.PI/180;
   const nBarbs = +P.density.value;
+  const knit = +P.knit.value/100;         // 0 the bare comb .. 1 a zipped web
   const downFrac = +P.down.value/100;
   const wear = +P.wear.value/100;
   const nBars = +P.bars.value;
@@ -689,7 +694,8 @@ function drawFeather(){
       for(let k=1;k<tipSub;k++) rows.push(t + (k/tipSub)/(nBarbs-1));
   }
   const barbLines = [];
-  for(const t of rows){
+  for(let ri=0; ri<rows.length; ri++){
+    const t = rows[ri];
     if(t < 0.04) continue;
     const rp = rachisPt(t);
     const downy = t < downFrac;
@@ -850,19 +856,86 @@ function drawFeather(){
         }
         barbLines.push({
           d:`M ${rp.x.toFixed(1)} ${rp.y.toFixed(1)} Q ${midx.toFixed(1)} ${midy.toFixed(1)} ${ex.toFixed(1)} ${ey.toFixed(1)}`,
-          downy, t, rowN, col: rgbStr(col), rgb: col,
+          downy, t, rowN, col: rgbStr(col), rgb: col, ri, side,
           rpx:rp.x, rpy:rp.y, mx:midx, my:midy, ex, ey    // geometry for in-barb markings
         });
       }
     }
   }
 
+  // a point on a barb's own quadratic — every mark in this tool walks the barbs
+  // it is grown from, and now the knit and the sheen do too
+  const qAt=(a,b,c,s)=>{const mt=1-s;return mt*mt*a+2*mt*s*b+s*s*c;};
+
+  // HOW FAR A BARBULE HAS TO REACH — the span from a barb to the one beside it
+  // in its own web, which is the one measurement the knit below is made of.
+  // Taken per barb rather than from an average, because the average is a poor
+  // account of it: across a vane the gap runs anywhere from half a pixel to
+  // five, as the comb steepens up the shaft and the tip jitter shakes the rows
+  // apart. A single width against that lands half the ribbons overlapping and
+  // half of them short, and the vane moirés in stripes.
+  //
+  // The reach is the perpendicular distance from a barb's midpoint to its
+  // neighbour's chord, taking the NEARER of the two neighbours — so where wear
+  // has carried one neighbour off, the barb keeps the reach its other side
+  // tells it, and the gap the missing barb left stays a gap. An unzipped vane
+  // should show daylight; that is what unzipped means.
+  // Measured LIKE FOR LIKE, which took one wrong turn to learn: a barb is a
+  // bowed quadratic and its chord is not, and the two part company by nearly a
+  // tenth of the barb's length at the middle. Reading a point on one barb's
+  // CURVE against the next barb's CHORD folds that whole bow into the answer —
+  // too far on one side, too near on the other, and taking the nearer of the
+  // two then keeps the wrong one every time. So both readings are taken on the
+  // curves: midpoint to midpoint's tangent. (A quadratic's tangent at the
+  // halfway mark is parallel to its chord, which makes the honest version the
+  // cheap one as well.)
+  {
+    const byRow = new Map();
+    for(const b of barbLines){
+      if(b.downy) continue;
+      b.cx = qAt(b.rpx,b.mx,b.ex,0.5); b.cy = qAt(b.rpy,b.my,b.ey,0.5);
+      byRow.set(b.side*100000 + b.ri, b);
+    }
+    // A barb carries barbules on BOTH flanks, so its ribbon has to reach half
+    // way to the barb above and half way to the barb below — the MEAN of the
+    // two gaps, not the lesser of them. Where wear has carried one neighbour
+    // off there is only the one reading, and the ribbon keeps the width that
+    // side gives it: the gap the missing barb left stays a gap, and an unzipped
+    // vane shows daylight, which is what unzipped means.
+    //
+    // And read at THREE places up the barb, keeping the widest. Two barbs that
+    // sit three pixels apart at their roots need not be three apart at their
+    // tips: they bow by their own lengths and the tip jitter shakes them, so the
+    // gap can run from nothing to twice that over one barb's reach. A ribbon
+    // sized at the middle alone is fat near the shaft and leaves the outer half
+    // of the vane in open wedges — which is exactly what it did, and the web
+    // stalled at half the ground covered however far the slider went. Overlap
+    // near the shaft costs nothing: the whole knit is laid as one flat layer.
+    const qpt  = (b,u)=>({x:qAt(b.rpx,b.mx,b.ex,u), y:qAt(b.rpy,b.my,b.ey,u)});
+    const qtan = (b,u)=>{ const x=2*(1-u)*(b.mx-b.rpx)+2*u*(b.ex-b.mx),
+                          y=2*(1-u)*(b.my-b.rpy)+2*u*(b.ey-b.my),
+                          m=Math.hypot(x,y)||1; return {x:x/m, y:y/m}; };
+    const fallback = (tipReach/Math.max(1,nBarbs-1))*latK;
+    for(const b of barbLines){
+      if(b.downy) continue;
+      let reach = 0;
+      for(const u of [0.30, 0.60, 0.85]){
+        const P = qpt(b,u);
+        let sum = 0, seen = 0;
+        for(const step of [-1, 1]){
+          const n = byRow.get(b.side*100000 + b.ri + step);
+          if(!n) continue;
+          const Q = qpt(n,u), D = qtan(n,u);
+          sum += Math.abs((P.x-Q.x)*D.y - (P.y-Q.y)*D.x); seen++;
+        }
+        if(seen) reach = Math.max(reach, sum/seen);
+      }
+      b.reach = reach ? Math.min(reach, fallback*2.6) : fallback;
+    }
+  }
+
   // assemble
   let defs = '', out = '';
-
-  // a point on a barb's own quadratic — every mark in this tool walks the
-  // barbs it is grown from, and now the sheen does too
-  const qAt=(a,b,c,s)=>{const mt=1-s;return mt*mt*a+2*mt*s*b+s*s*c;};
 
   // THE SHEEN — a LENS, as it always was, but a lens the BARBS are seen
   // through rather than one laid over the feather.
@@ -923,6 +996,70 @@ function drawFeather(){
   // keeping the weave silky instead of clotted.
   const crowd = Math.min(1, Math.cos(barbAngle)/0.695);   // 0.695 = cos 46°, the default comb
   const vaneStroke = 0.95*(0.78 + 0.22*crowd);
+
+  // THE KNIT — the pennaceous barbules, and the reason a vane is a WEB and not
+  // a comb. Every barb carries two ranks of them: the distal rank hooked, the
+  // proximal rank plain, and one barb's hooks catch the next barb's plain rank,
+  // zipping the whole vane into a single sheet you can hold up to the light.
+  // It is the one piece of a feather's structure the tool had no account of at
+  // all, and its absence is most of why a Feaffer vane read as a row of loose
+  // hairs with the sky showing between them.
+  //
+  // They are not drawn, and should not be. Barbs sit three or four pixels apart
+  // on this canvas and a real barb carries eight or ten barbules within that
+  // span — so a barbule is a fifth of a pixel, well under the sample rate,
+  // where the honest picture of a thing too fine to draw is the tone it
+  // averages to. So a barb is laid twice: a soft ribbon a barb-spacing wide,
+  // which is the barbules, and the crisp hairline over it, which is the barb.
+  // The spacing sets the width, so the ribbons always just meet whatever the
+  // density — a crowded vane is nearly closed already and the knit barely shows
+  // on it, which is also true of the bird. The ribbon stops short of the barb's
+  // tip, because barbules do: that bare last tenth is what keeps a worn edge
+  // ragged and a vane's margin fine.
+  //
+  // (The DOWN keeps its literal barbules. Plumaceous barbules really are sparse
+  // and wandering at this scale, so there the strokes ARE the honest picture.)
+  // each barb's ribbon is its own reach, so the ribbons meet everywhere and
+  // overlap nowhere; a barb whose neighbours crowd it wears a narrow one
+  const knitOf = b => (b.reach||0)*1.04;
+  if(knit>0){
+    let web='';
+    for(const b of barbLines){
+      if(b.downy) continue;
+      const kw = knitOf(b);
+      if(kw < vaneStroke*1.25) continue;      // a vane this crowded is closed already
+      const glint = 0.82 + 0.36*b.rowN;
+      const c = sheen ? rgbStr(sheen(b.cx, b.cy, b.rgb, glint)) : b.col;
+      // full through the middle of the barb and shortening toward its tip,
+      // because barbules do — which is why a vane's margin is finely serrated
+      // and not a smooth edge, and why the last of a barb reads as bare quill
+      for(const [u0,u1,f] of [[0.05,0.74,1], [0.68,0.93,0.86]]){
+        let d='';
+        for(let k=0;k<=4;k++){
+          const u = u0 + (k/4)*(u1-u0);
+          d += (k?' L':'M')+` ${qAt(b.rpx,b.mx,b.ex,u).toFixed(1)} ${qAt(b.rpy,b.my,b.ey,u).toFixed(1)}`;
+        }
+        web += `<path d="${d}" fill="none" stroke="${c}" stroke-width="${(kw*f).toFixed(2)}" stroke-linecap="round" stroke-linejoin="round"/>`;
+      }
+    }
+    // laid as ONE flat layer, so ribbons that meet or overlap never double
+    // their alpha and stripe the vane in a moiré of its own rows. A web is a
+    // web, not a stack of ribbons.
+    if(web) out += `<g opacity="${(knit*0.5).toFixed(2)}">${web}</g>`;
+  }
+  // a mark grown into a knitted vane is a PATCH, not a row of lines — a real
+  // bar is solid pigment across the web — so the strokes that carry a marking
+  // widen to that barb's own reach, and the fine partings left between them are
+  // the vane's grain showing through the colour, which is how a bar really looks.
+  // The broadening thins away toward the barb's tip, following the web, because
+  // otherwise a mark that runs all the way out (a giant eye laid across the
+  // whole vane, say) ends each barb in a round lobe and the margin goes scalloped.
+  const markW = (base, b, u) => {
+    if(knit<=0) return base;
+    const f = u > 0.7 ? 1 - 0.55*Math.pow((u-0.7)/0.3, 2) : 1;
+    return Math.max(base, knitOf(b)*0.97*f);
+  };
+
   for(const b of barbLines){
     if(sheen && !b.downy && (sheenTouches(b.rpx,b.rpy) || sheenTouches(b.ex,b.ey)
                              || sheenTouches((b.rpx+b.ex)/2, (b.rpy+b.ey)/2))){
@@ -982,7 +1119,7 @@ function drawFeather(){
             // a mark on an iridescent vane still catches the sheen — the
             // pigment under the barbules changes, the barbules do not
             const c = sheen ? rgbStr(sheen(cxp,cyp,spotRgb,glint)) : spotCol;
-            marks+=`<path d="M ${px.toFixed(1)} ${py.toFixed(1)} L ${x.toFixed(1)} ${y.toFixed(1)}" fill="none" stroke="${c}" stroke-width="1.5" stroke-linecap="round"/>`; break; } }
+            marks+=`<path d="M ${px.toFixed(1)} ${py.toFixed(1)} L ${x.toFixed(1)} ${y.toFixed(1)}" fill="none" stroke="${c}" stroke-width="${markW(1.5, b, s).toFixed(2)}" stroke-linecap="round"/>`; break; } }
         px=x; py=y;
       }
     }
@@ -999,7 +1136,6 @@ function drawFeather(){
     const gB = 1 - tipBand;              // the growth contour where the band begins
     const soft = 0.02 + tipBand*0.12;    // breadth of the fade at the inner edge
     const bandRgb = mix(pig1,pig2,0.95), bandCol = rgbStr(bandRgb);
-    const bw = (vaneStroke+0.5).toFixed(2);
     let band='';
     for(const b of barbLines){
       if(b.downy) continue;
@@ -1015,6 +1151,7 @@ function drawFeather(){
         const f = Math.min(1, (b.t + ((k-0.5)/SEG)*chordT + wob - gB)/soft);
         if(f > 0.05){
           const c = sheen ? rgbStr(sheen((px+x)/2,(py+y)/2,bandRgb,glint)) : bandCol;
+          const bw = markW(vaneStroke+0.5, b, s).toFixed(2);
           band += `<path d="M ${px.toFixed(1)} ${py.toFixed(1)} L ${x.toFixed(1)} ${y.toFixed(1)}" fill="none" stroke="${c}" stroke-width="${bw}" stroke-linecap="round" opacity="${(f*fade*0.9).toFixed(2)}"/>`;
         }
         px=x; py=y;
@@ -1103,7 +1240,12 @@ function drawFeather(){
             o *= 1 - pupil*haze;
           }
           if(o<0.02){ px=x; py=y; continue; }                 // the window: no mark laid, the vane shows through
-          const ew = vaneStroke*(re<IPHI ? 1.8 : 1.5);          // the eye follows the barbs it's grown from — a touch solider inside the golden ring, and slimming with the comb like the rest of the vane, so small feathers aren't overwhelmed
+          // the eye follows the barbs it's grown from — a touch solider inside
+          // the golden ring, slimming with the comb like the rest of the vane so
+          // small feathers aren't overwhelmed, and broadening with the knit so a
+          // ring laid on a woven web is a ring and not a row of dashes
+          const fine = vaneStroke*(re<IPHI ? 1.8 : 1.5);
+          const ew = markW(fine, b, s)*(re<IPHI ? 1 : 0.95);
           const ec2 = sheen ? sheen(cxp, cyp, paint(re), glint) : paint(re);
           eyeMarks += `<path d="M ${px.toFixed(1)} ${py.toFixed(1)} L ${x.toFixed(1)} ${y.toFixed(1)}" fill="none" stroke="${rgbStr(ec2)}" stroke-width="${ew}" stroke-linecap="round" opacity="${o.toFixed(2)}"/>`;
         }
@@ -1156,6 +1298,7 @@ function updateReadouts(){
   $('asym-v').textContent = P.asym.value+'%';
   $('angle-v').textContent = P.angle.value+'°';
   $('density-v').textContent = P.density.value;
+  $('knit-v').textContent = P.knit.value>0? P.knit.value+'%' : 'bare comb';
   $('down-v').textContent = P.down.value+'%';
   $('wear-v').textContent = P.wear.value+'%';
   $('bars-v').textContent = P.bars.value>0? P.bars.value : 'none';
@@ -1190,6 +1333,7 @@ function conjureFrom(str){
   P.asym.value    = rng()<0.45 ? Math.floor(rng()*90) : 0;  // some birds fly, some don't
   P.angle.value   = 28 + Math.floor(rng()*38);
   P.density.value = 60 + Math.floor(rng()*85);
+  P.knit.value    = 20 + Math.floor(rng()*70);   // most vanes hold together; some have let go
   P.down.value    = Math.floor(rng()*40);
   // age & wear stays a hand control, off the wander entirely: even a
   // little damage catches the eye and distracts from the odd bird
@@ -1513,6 +1657,7 @@ $('receipt').addEventListener('click', ()=>{
   t += row('vane asymmetry', rd('asym-v'));
   t += row('barb angle', rd('angle-v'));
   t += row('barb density', rd('density-v'));
+  t += row('barbule knit', rd('knit-v'));
   t += row('plumaceous down', rd('down-v'));
   t += row('age & wear', rd('wear-v'));
   // colour rows carry HSL beside the hex — the reading that lines feathers up
@@ -1545,7 +1690,8 @@ $('receipt').addEventListener('click', ()=>{
   const m = {
     grid: $('coord').value, seed: drawSeed, apex: apexType,
     len:P.len.value, curve:P.curve.value, width:P.width.value, apexdeg:P.apex.value,
-    asym:P.asym.value, angle:P.angle.value, density:P.density.value, down:P.down.value, wear:P.wear.value,
+    asym:P.asym.value, angle:P.angle.value, density:P.density.value, knit:P.knit.value,
+    down:P.down.value, wear:P.wear.value,
     pig1:$('pig1').value, pig2:$('pig2').value,
     bars:P.bars.value, barside:P.barside.value, baredge:P.baredge.value,
     tipband:P.tipband.value, speck:P.speck.value,
@@ -1597,7 +1743,9 @@ function applyRecord(m){
   apexType = numOk(m.apex) ? ((+m.apex % 3) + 3) % 3 : 0;
 
   setR(P.len,'len'); setR(P.curve,'curve'); setR(P.width,'width'); setR(P.apex,'apexdeg');
-  setR(P.asym,'asym'); setR(P.angle,'angle'); setR(P.density,'density'); setR(P.down,'down'); setR(P.wear,'wear');
+  setR(P.asym,'asym'); setR(P.angle,'angle'); setR(P.density,'density'); setR(P.knit,'knit');
+  setR(P.down,'down'); setR(P.wear,'wear');
+  if(!numOk(m.knit)) P.knit.value = 0;           // feathers saved before the knit come back as the bare comb they were
   setR(P.bars,'bars'); setR(P.barside,'barside'); setR(P.baredge,'baredge'); setR(P.tipband,'tipband'); setR(P.speck,'speck');
   setR(P.eye,'eye'); setR(P.eyepupil,'eyepupil'); setR(P.eyepos,'eyepos'); setR(P.eyeside,'eyeside');
   if(!numOk(m.eyepupil)) P.eyepupil.value = 0;   // feathers saved before the window reload with a solid heart
