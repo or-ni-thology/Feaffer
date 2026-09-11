@@ -689,7 +689,6 @@ function drawFeather(){
       for(let k=1;k<tipSub;k++) rows.push(t + (k/tipSub)/(nBarbs-1));
   }
   const barbLines = [];
-  const leftPts=[], rightPts=[];   // vane outline for iridescence clip
   for(const t of rows){
     if(t < 0.04) continue;
     const rp = rachisPt(t);
@@ -851,13 +850,9 @@ function drawFeather(){
         }
         barbLines.push({
           d:`M ${rp.x.toFixed(1)} ${rp.y.toFixed(1)} Q ${midx.toFixed(1)} ${midy.toFixed(1)} ${ex.toFixed(1)} ${ey.toFixed(1)}`,
-          downy, t, rowN, col: rgbStr(col),
+          downy, t, rowN, col: rgbStr(col), rgb: col,
           rpx:rp.x, rpy:rp.y, mx:midx, my:midy, ex, ey    // geometry for in-barb markings
         });
-        // outline point for the soft wash mask — pulled IN from the barb tip so
-        // the shading/sheen sit inside the vane and never touch the ragged edge.
-        const io=0.84;
-        (side>0?rightPts:leftPts).push({x:rp.x+(ex-rp.x)*io, y:rp.y+(ey-rp.y)*io, t});
       }
     }
   }
@@ -865,29 +860,62 @@ function drawFeather(){
   // assemble
   let defs = '', out = '';
 
-  // the vane wash region — an inset, SMOOTHED blade the wash sits inside. Both
-  // the self-shadow and the iridescent sheen are masked (not hard-clipped) to
-  // it, so their edges feather away inside the vane instead of catching on the
-  // ragged sawtooth of the barb tips or ending in a hard line near the down.
-  const haveVane = leftPts.length>2 && rightPts.length>2;
-  if(haveVane){
-    rightPts.sort((a,b)=>a.t-b.t); leftPts.sort((a,b)=>a.t-b.t);
-    // one closed ring: up the right edge, down the left
-    const ring = rightPts.concat(leftPts.slice().reverse());
-    // smooth it with midpoint quadratics — the barb tips become control points,
-    // so the outline curves through them instead of zig-zagging between them.
-    const n = ring.length;
-    const mid = (a,b)=>[( a.x+b.x)/2, (a.y+b.y)/2];
-    let d = `M ${mid(ring[n-1],ring[0]).map(v=>v.toFixed(1)).join(' ')}`;
-    for(let i=0;i<n;i++){
-      const cur=ring[i], nx=ring[(i+1)%n], m2=mid(cur,nx);
-      d += ` Q ${cur.x.toFixed(1)} ${cur.y.toFixed(1)} ${m2[0].toFixed(1)} ${m2[1].toFixed(1)}`;
-    }
-    d += ' Z';
-    // a soft-edged mask: the smoothed blade, blurred, so the wash fades out
-    const mb = Math.max(3, vaneW*0.11);
-    defs += `<filter id="maskblur" filterUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}"><feGaussianBlur stdDeviation="${mb.toFixed(1)}"/></filter>`;
-    defs += `<mask id="vanemask" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}"><path d="${d}" fill="#fff" filter="url(#maskblur)"/></mask>`;
+  // a point on a barb's own quadratic — every mark in this tool walks the
+  // barbs it is grown from, and now the sheen does too
+  const qAt=(a,b,c,s)=>{const mt=1-s;return mt*mt*a+2*mt*s*b+s*s*c;};
+
+  // THE SHEEN — a LENS, as it always was, but a lens the BARBS are seen
+  // through rather than one laid over the feather.
+  //
+  // It used to be a radial gradient on a rectangle, masked through a blurred
+  // silhouette and screened over everything beneath. Screen lightens what is
+  // under it — and what is under a feather is mostly the SKY BETWEEN THE
+  // BARBS. So the sheen lit the gaps harder than it lit the strokes, and the
+  // blur carried it out past the tips: a coloured fog with a feather standing
+  // in it, exactly the wrong way round. Wound up, it bleached the whole vane.
+  //
+  // Structural colour has no business floating anywhere. It comes off the
+  // barbules — flattened, twisted to face the light, stacked with melanosomes
+  // in an ordered array — so it lives ON the barb, and an iridescent feather
+  // is near-black from the wrong angle and blazes from the right one. So the
+  // sheen joins the specks and the bars and the eye and grows into the
+  // strokes: nothing in this tool is painted on top any more.
+  //
+  // The lens pools in the rachis frame — an ellipse long up the shaft, because
+  // that is how a sheen bands a vane — and it SCREENS each stroke's own
+  // pigment, which is the honest arithmetic for light added rather than
+  // pigment replaced: a dark barb lifts toward the hue like a beetle's back,
+  // a pale one hardly stirs. The hue rolls with the angle across the webs and
+  // up the shaft, so the two sides never wear quite the same colour, and a
+  // per-row glint breaks it up barb to barb, because no two barbules agree.
+  let sheen = null, sheenTouches = null;
+  if(iridOn){
+    const hot = rachisPt(iridPos);
+    const sc1 = hexToRgb($('iridcol').value), sc2 = hexToRgb($('iridcol2').value);
+    const spreadPx = (0.12 + iridSpread*0.5)*tipReach;
+    const rAlong  = spreadPx;                             // pools up the shaft
+    const rAcross = spreadPx*0.45 + vaneW*latK*0.55;      // and reaches across the web
+    // does the lens reach here at all? A barb it never touches keeps its one
+    // plain quadratic — only a lit barb pays for being cut into runs.
+    sheenTouches = (x, y) => {
+      const dx = x-hot.x, dy = y-hot.y;
+      const al = (dx*hot.tan.x  + dy*hot.tan.y )/rAlong;
+      const ac = (dx*hot.norm.x + dy*hot.norm.y)/rAcross;
+      return al*al + ac*ac < 1;
+    };
+    sheen = (x, y, col, glint) => {
+      const dx = x-hot.x, dy = y-hot.y;
+      const al = (dx*hot.tan.x  + dy*hot.tan.y )/rAlong;
+      const ac = (dx*hot.norm.x + dy*hot.norm.y)/rAcross;
+      const d2 = al*al + ac*ac;
+      if(d2 >= 1) return col;                             // compact support: no tail to spill
+      const fall = (1-d2)*(1-d2);                         // smooth to nothing at the rim
+      const k = iridStr*0.95*fall*glint;
+      const hue = mix(sc1, sc2, Math.max(0, Math.min(1, 0.5 + ac*0.62 + al*0.34)));
+      return { r: 255-(255-col.r)*(255-hue.r*k)/255,
+               g: 255-(255-col.g)*(255-hue.g*k)/255,
+               b: 255-(255-col.b)*(255-hue.b*k)/255 };
+    };
   }
 
   // barbs — a steeply-combed vane crowds them nearly parallel and a couple of
@@ -896,6 +924,26 @@ function drawFeather(){
   const crowd = Math.min(1, Math.cos(barbAngle)/0.695);   // 0.695 = cos 46°, the default comb
   const vaneStroke = 0.95*(0.78 + 0.22*crowd);
   for(const b of barbLines){
+    if(sheen && !b.downy && (sheenTouches(b.rpx,b.rpy) || sheenTouches(b.ex,b.ey)
+                             || sheenTouches((b.rpx+b.ex)/2, (b.rpy+b.ey)/2))){
+      // a sheened barb is laid in short runs, each taking the lens where it
+      // sits, so the colour turns along the stroke instead of being averaged
+      // over it. Interior joins are butt-capped — round caps would double
+      // their alpha and bead the barb — and only the two ends round off.
+      // The DOWN is left out of this entirely: plumaceous barbules carry no
+      // ordered melanosome array, so a real downy base stays matt however the
+      // vane burns, and that matt base is half of what sells the vane's blaze.
+      const SEG = 6; let px = b.rpx, py = b.rpy;
+      const glint = 0.82 + 0.36*b.rowN;
+      for(let k=1;k<=SEG;k++){
+        const u=k/SEG, x=qAt(b.rpx,b.mx,b.ex,u), y=qAt(b.rpy,b.my,b.ey,u);
+        const c = sheen((px+x)/2, (py+y)/2, b.rgb, glint);
+        const cap = (k===1||k===SEG) ? 'round' : 'butt';
+        out += `<path d="M ${px.toFixed(1)} ${py.toFixed(1)} L ${x.toFixed(1)} ${y.toFixed(1)}" fill="none" stroke="${rgbStr(c)}" stroke-width="${vaneStroke}" stroke-linecap="${cap}" opacity="0.85"/>`;
+        px=x; py=y;
+      }
+      continue;
+    }
     const w = b.downy ? b.dw : vaneStroke;
     const op = b.downy ? b.dop : 0.85;
     out += `<path d="${b.d}" fill="none" stroke="${b.col}" stroke-width="${w}" stroke-linecap="round" opacity="${op}"/>`;
@@ -920,17 +968,21 @@ function drawFeather(){
       const rp=rachisPt(st);
       spots.push({x:rp.x+rp.norm.x*sside*hw*f, y:rp.y+rp.norm.y*sside*hw*f, r2:Math.pow((1.8+speck*5)*(0.6+rng()*0.9),2)});
     }
-    const spotCol=rgbStr(mix(pig1,pig2,0.92));
-    const qp=(a,b,c,s)=>{const mt=1-s;return mt*mt*a+2*mt*s*b+s*s*c;};
+    const spotRgb=mix(pig1,pig2,0.92), spotCol=rgbStr(spotRgb);
     let marks='';
     for(const b of barbLines){
       if(b.downy) continue;
+      const glint = 0.82 + 0.36*b.rowN;
       const SEG=7; let px=b.rpx, py=b.rpy;
       for(let k=1;k<=SEG;k++){
-        const s=k/SEG, x=qp(b.rpx,b.mx,b.ex,s), y=qp(b.rpy,b.my,b.ey,s);
+        const s=k/SEG, x=qAt(b.rpx,b.mx,b.ex,s), y=qAt(b.rpy,b.my,b.ey,s);
         const cxp=(px+x)/2, cyp=(py+y)/2;
         for(const sp of spots){ const dx=cxp-sp.x, dy=cyp-sp.y;
-          if(dx*dx+dy*dy<sp.r2){ marks+=`<path d="M ${px.toFixed(1)} ${py.toFixed(1)} L ${x.toFixed(1)} ${y.toFixed(1)}" fill="none" stroke="${spotCol}" stroke-width="1.5" stroke-linecap="round"/>`; break; } }
+          if(dx*dx+dy*dy<sp.r2){
+            // a mark on an iridescent vane still catches the sheen — the
+            // pigment under the barbules changes, the barbules do not
+            const c = sheen ? rgbStr(sheen(cxp,cyp,spotRgb,glint)) : spotCol;
+            marks+=`<path d="M ${px.toFixed(1)} ${py.toFixed(1)} L ${x.toFixed(1)} ${y.toFixed(1)}" fill="none" stroke="${c}" stroke-width="1.5" stroke-linecap="round"/>`; break; } }
         px=x; py=y;
       }
     }
@@ -946,9 +998,8 @@ function drawFeather(){
   if(tipBand>0){
     const gB = 1 - tipBand;              // the growth contour where the band begins
     const soft = 0.02 + tipBand*0.12;    // breadth of the fade at the inner edge
-    const bandCol = rgbStr(mix(pig1,pig2,0.95));
+    const bandRgb = mix(pig1,pig2,0.95), bandCol = rgbStr(bandRgb);
     const bw = (vaneStroke+0.5).toFixed(2);
-    const qb=(a,b,c,s)=>{const mt=1-s;return mt*mt*a+2*mt*s*b+s*s*c;};
     let band='';
     for(const b of barbLines){
       if(b.downy) continue;
@@ -957,12 +1008,14 @@ function drawFeather(){
       const wob = (b.rowN-0.5)*(0.02 + barEdge*0.12);   // ragged boundary
       const fade = 1 - barEdge*b.rowN*0.7;              // mottle: some rows thin out
       if(fade < 0.08) continue;
+      const glint = 0.82 + 0.36*b.rowN;
       const SEG=8; let px=b.rpx, py=b.rpy;
       for(let k=1;k<=SEG;k++){
-        const s=k/SEG, x=qb(b.rpx,b.mx,b.ex,s), y=qb(b.rpy,b.my,b.ey,s);
+        const s=k/SEG, x=qAt(b.rpx,b.mx,b.ex,s), y=qAt(b.rpy,b.my,b.ey,s);
         const f = Math.min(1, (b.t + ((k-0.5)/SEG)*chordT + wob - gB)/soft);
         if(f > 0.05){
-          band += `<path d="M ${px.toFixed(1)} ${py.toFixed(1)} L ${x.toFixed(1)} ${y.toFixed(1)}" fill="none" stroke="${bandCol}" stroke-width="${bw}" stroke-linecap="round" opacity="${(f*fade*0.9).toFixed(2)}"/>`;
+          const c = sheen ? rgbStr(sheen((px+x)/2,(py+y)/2,bandRgb,glint)) : bandCol;
+          band += `<path d="M ${px.toFixed(1)} ${py.toFixed(1)} L ${x.toFixed(1)} ${y.toFixed(1)}" fill="none" stroke="${c}" stroke-width="${bw}" stroke-linecap="round" opacity="${(f*fade*0.9).toFixed(2)}"/>`;
         }
         px=x; py=y;
       }
@@ -1026,7 +1079,6 @@ function drawFeather(){
       : re<IPHI+BL  ? mix(heart, halo, (re-IPHI+BL)/(2*BL))
       : re<0.88     ? halo
       :               mix(halo, eRim, (re-0.88)/0.12);
-    const qe=(a,b,c,s)=>{const mt=1-s;return mt*mt*a+2*mt*s*b+s*s*c;};
     // the pupil — 0 a solid heart, the peacock's true way; wound up, the centre
     // clears to a window and the vane's own pattern shows through, hazing out to
     // the inner golden ring where the solid heart resumes. Not a peacock's trick,
@@ -1036,9 +1088,10 @@ function drawFeather(){
     for(const b of barbLines){
       if(b.downy) continue;
       const wob = 1 + (b.rowN-0.5)*0.08;
+      const glint = 0.82 + 0.36*b.rowN;
       const SEG=9; let px=b.rpx, py=b.rpy;
       for(let k=1;k<=SEG;k++){
-        const s=k/SEG, x=qe(b.rpx,b.mx,b.ex,s), y=qe(b.rpy,b.my,b.ey,s);
+        const s=k/SEG, x=qAt(b.rpx,b.mx,b.ex,s), y=qAt(b.rpy,b.my,b.ey,s);
         const cxp=(px+x)/2, cyp=(py+y)/2;
         const dxp=cxp-ecx, dyp=cyp-ecy;
         const re = Math.hypot((dxp*ec.tan.x+dyp*ec.tan.y)/eRa,
@@ -1051,7 +1104,8 @@ function drawFeather(){
           }
           if(o<0.02){ px=x; py=y; continue; }                 // the window: no mark laid, the vane shows through
           const ew = vaneStroke*(re<IPHI ? 1.8 : 1.5);          // the eye follows the barbs it's grown from — a touch solider inside the golden ring, and slimming with the comb like the rest of the vane, so small feathers aren't overwhelmed
-          eyeMarks += `<path d="M ${px.toFixed(1)} ${py.toFixed(1)} L ${x.toFixed(1)} ${y.toFixed(1)}" fill="none" stroke="${rgbStr(paint(re))}" stroke-width="${ew}" stroke-linecap="round" opacity="${o.toFixed(2)}"/>`;
+          const ec2 = sheen ? sheen(cxp, cyp, paint(re), glint) : paint(re);
+          eyeMarks += `<path d="M ${px.toFixed(1)} ${py.toFixed(1)} L ${x.toFixed(1)} ${y.toFixed(1)}" fill="none" stroke="${rgbStr(ec2)}" stroke-width="${ew}" stroke-linecap="round" opacity="${o.toFixed(2)}"/>`;
         }
         px=x; py=y;
       }
@@ -1061,35 +1115,15 @@ function drawFeather(){
 
   // (The self-shadow that once darkened the inner vane has been retired: with
   // markings now growing into the barbs — and shiftable side to side — a fixed
-  // central darkening only got in their way. The soft iridescent wash below can
-  // stand in as a shadow when one is wanted, e.g. a dark shade on a pale down.)
-
-  // iridescent wash — a translucent lens over the vane, clipped to the feather's outline
-  if(iridOn && haveVane){
-    const c1 = $('iridcol').value, c2 = $('iridcol2').value;
-    const centreT = iridPos;
-    const cp = rachisPt(centreT);
-    const spreadPx = (0.12 + iridSpread*0.5) * tipReach;
-    const gid = 'iridgrad';
-    defs += `<radialGradient id="${gid}" gradientUnits="userSpaceOnUse"
-        cx="${cp.x.toFixed(1)}" cy="${cp.y.toFixed(1)}" r="${spreadPx.toFixed(1)}">
-        <stop offset="0%" stop-color="${c1}" stop-opacity="${(iridStr*0.85).toFixed(2)}"/>
-        <stop offset="55%" stop-color="${c2}" stop-opacity="${(iridStr*0.55).toFixed(2)}"/>
-        <stop offset="100%" stop-color="${c2}" stop-opacity="0"/>
-      </radialGradient>`;
-    out += `<g mask="url(#vanemask)" style="mix-blend-mode:screen">
-        <rect x="0" y="0" width="${W}" height="${H}" fill="url(#${gid})"/>
-      </g>`;
-    const cp2 = rachisPt(Math.min(0.95, centreT+0.12));
-    defs += `<radialGradient id="${gid}2" gradientUnits="userSpaceOnUse"
-        cx="${cp2.x.toFixed(1)}" cy="${cp2.y.toFixed(1)}" r="${(spreadPx*0.55).toFixed(1)}">
-        <stop offset="0%" stop-color="${c1}" stop-opacity="${(iridStr*0.5).toFixed(2)}"/>
-        <stop offset="100%" stop-color="${c1}" stop-opacity="0"/>
-      </radialGradient>`;
-    out += `<g mask="url(#vanemask)" style="mix-blend-mode:screen">
-        <rect x="0" y="0" width="${W}" height="${H}" fill="url(#${gid}2)"/>
-      </g>`;
-  }
+  // central darkening only got in their way.)
+  //
+  // The iridescent wash that used to sit here has gone the same way. It was the
+  // last thing in the tool drawn OVER the feather rather than grown into it,
+  // and it was the last thing that needed a mask, a Gaussian blur and a CSS
+  // blend mode to behave — three things an SVG carried out of here has always
+  // had to hope the next program honours. The sheen is up in the barb pass now,
+  // in the colour of the strokes themselves, and a Specimen is plain paths all
+  // the way down.
 
   // rachis on top
   const hueQuill = `rgb(${(pig1.r*0.6+150)|0} ${(pig1.g*0.6+140)|0} ${(pig1.b*0.6+120)|0})`;
@@ -1419,10 +1453,11 @@ $('save').addEventListener('click', ()=>{
 
 // PORTRAIT — a specimen card for sharing: the feather stood on the website's
 // sky-grey, framed with a hairline, its grid reference set in mono at the foot
-// like a museum tag. The live SVG is nested whole (its blend-modes and blurs
-// come along inside it), then rasterised through an <img> onto a canvas at 3×
-// so it lands crisp in a phone chat. Nothing external is referenced, so the
-// canvas stays untainted and PNG export is clean.
+// like a museum tag. The live SVG is nested whole, then rasterised through an
+// <img> onto a canvas at 3× so it lands crisp in a phone chat. Nothing external
+// is referenced and nothing needs a filter or a blend mode any more — the
+// feather is plain stroked paths — so the canvas stays untainted, the PNG
+// export is clean, and a Specimen opens the same in whatever reads it next.
 $('png').addEventListener('click', ()=>{
   const W=480, H=720, S=3;
   const label = escXml($('coord').value.trim() || 'specimen');
