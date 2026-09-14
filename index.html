@@ -949,6 +949,69 @@ function drawFeather(){
     t += over * gauge(t) / Math.max(1, nBarbs-1);
   }
   if(rows[rows.length-1] < 0.999) rows.push(1);
+  // ================= THE MELANGE =================
+  //
+  // Every barb in an unmarked vane wore EXACTLY the same colour as every other
+  // one, and a feather is not that. A feather is a melange. The tone shifts
+  // barb to barb, in soft patches a few barbs across, and that shifting is a
+  // good part of what tells the eye a vane is a sheet of separate things at
+  // slightly different depths rather than an area of one colour.
+  //
+  // It is free, which is why it went unnoticed for so long. The walk folds
+  // stretches WITHIN a barb that come out the same colour; it has never folded
+  // anything BETWEEN barbs, because a barb is its own path either way. So a
+  // tone that varies per barb costs nothing at all — not a path, barely a byte
+  // — and a tone that varied ALONG a barb would cost a fortune. Which settles
+  // the scale of the thing without anyone having to have an opinion: the
+  // melange is per barb, and a barb wears one tone from shaft to tip.
+  //
+  // Happily that is also the right scale. A barb is what the follicle lays
+  // down in one go, so a barb is the unit that would vary.
+  //
+  // It is SMOOTH, not static: a patch of noise about nine barbs across, so the
+  // vane mottles in soft bands rather than fizzing. Read on the signed side, so
+  // the two webs mottle differently instead of mirroring each other about the
+  // rachis, which is the marbling's lesson borrowed one section over. And it
+  // rides its own hash rather than the row's, because the row's number already
+  // ragges the bars, and a vane whose darker barbs were also the ones with the
+  // ragged bar edges would be showing a correlation no bird has.
+  //
+  // And it scales with the pigment there is to vary. Melange is uneven pigment
+  // deposition, so a vane with little pigment has little to be uneven with: a
+  // white feather's barbs really are all the same colour, and the multiply
+  // rather than the offset is what says so.
+  const mhash = i => { const n = Math.sin(i*127.1 + 311.7)*43758.5453; return n - Math.floor(n); };
+  const msmooth = x => { const i = Math.floor(x), f = x-i, u = f*f*(3-2*f);
+    return mhash(i)*(1-u) + mhash(i+1)*u; };
+  // AND IT IS TWO THINGS, because barb-to-barb variation on a real feather is
+  // two things. A barb carries a little more or less PIGMENT than its
+  // neighbour, which moves it along the ground-to-shade ramp; and a barb sits
+  // at a slightly different angle to the light, because a vane is a sheet of
+  // separate stiff things and not a surface, which moves its LIGHTNESS
+  // whatever it is dyed.
+  //
+  // They behave differently and both are needed. The pigment term scales with
+  // the pigment there is to vary — a white feather's barbs really are all the
+  // same colour, and a multiply rather than an offset is what says so. The form
+  // term does not, because a white feather's barbs are as three-dimensional as
+  // anybody's, and it is the one that carries most of the effect: it is what
+  // stops a vane reading as an area of colour with lines ruled on it.
+  //
+  // (The camber says the same thing one order up — it turns the whole web to
+  // the light and shades it across. This is that argument at the scale of the
+  // single barb, where the camber's smooth cosine has nothing to say because
+  // two neighbours are at very nearly the same across-distance. The feather is
+  // curved; it is also, close up, slightly rough.)
+  const MEL_CELL = 9;        // how many barbs a patch of one tone runs across
+  const MEL_PIG  = 0.40;     // the pigment term, as a share of the barb's own
+  const MEL_LUM  = 0.13;     // the form term, as a share of the barb's light
+  const melAt = (t, side, off) => {
+    const x = t*Math.max(1, nBarbs-1)/MEL_CELL + (side>0 ? 0 : 53.7) + off;
+    return (msmooth(x)-0.5)*1.6 + (mhash(Math.floor(x*997)+11)-0.5)*0.4;
+  };
+  const groundAt = (t, side) => (0.15 + (1-t)*0.35) * (1 + MEL_PIG*melAt(t, side, 0));
+  const lumAt    = (t, side) => 1 + MEL_LUM*melAt(t, side, 211.3);
+
   const barbLines = [];
   for(let ri=0; ri<rows.length; ri++){
     const t = rows[ri];
@@ -1135,7 +1198,8 @@ function drawFeather(){
 
       // the barb's own ground tone. Every MARK it wears is decided later, in
       // the rachis frame, at the place on the page each stretch of it occupies.
-      let col = mix(pig1, pig2, Math.min(1, 0.15 + (1-t)*0.35));
+      const ground = groundAt(t, side), lum = lumAt(t, side);
+      let col = mix(pig1, pig2, Math.min(1, ground));
       if(allDown) col = mix(col, {r:200,g:190,b:170}, 0.25);
 
       if(allDown){
@@ -1163,7 +1227,7 @@ function drawFeather(){
         }
         barbLines.push({
           d:`M ${rp.x.toFixed(1)} ${rp.y.toFixed(1)} Q ${dmx.toFixed(1)} ${dmy.toFixed(1)} ${dex.toFixed(1)} ${dey.toFixed(1)}`,
-          downy: false, t, rowN, hLand, col: rgbStr(col), rgb: col, ri, side, ux: up.x, uy: up.y,
+          downy: false, t, rowN, hLand, ground, lum, col: rgbStr(col), rgb: col, ri, side, ux: up.x, uy: up.y,
           rpx:rp.x, rpy:rp.y, mx:dmx, my:dmy, ex:dex, ey:dey,   // as drawn
           tmx:midx, tmy:midy, tex:ex, tey:ey                    // as grown
         });
@@ -1193,7 +1257,9 @@ function drawFeather(){
   // and the sheen are tested against, and the ones the camber DRAWS it at.
   const tAt = (b,u) => [qAt(b.rpx,b.tmx,b.tex,u), qAt(b.rpy,b.tmy,b.tey,u)];
   // and the light the camber throws on a point, read off its true across-distance
-  const camAt = (b,x,y) => camR ? camLit((x-b.rpx)*(-b.uy) + (y-b.rpy)*b.ux) : 1;
+  // the light on a point of a barb: the camber's cosine for where the web is
+  // turned, times the barb's own share of the melange for how IT is turned
+  const camAt = (b,x,y) => (camR ? camLit((x-b.rpx)*(-b.uy) + (y-b.rpy)*b.ux) : 1) * (b.lum || 1);
   const dim = (c,k) => k===1 ? c : {r:c.r*k, g:c.g*k, b:c.b*k};
 
 
@@ -1656,7 +1722,7 @@ function drawFeather(){
       continue;
     }
     const climb = b.hLand - b.t, glint = 0.82 + 0.36*b.rowN;
-    const ground = 0.15 + (1-b.t)*0.35;
+    const ground = b.ground;   // its own tone in the melange, settled when it grew
     const SEG = Math.max(2, Math.min(10,
       Math.ceil(Math.hypot(b.ex-b.rpx, b.ey-b.rpy)/7)));
     const lit = sheen && (sheenTouches(b.rpx,b.rpy) || sheenTouches(b.tex,b.tey)
@@ -2135,7 +2201,11 @@ function conjureFrom(str){
   // order: the barbules invisible at a glance and unmistakable close up, which
   // is how they behave on the bird. Never quite the whole way — a vane zipped
   // to the very ends of its barbs has no margin left to be crisp with.
-  P.knit.value    = 38 + Math.floor(rng()*38);
+  // (and the peak went up to the low nineties once it was priced: at 46–93 the
+  // moor's mean specimen is 291.2k against the 291.3k it was this morning, so
+  // the whole of the day's saving is spent and the blimey ends exactly where
+  // it started — with the gauge, the velvet tips and the zip all bought.)
+  P.knit.value    = 46 + Math.floor(rng()*48);
   // and never none: a feather with no plumaceous base at all is not a
   // feather, it is a leaf. The floor is the conjure's; the slider still goes
   // to zero for anyone who wants to see what a leaf looks like.
