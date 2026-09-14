@@ -169,6 +169,22 @@ Barring is `sin(along·π·n)` for *n* bands, its edges wobbled and mottled by a
 
 The warp is **smooth value noise**, not a stack of sines, and the reason is worth the four lines it costs. `along` changes by a whole 1 up the feather but only by a barb's climb — about a tenth of that — across one barb. So any sine fine enough to give detail up the shaft lays ten times as much of it along every barb, and the bands break into a blotch that follows the comb instead of crossing it. Noise has a *length* where a sine has a frequency: set the cell to about one bar's spacing, read it on the signed across-coordinate so the two webs wander differently instead of mirroring each other about the shaft, and the warp wanders by the same amount whichever way you travel — which is what a wandering line actually does. It is cheaper, too: a smoothly warped field merges into longer runs than a busy one does. The terminal band is the same field read once instead of *n* times. The **margin** is the new one and the cheapest: a paler or darker rim to the vane, a field of **across** alone, which is the scaled look of a wren, the crescent edging on a juvenile, the dark rim on a white body feather — and because it shares the frame with the terminal band, it curves round into it at the crown without being told to. One slider, signed: pale to the left of centre, dark to the right. And the eye is its own chapter.
 
+### The camber — the feather stops being flat
+
+A feather is not flat, and for a long while every line above this one drew one that was. The vane **cups**: the two webs curl out of the page toward their margins, and that does two things which are really one thing.
+
+It **foreshortens**. A web that curls away shows less of itself the further out you look, so the barbs crowd together toward the margin — and that crowding is most of what the eye reads as depth. The vane is modelled as a cylinder about the rachis: a point at a true across-distance *a* sits at angle *a/R* on it, so it draws at *R*·sin(*a/R*) and its surface tilts by *a/R*.
+
+And it **lights**. That tilt is a surface normal, so one web turns toward the light and the other falls away, which is the oldest trick there is for making a curved thing look curved. It is arithmetic on each stroke's own colour — a multiply, where the sheen is a screen, light taken away rather than light added — so nothing is painted on top and the rule holds all the way down.
+
+The lamp wants to be **well off to one side**, and that took a try to learn. Put it near face-on and the cosine's crest lands in the middle of the vane, so the near web hardly brightens at all and the whole effect is shadow on the far one: a feather that has been dirtied down one side rather than turned. Set the lamp out at about the angle the margin itself reaches and the term runs monotone across the feather — brightest at the near margin, mid at the shaft, falling away to the far one — which is what a cupped thing looks like. It is normalised on the shaft, so the middle of the vane keeps the colour it was dyed and the camber only ever says which way a stretch is turned.
+
+The feather's real geometry stays **flat**, and everything is still solved on it: the landing, the outline, the crown, every mark. Camber is a projection applied at the moment of drawing, which is why every barb now carries both its true control points and its drawn ones. A mark lives on the feather, not on the picture of it, so the specks and the eye go on reading the true ones and shear with the vane exactly as they always did — and a bar stays level on a cupped feather, because `along` never knew about the projection in the first place.
+
+The **down is left flat** on purpose. A plumaceous barb is not part of the vane's sheet — it fluffs in every direction there is — so projecting it onto one surface would be a worse lie than leaving it alone.
+
+A gradient is paths, which is the one real cost: the walk can only fold stretches that come out the same colour, and light that never repeats never folds. So the light is quantised, at forty steps, which is below what the eye reads on a hairline — and coarser than that made the term vanish entirely at gentle cambers, which is its own kind of wrong.
+
 ### The sheen — a lens, and now a lens the barbs are seen through
 
 Iridescence is a lens, not a pigment, and for a long time it was drawn as one in the most literal way: a radial gradient of two hues on a rectangle, masked through a blurred silhouette of the vane and composited with `mix-blend-mode: screen`.

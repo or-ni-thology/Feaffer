@@ -283,6 +283,10 @@
       <div class="cap"><label for="asym">Vane asymmetry</label><span class="val" id="asym-v"></span></div>
       <input type="range" id="asym" min="0" max="100" value="0">
     </div>
+    <div class="card" title="the vane cups out of the page — the webs foreshorten toward their margins and the light falls across the curve. 0 is a pressed specimen">
+      <div class="cap"><label for="camber">Camber</label><span class="val" id="camber-v"></span></div>
+      <input type="range" id="camber" min="0" max="100" value="0">
+    </div>
     <div class="card" title="the angle the barbs comb off the shaft">
       <div class="cap"><label for="angle">Barb angle</label><span class="val" id="angle-v"></span></div>
       <input type="range" id="angle" min="20" max="72" value="46">
@@ -419,7 +423,8 @@ function freshDraw(){ return mulberry(drawSeed); }
 
 const $ = id => document.getElementById(id);
 const P = {
-  len:$('len'), curve:$('curve'), width:$('width'), apex:$('apex'), asym:$('asym'), angle:$('angle'),
+  len:$('len'), curve:$('curve'), width:$('width'), apex:$('apex'), asym:$('asym'),
+  camber:$('camber'), angle:$('angle'),
   density:$('density'), knit:$('knit'), down:$('down'), after:$('after'), wear:$('wear'),
   bars:$('bars'), barside:$('barside'), baredge:$('baredge'), tipband:$('tipband'), speck:$('speck'),
   margin:$('margin'), marble:$('marble'),
@@ -481,6 +486,7 @@ function drawFeather(){
   const vaneW = +P.width.value;
   const apexDeg = +P.apex.value/100;              // the degree within the apex family
   const asym = +P.asym.value/100;                 // 0 symmetric .. 1 strong flight feather
+  const camber = +P.camber.value/100;             // 0 a pressed specimen .. 1 a cupped one
   const barbAngle = +P.angle.value * Math.PI/180;
   const nBarbs = +P.density.value;
   const knit = +P.knit.value/100;         // 0 the bare comb .. 1 a zipped web
@@ -598,6 +604,62 @@ function drawFeather(){
   //               asymmetry skews the cut toward a parallelogram unaided.
   const peak = apexType===1 ? 0.63 - apexDeg*0.24 : 0.63;
   const latK = Math.cos(barbAngle);   // the across-vane share of a barb's length
+
+  // ================= THE CAMBER =================
+  //
+  // A feather is not flat, and everything above this line has drawn one that
+  // is. The vane CUPS: the two webs curl out of the page toward their margins,
+  // which does two things at once and they are the same thing.
+  //
+  // It FORESHORTENS. A web that curls away shows less of itself the further
+  // out you look, so the barbs crowd together toward the margin — and that
+  // crowding is most of what the eye reads as depth. The vane is modelled as a
+  // cylinder about the rachis: a point at a true across-distance a sits at
+  // angle a/R on it, so it draws at R·sin(a/R) and its surface tilts by a/R.
+  //
+  // And it LIGHTS. The tilt is a surface normal, so one web turns toward the
+  // light and the other falls away from it, which is the oldest trick there is
+  // for making a curved thing look curved. It is arithmetic on each stroke's
+  // own colour — a multiply, where the sheen is a screen, light removed rather
+  // than light added — so nothing is painted on top and the rule holds.
+  //
+  // The feather's real geometry stays FLAT and everything is solved on it as
+  // before: the landing, the outline, the crown, the marks. Camber is a
+  // projection applied at the moment of drawing, which is why every barb keeps
+  // both its true control points and its drawn ones. A mark lives on the
+  // feather, not on the picture of it, so the specks and the eye go on reading
+  // the true ones and shear with the vane exactly as they did.
+  //
+  // The DOWN is left flat on purpose. A plumaceous barb is not part of the
+  // vane's sheet — it fluffs in every direction there is — so projecting it
+  // onto one surface would be a worse lie than leaving it alone.
+  const camR = camber > 0 ? (vaneW*latK)/(camber*1.15) : 0;
+  const camMap = a => {
+    if(!camR) return a;
+    const th = Math.max(-1.40, Math.min(1.40, a/camR));   // never fold right over
+    return camR*Math.sin(th);
+  };
+  // THE LIGHT, which wants to come from well off to one side and not from
+  // just beside the eye. A lamp near face-on puts the cosine's crest in the
+  // middle of the vane, so the near web hardly brightens at all and the whole
+  // effect is shadow on the far web — a vane that has been dirtied down one
+  // side rather than turned. Set the lamp out at about the angle the margin
+  // itself reaches and the term runs MONOTONE across the feather: brightest at
+  // the near margin, mid at the shaft, falling to the far one. Which is what a
+  // cupped thing looks like.
+  //
+  // It is normalised on the shaft, so the middle of the vane keeps the colour
+  // it was dyed and the camber only ever says which way a stretch is turned.
+  // And quantised, because a gradient is paths: the walk can only fold
+  // stretches that come out the same colour, and light that never repeats
+  // never folds. Twenty steps is below what the eye reads on a hairline.
+  const CAM_LIGHT = -1.0, CAM_L0 = Math.cos(CAM_LIGHT);
+  const camLit = at => {
+    if(!camR) return 1;
+    const k = 1 + camber*0.24*(Math.cos(at/camR - CAM_LIGHT) - CAM_L0);
+    return Math.round(Math.max(0.62, Math.min(1.16, k))*40)/40;
+  };
+
   const pBase = (1-peak)*tipReach/(vaneW*latK);
   const pApex = apexType===2 ? Math.max(2.5, pBase*1.15)
               : Math.max(1.4 + apexDeg*0.6, pBase*(0.6 + apexDeg*1.2));
@@ -975,10 +1037,24 @@ function drawFeather(){
           dw: 0.5+drng()*0.3, dop: 0.36+drng()*0.22
         });
       } else {
+        // the drawn barb is the true barb, projected: only the ACROSS part of
+        // each point is bent, in this barb's own root frame, which is the frame
+        // the whole barb was built in anyway
+        let dmx=midx, dmy=midy, dex=ex, dey=ey;
+        if(camR){
+          const bend = (px,py) => {
+            const ax = (px-rp.x)*norm.x + (py-rp.y)*norm.y;
+            const al = (px-rp.x)*up.x   + (py-rp.y)*up.y;
+            const a2 = camMap(ax);
+            return [rp.x + norm.x*a2 + up.x*al, rp.y + norm.y*a2 + up.y*al];
+          };
+          [dmx,dmy] = bend(midx,midy); [dex,dey] = bend(ex,ey);
+        }
         barbLines.push({
-          d:`M ${rp.x.toFixed(1)} ${rp.y.toFixed(1)} Q ${midx.toFixed(1)} ${midy.toFixed(1)} ${ex.toFixed(1)} ${ey.toFixed(1)}`,
+          d:`M ${rp.x.toFixed(1)} ${rp.y.toFixed(1)} Q ${dmx.toFixed(1)} ${dmy.toFixed(1)} ${dex.toFixed(1)} ${dey.toFixed(1)}`,
           downy: false, t, rowN, hLand, col: rgbStr(col), rgb: col, ri, side, ux: up.x, uy: up.y,
-          rpx:rp.x, rpy:rp.y, mx:midx, my:midy, ex, ey    // geometry for in-barb markings
+          rpx:rp.x, rpy:rp.y, mx:dmx, my:dmy, ex:dex, ey:dey,   // as drawn
+          tmx:midx, tmy:midy, tex:ex, tey:ey                    // as grown
         });
         // THE DOWNY CONTINUATION — where the vane gave out, the barb carries
         // on as fluff. It leaves from the far end of the firm stretch, not
@@ -1001,6 +1077,14 @@ function drawFeather(){
   // a point on a barb's own quadratic — every mark in this tool walks the barbs
   // it is grown from, and now the knit and the sheen do too
   const qAt=(a,b,c,s)=>{const mt=1-s;return mt*mt*a+2*mt*s*b+s*s*c;};
+
+  // A barb has two sets of points now: the ones it GREW as, which every mark
+  // and the sheen are tested against, and the ones the camber DRAWS it at.
+  const tAt = (b,u) => [qAt(b.rpx,b.tmx,b.tex,u), qAt(b.rpy,b.tmy,b.tey,u)];
+  // and the light the camber throws on a point, read off its true across-distance
+  const camAt = (b,x,y) => camR ? camLit((x-b.rpx)*(-b.uy) + (y-b.rpy)*b.ux) : 1;
+  const dim = (c,k) => k===1 ? c : {r:c.r*k, g:c.g*k, b:c.b*k};
+
 
   // HOW FAR A BARBULE HAS TO REACH — the span from a barb to the one beside it
   // in its own web, which is the one measurement the knit below is made of.
@@ -1373,7 +1457,7 @@ function drawFeather(){
   if(knit>0) for(const b of barbLines){
     if(b.downy || !b.bules) continue;
     const glint = 0.82 + 0.36*b.rowN;
-    const base = sheen ? sheen(b.cx, b.cy, b.rgb, glint) : b.rgb;
+    const base = dim(sheen ? sheen(b.cx, b.cy, b.rgb, glint) : b.rgb, camAt(b, b.cx, b.cy));
     b.buleRgb = b.bules.map(() => base);
     b.buleMk = new Array(b.bules.length).fill(0);   // how strongly a mark claims it
   }
@@ -1429,18 +1513,21 @@ function drawFeather(){
     }
     const climb = b.hLand - b.t, glint = 0.82 + 0.36*b.rowN;
     const ground = 0.15 + (1-b.t)*0.35;
-    const lit = sheen && (sheenTouches(b.rpx,b.rpy) || sheenTouches(b.ex,b.ey)
-                          || sheenTouches((b.rpx+b.ex)/2, (b.rpy+b.ey)/2));
-    const pts = [], cols = [], keys = [];
+    const lit = sheen && (sheenTouches(b.rpx,b.rpy) || sheenTouches(b.tex,b.tey)
+                          || sheenTouches((b.rpx+b.tex)/2, (b.rpy+b.tey)/2));
+    const pts = [], tpts = [], cols = [], keys = [];
     for(let k=0;k<=SEG;k++){
       const u=k/SEG;
       pts.push([qAt(b.rpx,b.mx,b.ex,u), qAt(b.rpy,b.my,b.ey,u)]);
+      tpts.push(camR ? tAt(b,u) : pts[k]);
     }
     for(let k=0;k<SEG;k++){
       const u=(k+0.5)/SEG;
       const along = b.t + u*climb*(1 + leanK*b.side);
+      const mx=(tpts[k][0]+tpts[k+1][0])/2, my=(tpts[k][1]+tpts[k+1][1])/2;
       let c = pigAt(ground, markAt(along, u, b.rowN, b.side));
-      if(lit) c = sheen((pts[k][0]+pts[k+1][0])/2, (pts[k][1]+pts[k+1][1])/2, c, glint);
+      if(lit) c = sheen(mx, my, c, glint);
+      c = dim(c, camAt(b, mx, my));
       cols.push(c); keys.push(qkey(c));
     }
     let a = 0;
@@ -1488,18 +1575,19 @@ function drawFeather(){
     for(const b of barbLines){
       if(b.downy) continue;
       const glint = 0.82 + 0.36*b.rowN;
-      const SEG=7; let px=b.rpx, py=b.rpy;
+      const SEG=7; let px=b.rpx, py=b.rpy, tx=b.rpx, ty=b.rpy;
       for(let k=1;k<=SEG;k++){
         const s=k/SEG, x=qAt(b.rpx,b.mx,b.ex,s), y=qAt(b.rpy,b.my,b.ey,s);
-        const cxp=(px+x)/2, cyp=(py+y)/2;
+        const [nx2,ny2] = camR ? tAt(b,s) : [x,y];
+        const cxp=(tx+nx2)/2, cyp=(ty+ny2)/2;    // where it GREW: the spot's business
         for(const sp of spots){ const dx=cxp-sp.x, dy=cyp-sp.y;
           if(dx*dx+dy*dy<sp.r2){
             // a mark on an iridescent vane still catches the sheen — the
             // pigment under the barbules changes, the barbules do not
-            const cr = sheen ? sheen(cxp,cyp,spotRgb,glint) : spotRgb;
+            const cr = dim(sheen ? sheen(cxp,cyp,spotRgb,glint) : spotRgb, camAt(b,cxp,cyp));
             marks+=`<path d="M ${px.toFixed(1)} ${py.toFixed(1)} L ${x.toFixed(1)} ${y.toFixed(1)}" fill="none" stroke="${rgbStr(cr)}" stroke-width="${(vaneStroke*1.25).toFixed(2)}" stroke-linecap="round"/>`;
             paintBules(b, (k-1)/SEG, s, cr, 1); break; } }
-        px=x; py=y;
+        px=x; py=y; tx=nx2; ty=ny2;
       }
     }
     out+=marks;
@@ -1576,10 +1664,11 @@ function drawFeather(){
       if(b.downy) continue;
       const wob = 1 + (b.rowN-0.5)*0.08;
       const glint = 0.82 + 0.36*b.rowN;
-      const SEG=9; let px=b.rpx, py=b.rpy;
+      const SEG=9; let px=b.rpx, py=b.rpy, tx=b.rpx, ty=b.rpy;
       for(let k=1;k<=SEG;k++){
         const s=k/SEG, x=qAt(b.rpx,b.mx,b.ex,s), y=qAt(b.rpy,b.my,b.ey,s);
-        const cxp=(px+x)/2, cyp=(py+y)/2;
+        const [nx2,ny2] = camR ? tAt(b,s) : [x,y];
+        const cxp=(tx+nx2)/2, cyp=(ty+ny2)/2;    // an ocellus is grown, not projected
         const dxp=cxp-ecx, dyp=cyp-ecy;
         const re = Math.hypot((dxp*ec.tan.x+dyp*ec.tan.y)/eRa,
                               (dxp*ec.norm.x+dyp*ec.norm.y)/eRb) * wob;
@@ -1589,16 +1678,16 @@ function drawFeather(){
             const t = Math.max(0, 1 - re/IPHI2), haze = t*t*(3-2*t);   // 1 dead centre .. 0 at the ring
             o *= 1 - pupil*haze;
           }
-          if(o<0.02){ px=x; py=y; continue; }                 // the window: no mark laid, the vane shows through
+          if(o<0.02){ px=x; py=y; tx=nx2; ty=ny2; continue; }  // the window: no mark laid, the vane shows through
           // the eye follows the barbs it's grown from — a touch solider inside
           // the golden ring, and slimming with the comb like the rest of the
           // vane, so small feathers aren't overwhelmed
           const ew = vaneStroke*(re<IPHI ? 1.3 : 1.12);
-          const ec2 = sheen ? sheen(cxp, cyp, paint(re), glint) : paint(re);
+          const ec2 = dim(sheen ? sheen(cxp, cyp, paint(re), glint) : paint(re), camAt(b,cxp,cyp));
           eyeMarks += `<path d="M ${px.toFixed(1)} ${py.toFixed(1)} L ${x.toFixed(1)} ${y.toFixed(1)}" fill="none" stroke="${rgbStr(ec2)}" stroke-width="${ew.toFixed(2)}" stroke-linecap="round" opacity="${o.toFixed(2)}"/>`;
           paintBules(b, (k-1)/SEG, s, ec2, o);
         }
-        px=x; py=y;
+        px=x; py=y; tx=nx2; ty=ny2;
       }
     }
     out += eyeMarks;
@@ -1770,6 +1859,7 @@ function updateReadouts(){
   $('apextype-v').textContent = ['rounded','acuminate','truncate'][apexType];
   $('apex-label').textContent = ['Fullness','Fineness','Corner'][apexType];
   $('apex-v').textContent = P.apex.value+'%';
+  $('camber-v').textContent = P.camber.value>0? P.camber.value+'%' : 'pressed';
   $('asym-v').textContent = P.asym.value+'%';
   $('angle-v').textContent = P.angle.value+'°';
   $('density-v').textContent = P.density.value;
@@ -1810,6 +1900,8 @@ function conjureFrom(str){
   apexType = fam<0.55 ? 0 : fam<0.85 ? 1 : 2;
   P.apex.value    = 10 + Math.floor(rng()*80);
   P.asym.value    = rng()<0.45 ? Math.floor(rng()*90) : 0;  // some birds fly, some don't
+  // most feathers off a bird are cupped; a few lie nearly flat
+  P.camber.value  = rng()<0.75 ? 20 + Math.floor(rng()*55) : 0;
   P.angle.value   = 28 + Math.floor(rng()*38);
   P.density.value = 60 + Math.floor(rng()*85);
   // the sweet spot found by looking: around a quarter, where the barbules are
@@ -2158,6 +2250,7 @@ $('receipt').addEventListener('click', ()=>{
   t += row('apex', apexName);
   t += row($('apex-label').textContent.toLowerCase(), rd('apex-v'));
   t += row('vane asymmetry', rd('asym-v'));
+  t += row('camber', rd('camber-v'));
   t += row('barb angle', rd('angle-v'));
   t += row('barb density', rd('density-v'));
   t += row('barbule knit', rd('knit-v'));
@@ -2196,7 +2289,8 @@ $('receipt').addEventListener('click', ()=>{
   const m = {
     grid: $('coord').value, seed: drawSeed, apex: apexType,
     len:P.len.value, curve:P.curve.value, width:P.width.value, apexdeg:P.apex.value,
-    asym:P.asym.value, angle:P.angle.value, density:P.density.value, knit:P.knit.value,
+    asym:P.asym.value, camber:P.camber.value, angle:P.angle.value,
+    density:P.density.value, knit:P.knit.value,
     down:P.down.value, after:P.after.value, wear:P.wear.value,
     pig1:$('pig1').value, pig2:$('pig2').value,
     bars:P.bars.value, barside:P.barside.value, baredge:P.baredge.value,
@@ -2250,7 +2344,9 @@ function applyRecord(m){
   apexType = numOk(m.apex) ? ((+m.apex % 3) + 3) % 3 : 0;
 
   setR(P.len,'len'); setR(P.curve,'curve'); setR(P.width,'width'); setR(P.apex,'apexdeg');
-  setR(P.asym,'asym'); setR(P.angle,'angle'); setR(P.density,'density'); setR(P.knit,'knit');
+  setR(P.asym,'asym'); setR(P.camber,'camber'); setR(P.angle,'angle');
+  setR(P.density,'density'); setR(P.knit,'knit');
+  if(!numOk(m.camber)) P.camber.value = 0;       // feathers saved before the camber come back pressed flat
   setR(P.down,'down'); setR(P.after,'after'); setR(P.wear,'wear');
   if(!numOk(m.after)) P.after.value = 0;         // feathers saved before the aftershaft come back with none
   if(!numOk(m.knit)) P.knit.value = 0;           // feathers saved before the knit come back as the bare comb they were
