@@ -348,6 +348,10 @@
       <div class="cap"><label for="speck">Spots &amp; splodges</label><span class="val" id="speck-v"></span></div>
       <input type="range" id="speck" min="0" max="100" value="0">
     </div>
+    <div class="card" title="the grain of the spotting — fine freckle at the left, splodge at the right. The count follows: at a given amount, smaller spots means more of them">
+      <div class="cap"><label for="specksize">Spot size</label><span class="val" id="specksize-v"></span></div>
+      <input type="range" id="specksize" min="0" max="100" value="30">
+    </div>
     <div class="card" title="a paler or darker edge to the vane, curving round from the terminal band — left of centre pale, right of centre dark; follows Bar side onto one web">
       <div class="cap"><label for="margin">Margin</label><span class="val" id="margin-v"></span></div>
       <input type="range" id="margin" min="-100" max="100" value="0">
@@ -427,7 +431,7 @@ const P = {
   camber:$('camber'), angle:$('angle'),
   density:$('density'), knit:$('knit'), down:$('down'), after:$('after'), wear:$('wear'),
   bars:$('bars'), barside:$('barside'), baredge:$('baredge'), tipband:$('tipband'), speck:$('speck'),
-  margin:$('margin'), marble:$('marble'),
+  margin:$('margin'), marble:$('marble'), specksize:$('specksize'),
   eye:$('eye'), eyepupil:$('eyepupil'), eyepos:$('eyepos'), eyeside:$('eyeside'),
   iridpos:$('iridpos'), iridspread:$('iridspread'), iridstr:$('iridstr')
 };
@@ -497,7 +501,8 @@ function drawFeather(){
   const tipBand = +P.tipband.value/100;
   const barBias = +P.barside.value/100;   // 0 bars on both webs .. 1 one web only
   const barEdge = +P.baredge.value/100;   // 0 crisp bands .. 1 ragged, mottled
-  const speck = +P.speck.value/100;
+  const speck = +P.speck.value/100;        // how MUCH of the vane is spotted
+  const speckSize = +P.specksize.value/100;// and how COARSE the spotting is
   const margin = +P.margin.value/100;     // −1 a pale edge .. 0 none .. +1 a dark one
   const marble = +P.marble.value/100;     // 0 bars that march .. 1 bars that wander
   const eyeSize = +P.eye.value/100;       // 0 no ocellus .. 1 the vane's breadth .. 3 truly giant
@@ -1556,39 +1561,85 @@ function drawFeather(){
     out += `<path d="${fluffPool.join('')}" fill="none" stroke="${rgbStr(fc)}" stroke-width="0.36" stroke-linecap="round" opacity="0.35"/>`;
   }
 
-  // in-barb spots — flecks & splodges grown INTO the vane. Instead of ellipses
+  // IN-BARB SPOTS — flecks & splodges grown INTO the vane. Instead of ellipses
   // laid on top, we darken the stretch of each barb that passes through a
   // scattered spot, so the mark is made of the barbs themselves and moves with
-  // them. Each barb is sampled along its own curve and only the covered
-  // segments are redrawn darker.
+  // them.
+  //
+  // The one slider used to set the SIZE and the COUNT together, and so could
+  // only ever walk one diagonal of the two things spotting actually is. It
+  // could reach a scatter of middling flecks and a scatter of larger ones, and
+  // it could not reach the corner that most of the moor lives in: SMALL, AND A
+  // GREAT MANY. Twenty-eight spots on a whole feather is not a freckled bird,
+  // it is a bird that has been rained on.
+  //
+  // So the two are separated, and separated the honest way round: the amount
+  // slider is COVERAGE — how much of the vane the spotting takes — and the size
+  // slider is GRAIN. The count then falls out of the two rather than being
+  // asked for, because a coverage and a grain already imply it. Wind the grain
+  // down at a fixed amount and the spots shrink and multiply together, which is
+  // what a thrush's breast does as you walk away from it.
   if(speck>0){
     const spots=[];
-    const nSpots=Math.floor(speck*28);
+    // the spot's radius is the feather's, not a constant — a wren's freckle
+    // and a magpie's splodge are the same fraction of their own vane
+    const sR = (0.04 + speckSize*0.22) * vaneW*latK;
+    const cover = speck*0.5;
+    const vaneArea = 1.25 * vaneW*latK * tipReach;
+    const nSpots = Math.max(0, Math.min(450, Math.round(cover*vaneArea/(Math.PI*sR*sR*1.1))));
     for(let i=0;i<nSpots;i++){
       const st=0.14+rng()*0.78, sside=rng()<0.5?1:-1, f=0.15+rng()*0.8;
       const hw=sideWidth(st,sside); if(hw<3) continue;
-      const rp=rachisPt(st);
-      spots.push({x:rp.x+rp.norm.x*sside*hw*f, y:rp.y+rp.norm.y*sside*hw*f, r2:Math.pow((1.8+speck*5)*(0.6+rng()*0.9),2)});
+      const rp=rachisPt(st), r=sR*(0.6+rng()*0.9);
+      spots.push({x:rp.x+rp.norm.x*sside*hw*f*latK, y:rp.y+rp.norm.y*sside*hw*f*latK, r, r2:r*r});
     }
-    const spotRgb=mix(pig1,pig2,0.92), spotCol=rgbStr(spotRgb);
+    const spotRgb=mix(pig1,pig2,0.92);
     let marks='';
     for(const b of barbLines){
       if(b.downy) continue;
+      // a barb only ever meets the handful of spots near it, so sift them once
+      // against its own box rather than four hundred times a segment
+      const bx0=Math.min(b.rpx,b.tmx,b.tex), bx1=Math.max(b.rpx,b.tmx,b.tex);
+      const by0=Math.min(b.rpy,b.tmy,b.tey), by1=Math.max(b.rpy,b.tmy,b.tey);
+      const near=[];
+      for(const sp of spots)
+        if(sp.x>bx0-sp.r && sp.x<bx1+sp.r && sp.y>by0-sp.r && sp.y<by1+sp.r) near.push(sp);
+      if(!near.length) continue;
       const glint = 0.82 + 0.36*b.rowN;
-      const SEG=7; let px=b.rpx, py=b.rpy, tx=b.rpx, ty=b.rpy;
+      // and sampled fine enough to RESOLVE the grain it is looking for: a
+      // freckle three pixels across cannot be found by a walk that steps
+      // thirteen, and drawn by one it comes out a dash rather than a speck
+      const vl = Math.hypot(b.tex-b.rpx, b.tey-b.rpy);
+      const SEG = Math.max(7, Math.min(36, Math.ceil(vl/Math.max(1.6, sR*0.7))));
+      let px=b.rpx, py=b.rpy, tx=b.rpx, ty=b.rpy;
+      // consecutive covered stretches go out as ONE path — a big splodge is a
+      // run of twenty segments and has no business being twenty paths
+      let run='', runCol=null, runA=0;
+      const flush = (kEnd) => {
+        if(run){
+          marks += `<path d="${run}" fill="none" stroke="${runCol}" stroke-width="${(vaneStroke*1.25).toFixed(2)}" stroke-linecap="round"/>`;
+          paintBules(b, runA/SEG, kEnd/SEG, spotRgb, 1);
+        }
+        run='';
+      };
       for(let k=1;k<=SEG;k++){
-        const s=k/SEG, x=qAt(b.rpx,b.mx,b.ex,s), y=qAt(b.rpy,b.my,b.ey,s);
-        const [nx2,ny2] = camR ? tAt(b,s) : [x,y];
+        const sU=k/SEG, x=qAt(b.rpx,b.mx,b.ex,sU), y=qAt(b.rpy,b.my,b.ey,sU);
+        const [nx2,ny2] = camR ? tAt(b,sU) : [x,y];
         const cxp=(tx+nx2)/2, cyp=(ty+ny2)/2;    // where it GREW: the spot's business
-        for(const sp of spots){ const dx=cxp-sp.x, dy=cyp-sp.y;
-          if(dx*dx+dy*dy<sp.r2){
-            // a mark on an iridescent vane still catches the sheen — the
-            // pigment under the barbules changes, the barbules do not
-            const cr = dim(sheen ? sheen(cxp,cyp,spotRgb,glint) : spotRgb, camAt(b,cxp,cyp));
-            marks+=`<path d="M ${px.toFixed(1)} ${py.toFixed(1)} L ${x.toFixed(1)} ${y.toFixed(1)}" fill="none" stroke="${rgbStr(cr)}" stroke-width="${(vaneStroke*1.25).toFixed(2)}" stroke-linecap="round"/>`;
-            paintBules(b, (k-1)/SEG, s, cr, 1); break; } }
+        let hit=false;
+        for(const sp of near){ const dx=cxp-sp.x, dy=cyp-sp.y;
+          if(dx*dx+dy*dy<sp.r2){ hit=true; break; } }
+        if(hit){
+          // a mark on an iridescent vane still catches the sheen — the
+          // pigment under the barbules changes, the barbules do not
+          const cr = rgbStr(dim(sheen ? sheen(cxp,cyp,spotRgb,glint) : spotRgb, camAt(b,cxp,cyp)));
+          if(!run){ run = `M ${px.toFixed(1)} ${py.toFixed(1)}`; runCol = cr; runA = k-1; }
+          else if(cr !== runCol){ flush(k-1); run = `M ${px.toFixed(1)} ${py.toFixed(1)}`; runCol = cr; runA = k-1; }
+          run += ` L ${x.toFixed(1)} ${y.toFixed(1)}`;
+        } else flush(k-1);
         px=x; py=y; tx=nx2; ty=ny2;
       }
+      flush(SEG);
     }
     out+=marks;
   }
@@ -1872,6 +1923,8 @@ function updateReadouts(){
   $('baredge-v').textContent = P.baredge.value>0? P.baredge.value+'%' : 'crisp';
   $('tipband-v').textContent = P.tipband.value>0? P.tipband.value+'%' : 'none';
   $('speck-v').textContent = P.speck.value>0? P.speck.value+'%' : 'none';
+  $('specksize-v').textContent = +P.specksize.value<18 ? 'freckle'
+    : +P.specksize.value>72 ? 'splodge' : P.specksize.value+'%';
   $('marble-v').textContent = P.marble.value>0? P.marble.value+'%' : 'none';
   $('margin-v').textContent = +P.margin.value===0 ? 'none'
     : (+P.margin.value<0 ? 'pale ' : 'dark ') + Math.abs(+P.margin.value) + '%';
@@ -1931,6 +1984,10 @@ function conjureFrom(str){
   // owed the feather a coordinate grew last week.)
   P.bars.value = 0; P.barside.value = 0; P.baredge.value = 0;
   P.tipband.value = 0; P.speck.value = 0; P.margin.value = 0; P.marble.value = 0;
+  // the grain of the spotting, rolled apart from the amount of it — the moor
+  // runs to fine freckling far oftener than to splodges, so the dice lean that
+  // way and the big blotches stay a treat
+  P.specksize.value = Math.floor(Math.pow(rng(), 1.9)*95);
   const dye = rng();
   const coat = dye<0.20 ? 'brown' : dye<0.32 ? 'pale' : dye<0.46 ? 'dark'
              : dye<0.72 ? 'twotone' : dye<0.88 ? 'fawn' : 'gaudy';
@@ -2270,6 +2327,7 @@ $('receipt').addEventListener('click', ()=>{
   t += row('terminal band', rd('tipband-v'));
   t += row('marbling', rd('marble-v'));
   t += row('spots & splodges', rd('speck-v'));
+  t += row('spot size', rd('specksize-v'));
   t += row('margin', rd('margin-v'));
   t += row('eyespot', rd('eye-v'));
   t += crow('eye heart', $('eyecol').value);
@@ -2295,7 +2353,7 @@ $('receipt').addEventListener('click', ()=>{
     pig1:$('pig1').value, pig2:$('pig2').value,
     bars:P.bars.value, barside:P.barside.value, baredge:P.baredge.value,
     tipband:P.tipband.value, speck:P.speck.value, margin:P.margin.value,
-    marble:P.marble.value,
+    marble:P.marble.value, specksize:P.specksize.value,
     eye:P.eye.value, eyecol:$('eyecol').value, eyecol2:$('eyecol2').value,
     eyepupil:P.eyepupil.value, eyepos:P.eyepos.value, eyeside:P.eyeside.value,
     irid: iridOn ? 1 : 0, iridcol:$('iridcol').value, iridcol2:$('iridcol2').value,
@@ -2353,7 +2411,9 @@ function applyRecord(m){
   setR(P.bars,'bars'); setR(P.barside,'barside'); setR(P.baredge,'baredge'); setR(P.tipband,'tipband'); setR(P.speck,'speck');
   setR(P.margin,'margin'); setR(P.marble,'marble');
   if(!numOk(m.margin)) P.margin.value = 0;       // feathers saved before the margin come back unedged
+  setR(P.specksize,'specksize');
   if(!numOk(m.marble)) P.marble.value = 0;       // ...and before the marbling, with their bars still marching
+  if(!numOk(m.specksize)) P.specksize.value = 30;  // ...and before the grain, at the size the one slider used to give
   setR(P.eye,'eye'); setR(P.eyepupil,'eyepupil'); setR(P.eyepos,'eyepos'); setR(P.eyeside,'eyeside');
   if(!numOk(m.eyepupil)) P.eyepupil.value = 0;   // feathers saved before the window reload with a solid heart
   setR(P.iridpos,'iridpos'); setR(P.iridspread,'iridspread'); setR(P.iridstr,'iridstr');
