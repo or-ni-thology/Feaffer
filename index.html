@@ -2330,43 +2330,100 @@ function conjureFrom(str){
   const seedFn = hashStr(str);
   const rng = mulberry(seedFn());
   drawSeed = seedFn();  // lock the drawing rng to this coordinate
-  P.len.value     = 400 + Math.floor(rng()*200);
-  P.curve.value   = Math.floor((rng()-0.5)*150);
-  P.width.value   = 45 + Math.floor(rng()*75);
-  // the apex family: rounded is the moor's common coin, the acuminate
-  // regular enough, the truncate an occasional treat
-  const fam = rng();
-  apexType = fam<0.55 ? 0 : fam<0.85 ? 1 : 2;
-  P.apex.value    = 10 + Math.floor(rng()*80);
-  P.asym.value    = rng()<0.45 ? Math.floor(rng()*90) : 0;  // some birds fly, some don't
-  // most feathers off a bird are cupped; a few lie nearly flat
-  P.camber.value  = rng()<0.75 ? 20 + Math.floor(rng()*55) : 0;
-  P.angle.value   = 28 + Math.floor(rng()*38);
-  P.density.value = 60 + Math.floor(rng()*85);
-  // the sweet spot found by looking — and moved, because the number under it
-  // changed. When the knit was an opacity a quarter was right; now that it is
-  // HOW FAR OUT THE ZIP HAS HELD, a quarter is a vane hooked together round the
-  // rachis and flying loose over three quarters of its width, which is a bird
-  // that has had a very bad month. Half to three quarters is a feather in good
-  // order: the barbules invisible at a glance and unmistakable close up, which
-  // is how they behave on the bird. Never quite the whole way — a vane zipped
-  // to the very ends of its barbs has no margin left to be crisp with.
-  // (and the peak went up to the low nineties once it was priced: at 46–93 the
-  // moor's mean specimen is 291.2k against the 291.3k it was this morning, so
-  // the whole of the day's saving is spent and the blimey ends exactly where
-  // it started — with the gauge, the velvet tips and the zip all bought.)
-  P.knit.value    = 46 + Math.floor(rng()*48);
-  // and never none: a feather with no plumaceous base at all is not a
-  // feather, it is a leaf. The floor is the conjure's; the slider still goes
-  // to zero for anyone who wants to see what a leaf looks like.
-  P.down.value    = 14 + Math.floor(rng()*30);
-  // age & wear stays a hand control, off the wander entirely: even a
-  // little damage catches the eye and distracts from the odd bird
-  // underneath. Every conjured feather arrives pristine.
+
+  // ================= A DIE WITH A MIDDLE =================
+  //
+  // Every form dial used to be rolled flat across its whole range, and a flat
+  // die has no middle: the extreme is exactly as likely as the ordinary. Read
+  // off five hundred conjures the quartiles came out evenly spaced on every
+  // single one of them — len, width, angle, density, knit, down — which is
+  // what made a wander feel like noise rather than like a moor. Three dice
+  // averaged have a centre and thin tails, so the ordinary feather is common
+  // and the odd one is a find, which is what a walk is actually like.
+  const bell  = () => (rng()+rng()+rng())/3;
+  const span  = (lo,hi) => lo + bell()*(hi-lo);
+  const ispan = (lo,hi) => Math.round(span(lo,hi));
+  const pick  = ws => { let r = rng();
+    for(let i=0;i<ws.length;i++){ r -= ws[i]; if(r<=0) return i; } return ws.length-1; };
+
+  // ================= THE TRACT =================
+  //
+  // The conjure has always rolled a COAT first and then loaded the pattern
+  // dice to suit it, because a colourway mostly is its pattern. Nothing did
+  // that job for the SHAPE, so length, breadth, asymmetry, camber, down and
+  // aftershaft were six unrelated dice, and the moor grew short fat asymmetric
+  // flight feathers carrying a grouse's cloud of fluff. Half of it flew. A
+  // quarter of it was pressed flat.
+  //
+  // The missing variable has a name, and the name is WHERE ON THE BIRD. A
+  // feather does not have a length and a breadth and an asymmetry; it has a
+  // place it grew, and that place settles all of them at once. So a tract is
+  // rolled first and loads the form dice exactly the way the coat loads the
+  // pattern dice — the same mechanism, one drawer up.
+  //
+  // The shares are a walk's and not a bird's: you find what falls, and what
+  // falls is mostly body feathers and coverts. A primary is a lucky day.
+  const tract = ['flight','tail','covert','contour','fluff'][pick([0.13,0.11,0.24,0.31,0.21])];
+  const T = {
+    //         len        width     asym    camber   angle    density   knit    down    after
+    // a flight feather: long, narrow, stiff and strongly asymmetric, barely any
+    // down and no afterfeather at all — every part of it is for flying
+    flight : [[520,600],[40, 62],[55,95],[35,78],[30,44],[112,144],[62,95],[ 6,16],[0, 0]],
+    // a tail feather: as long, broader, and very nearly symmetric, because it
+    // steers with its whole width instead of cutting the air with one edge
+    tail   : [[500,600],[54, 86],[ 0,28],[22,62],[34,48],[104,140],[58,92],[ 8,20],[0,14]],
+    // a covert: short, broad, neat and round — the tidy little roof-tiles of a
+    // wing, and the feathers that most often carry the finery
+    covert : [[400,486],[62, 98],[ 0,18],[28,72],[40,56],[ 95,134],[55,92],[14,28],[0,32]],
+    // a contour feather: the body of the bird, and much the commonest thing on
+    // the ground underneath it — a proper plumaceous base and a real afterfeather
+    contour: [[430,534],[66,104],[ 0,14],[22,66],[42,60],[ 84,123],[46,86],[20,36],[8,56]],
+    // and the fluff off a flank or a rump, which is mostly down with a little
+    // vane on the end of it as an afterthought
+    fluff  : [[390,452],[74,112],[ 0, 8],[ 8,46],[48,68],[ 64,102],[34,72],[32,45],[24,92]]
+  }[tract];
+  P.len.value     = ispan(T[0][0], T[0][1]);
+  P.width.value   = ispan(T[1][0], T[1][1]);
+  // asymmetry snaps to nothing when it is nearly nothing. A bell die lands
+  // exactly on zero about never, so without this every feather on the moor came
+  // out very slightly lopsided — and a body feather is not slightly lopsided, it
+  // is symmetric. A tract whose range starts at 0 means it, and the snap is what
+  // lets it say so.
+  const asy = ispan(T[2][0], T[2][1]);
+  P.asym.value    = asy < 7 ? 0 : asy;
+  P.camber.value  = rng()<0.80 ? ispan(T[3][0], T[3][1]) : 0;   // a few lie nearly flat
+  P.angle.value   = ispan(T[4][0], T[4][1]);
+  P.density.value = ispan(T[5][0], T[5][1]);
+  // the knit: half to three quarters is a feather in good order — the barbules
+  // invisible at a glance and unmistakable close up, which is how they behave
+  // on the bird. Never quite the whole way, because a vane zipped to the very
+  // ends of its barbs has no margin left to be crisp with.
+  P.knit.value    = ispan(T[6][0], T[6][1]);
+  // and never none: a feather with no plumaceous base at all is not a feather,
+  // it is a leaf. The floor is the conjure's; the slider still goes to zero for
+  // anyone who would like to see the leaf.
+  P.down.value    = ispan(T[7][0], T[7][1]);
+  // the afterfeather leans SHORT, and hard, even where a tract allows a great
+  // one — because a grouse's cloud is a thing you find now and then and not
+  // every Tuesday, and because a second downy plume is the most expensive
+  // thing a feather can put on. Centring this die was the single change that
+  // made the whole tract rewrite cost anything at all: the moor's median
+  // afterfeather went from nothing to a fifth of the feather overnight.
+  P.after.value   = T[8][1] ? Math.round(T[8][0] + Math.pow(bell(),2.6)*(T[8][1]-T[8][0])) : 0;
+  // the curve is the wind it grew against, and a long stiff feather carries
+  // more of it than a little round one does
+  P.curve.value   = Math.round((bell()-0.5)*(tract==='fluff' ? 70 : tract==='covert' ? 100 : 150));
+  // the apex family follows the tract too: a dome is the moor's common coin
+  // everywhere, the acuminate belongs to what flies and what steers, and the
+  // truncate is a wing feather's cut edge
+  apexType = pick({ flight :[0.58,0.40,0.02], tail   :[0.40,0.30,0.30],
+                    covert :[0.80,0.04,0.16], contour:[0.86,0.06,0.08],
+                    fluff  :[0.96,0.02,0.02] }[tract]);
+  P.apex.value    = ispan(12, 88);
+  // age & wear stays a hand control, off the wander entirely: even a little
+  // damage catches the eye and distracts from the odd bird underneath. Every
+  // conjured feather arrives pristine.
   P.wear.value    = 0;
-  // the aftershaft: most birds wear a modest one, the grouse a great cloud,
-  // and a flight feather barely any at all
-  P.after.value   = rng()<0.55 ? Math.floor(rng()*rng()*55) : 0;
 
   // THE PLUMAGE — coat first, and the pattern dice loaded to suit it,
   // because a colourway mostly IS its pattern: the hand-made feathers
@@ -2384,9 +2441,16 @@ function conjureFrom(str){
   // runs to fine freckling far oftener than to splodges, so the dice lean that
   // way and the big blotches stay a treat
   P.specksize.value = Math.floor(Math.pow(rng(), 1.9)*95);
-  const dye = rng();
-  const coat = dye<0.20 ? 'brown' : dye<0.32 ? 'pale' : dye<0.46 ? 'dark'
-             : dye<0.72 ? 'twotone' : dye<0.88 ? 'fawn' : 'gaudy';
+  // ...and the coat is dealt the tract's own hand. A flight feather is rarely a
+  // gaudy one and a bit of rump fluff is almost never a bold two-tone, while a
+  // covert is where a bird keeps its finery. The coats themselves are untouched
+  // — only how often each of them is dealt.
+  const coat = ['brown','pale','dark','twotone','fawn','gaudy'][pick(
+    { flight :[0.28,0.06,0.20,0.30,0.14,0.02],
+      tail   :[0.30,0.05,0.12,0.26,0.22,0.05],
+      covert :[0.16,0.10,0.10,0.34,0.16,0.14],
+      contour:[0.20,0.14,0.14,0.24,0.18,0.10],
+      fluff  :[0.26,0.30,0.12,0.08,0.20,0.04] }[tract])];
   if(coat==='brown'){
     // the moor's own ground note — kept, but patterned more often than plain
     const h1 = 26 + rng()*24, s1 = 25 + rng()*30, l1 = 28 + rng()*20;
@@ -2583,7 +2647,16 @@ function toggleIrid(){
 
 /* ---- wiring: manual tweaks keep drawSeed stable so nothing flickers ---- */
 Object.values(P).forEach(el => el.addEventListener('input', render));
-['pig1','pig2','eyecol','eyecol2','iridcol','iridcol2'].forEach(id=>$(id).addEventListener('input', render));
+/* Every colour well redraws — and the list is read off the panel rather than
+   typed out here, because it was typed out here once and then the bright was
+   added and forgotten, so its swatch changed and the feather did not until you
+   nudged some other slider. A well announces itself with a .wellhit; anything
+   that can be picked is therefore something that redraws, and the next colour
+   added cannot be left out of a list it is not on. */
+document.querySelectorAll('.wellhit').forEach(hit=>{
+  const el = $(hit.dataset.for);
+  if(el) el.addEventListener('input', render);
+});
 $('irid').addEventListener('change', ()=>{ toggleIrid(); render(); });
 
 /* ---- Feaffer's own HSL colour picker ----

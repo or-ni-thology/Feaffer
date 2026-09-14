@@ -315,6 +315,45 @@ Randomness is seeded: a hash of the grid reference feeds a mulberry32 generator,
 
 That determinism is a promise about *today's* Feaffer, not about forever. While the fettling is on, a re-roll of the conjure may redraw any feather on the moor, and nobody is owed the one a coordinate grew last week. Some day, perhaps, we'll randomly decide that today is the day the feathers are defined — but nobody has called it, and until then a fettle is a feather free-for-all. (A hand-faffed specimen is different: its Record carries the draw seed and every dial, so Restore brings *that* feather back regardless of what the conjure has become.)
 
+### The tract — a feather has a place it grew
+
+The conjure had always rolled a **coat** first and then loaded the pattern dice to suit it, because a colourway mostly *is* its pattern. Nothing did that job for the shape. Length, breadth, asymmetry, camber, down and aftershaft were six unrelated dice, so the moor grew short fat asymmetric flight feathers carrying a grouse's cloud of fluff. Half of it flew. A quarter of it was pressed flat.
+
+The missing variable has a name, and the name is **where on the bird**. A feather does not have a length and a breadth and an asymmetry; it has a *place it grew*, and that place settles all of them at once. So a tract is rolled first and loads the form dice exactly the way the coat loads the pattern dice — the same mechanism, one drawer up.
+
+| | |
+|---|---|
+| **flight** | long, narrow, stiff, strongly asymmetric; barely any down and no afterfeather at all, because every part of it is for flying |
+| **tail** | as long, broader, and very nearly symmetric — it steers with its whole width instead of cutting the air with one edge |
+| **covert** | short, broad, neat and round: the tidy little roof-tiles of a wing, and the feathers that most often carry the finery |
+| **contour** | the body of the bird, and much the commonest thing on the ground underneath it — a proper plumaceous base and a real afterfeather |
+| **fluff** | off a flank or a rump: mostly down, with a little vane on the end as an afterthought |
+
+The shares are **a walk's and not a bird's**. You find what falls, and what falls is mostly body feathers and coverts. A primary is a lucky day.
+
+The apex family follows the tract as well — the acuminate belongs to what flies and what steers, the truncate is a wing feather's cut edge — and so does the coat, so a flight feather is rarely gaudy and a bit of rump fluff is almost never a bold two-tone. The coats themselves are untouched; only how often each is dealt.
+
+### The die with a middle
+
+The other half of the trouble was the dice themselves. Every form dial was rolled flat across its whole range, and **a flat die has no middle**: the extreme is exactly as likely as the ordinary. Measured over five hundred conjures, the quartiles came out evenly spaced on every single dial —
+
+```
+len      min 400  p25 453  med 500  p75 551  max 599
+width    min  45  p25  62  med  81  p75 101  max 119
+angle    min  28  p25  38  med  47  p75  56  max  65
+density  min  60  p25 100  med 115  p75 130  max 149
+```
+
+— which is what made a wander feel like noise rather than like a moor. Three dice averaged have a centre and thin tails, so the ordinary feather is common and the odd one is a find, which is what a walk is actually like. (The codebase already knew the trick — `rng()*rng()` on the aftershaft, a power curve on the spot grain — it was simply applied in three places out of a dozen.)
+
+Two things fell out of centring the dice that are worth writing down.
+
+**Asymmetry had to be taught to snap to nothing.** A bell die lands exactly on zero about never, so without a snap every feather on the moor came out very slightly lopsided — and a body feather is not slightly lopsided, it is *symmetric*. A tract whose range starts at zero means it, and the snap is what lets it say so.
+
+**And the afterfeather had to lean hard short.** Centring that one die was the single change that made the whole rewrite cost anything at all: the moor's median afterfeather went from nothing to a fifth of the feather overnight, and a second downy plume is the most expensive thing a feather can put on. A grouse's cloud is a find, not a Tuesday.
+
+With both leaned back and the tract ranges priced, the moor's mean specimen sits within a whisker of where it was, and the **p90 is down 4.6% and the worst case down a tenth** — because thinning the tails is what a die with a middle does.
+
 ### The plumage — coats, and the pattern to carry them
 
 The conjure picks a coat first and then loads the pattern dice in its favour, because a colourway mostly *is* its pattern. The biggest single share is **white-and-anything** — a white ground and one dark to carry it: black first, then brown, rust, slate, or a jewel, always in bold bars or a heavy terminal band, sometimes on one web only. Around it: the moor's **brown** (about a fifth now, patterned more often than plain), pale **dove-greys**, the blackbird's dense **near-black**, warm **fawn** that is never unmarked, and a small **gaudy** share whose marks come out jewel blue, teal or violet, these being imaginary feathers after all. The sheen is properly rare and tempered when it comes — the pale and the two-tones never conjure one — while everything dialled by hand stays exactly as you dial it. And no conjured feather arrives with no down at all: a feather with no plumaceous base is not a feather, it is a leaf. The floor is the conjure's; the slider still goes to zero for anyone who would like to see the leaf.
@@ -325,7 +364,7 @@ The conjure picks a coat first and then loads the pattern dice in its favour, be
 
 ## Truths, and 'patameters
 
-The **truths** are the places where the maths is not decoration but the actual grain of the thing: a real ocellus does hold its rings near 1/φ² and 1/φ; a barb does land its tip on the vane's edge, not its root; a dome is convex everywhere; a barbule reaches its neighbour and no further, so the gap a lost barb leaves stays a gap; a vane is a hierarchy of line densities and not a tone, so the finest order it can hold gets drawn rather than averaged — and a line faded until it averages has been averaged, whatever the mechanism says; a gap is read against the barb it is a gap in, so a weave holds one gauge and not one pitch; looseness is an extent and not a spacing, so a vane unzips from its margin inward and nothing in the weave has a frequency left to beat against; a barb is not the colour of its neighbour, and tone at the scale of one barb is how a vane shows that it has form; there is no blue pigment in a bird, so a bright's own hue says whether it is made of food or made of light, and nobody has to be asked; plumaceous and pennaceous are properties of the barbules and not of the barb, so the boundary between down and vane runs *along* each barb rather than flat across the feather, and it is the barb's own bare end grown until it is the whole barb; a pattern is a field in the rachis frame and not a property of the barb it lands on, so a bar stays level however the comb leans; the comb sets which way a downy barb leaves and not how far it goes; a vane does not come to a point at the bottom, it begins; a plumaceous barb is held by nothing and so obeys no outline; and structural colour sits on the barb, which is why an iridescent feather is near-black from the wrong angle.
+The **truths** are the places where the maths is not decoration but the actual grain of the thing: a real ocellus does hold its rings near 1/φ² and 1/φ; a barb does land its tip on the vane's edge, not its root; a dome is convex everywhere; a barbule reaches its neighbour and no further, so the gap a lost barb leaves stays a gap; a vane is a hierarchy of line densities and not a tone, so the finest order it can hold gets drawn rather than averaged — and a line faded until it averages has been averaged, whatever the mechanism says; a gap is read against the barb it is a gap in, so a weave holds one gauge and not one pitch; looseness is an extent and not a spacing, so a vane unzips from its margin inward and nothing in the weave has a frequency left to beat against; a barb is not the colour of its neighbour, and tone at the scale of one barb is how a vane shows that it has form; there is no blue pigment in a bird, so a bright's own hue says whether it is made of food or made of light, and nobody has to be asked; a feather has a place it grew, and that place settles its length and its breadth and its asymmetry all at once, so they are not six dice but one; plumaceous and pennaceous are properties of the barbules and not of the barb, so the boundary between down and vane runs *along* each barb rather than flat across the feather, and it is the barb's own bare end grown until it is the whole barb; a pattern is a field in the rachis frame and not a property of the barb it lands on, so a bar stays level however the comb leans; the comb sets which way a downy barb leaves and not how far it goes; a vane does not come to a point at the bottom, it begins; a plumaceous barb is held by nothing and so obeys no outline; and structural colour sits on the barb, which is why an iridescent feather is near-black from the wrong angle.
 
 The **'patameters** — the 'pataphysical parameters — are where a real number is pushed past its reason and something truer-than-true falls out: an eye grown until it stops being a spot and becomes weather crossing the vane; a position sent negative until the ocellus stands off the quill; the finding that one mark, sized and cast and coloured right, is the answer to every bird.
 
