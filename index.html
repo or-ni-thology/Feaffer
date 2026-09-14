@@ -291,11 +291,11 @@
       <div class="cap"><label for="angle">Barb angle</label><span class="val" id="angle-v"></span></div>
       <input type="range" id="angle" min="20" max="72" value="46">
     </div>
-    <div class="card" title="how many barbs comb the vane">
+    <div class="card" title="the gauge of the weave — how close the barbs comb, set where the vane is broadest. The rows crowd wherever the barbs are shorter, so the gap stays the same fraction of a barb all the way to the tip">
       <div class="cap"><label for="density">Barb density</label><span class="val" id="density-v"></span></div>
       <input type="range" id="density" min="30" max="170" value="100">
     </div>
-    <div class="card" title="the barbules that zip neighbouring barbs into a single web — two ranks off every barb, leaning opposite ways and meeting their neighbour's in the middle. Far too fine to draw them all, so about one in six is, at the finest pitch this page can still hold apart as lines. At nothing, the bare comb">
+    <div class="card" title="the barbules that zip neighbouring barbs into a single web — two ranks off every barb, leaning opposite ways and meeting their neighbour's in the middle. Far too fine to draw them all, so a fraction of them is, at the finest pitch this page can still hold apart as lines. A loose weave is fewer of them, never fainter ones. At nothing, the bare comb">
       <div class="cap"><label for="knit">Barbule knit</label><span class="val" id="knit-v"></span></div>
       <input type="range" id="knit" min="0" max="100" value="25">
     </div>
@@ -494,6 +494,31 @@ function drawFeather(){
   const barbAngle = +P.angle.value * Math.PI/180;
   const nBarbs = +P.density.value;
   const knit = +P.knit.value/100;         // 0 the bare comb .. 1 a zipped web
+  // THE KNIT IS A COUNT, NOT A FADE.
+  //
+  // For a long while this slider did exactly one thing: it set the opacity of
+  // the barbule layer. The same barbules were laid in the same places at every
+  // setting from 1 to 100, and the dial only decided how hard to wash them out.
+  // Which meant the vane paid for the whole weave and showed a third of it —
+  // at the conjure's usual quarter, fifty-seven per cent of a specimen's bytes
+  // went out at three-tenths alpha.
+  //
+  // And it quietly did the one thing this tool had already talked itself out
+  // of doing. A hairline at 0.3 alpha is not a hairline; it is a third of a
+  // line, which is a TONE. The whole argument for drawing barbules rather than
+  // averaging them is that the eye reads the second order as grain — so fading
+  // them until they average is the same mistake wearing a different hat, and
+  // it was the more expensive hat. (The soft ribbon that came before them made
+  // the honest version of this error and was rightly thrown out; this was the
+  // dishonest version, and it survived because it was hiding in an attribute.)
+  //
+  // So the knit buys BARBULES. It opens and closes the rank's pitch, and the
+  // layer is drawn at the weight a hairline deserves whatever the setting. A
+  // loose weave is fewer lines, not fainter ones — which is what a loose weave
+  // is on the bird, and what it costs on the page. Measured at matched ink, the
+  // count reads the same and the file is a quarter smaller.
+  const knitF = Math.max(0.12, Math.pow(knit, 0.6));
+  const KNIT_ALPHA = 0.62;   // the weight of a barbule, and it does not move
   const downFrac = +P.down.value/100;
   const wear = +P.wear.value/100;
   const afterFrac = +P.after.value/100;   // the aftershaft: 0 none .. 1 a grouse's
@@ -817,32 +842,87 @@ function drawFeather(){
   // the crown is measured now the rachis frame it hangs on is settled
   const crownR = apexType===0 ? buildCrown(1)  : null;
   const crownL = apexType===0 ? buildCrown(-1) : null;
-  // the seam: where the last UNFANNED barb already lands, so the fan's share of
-  // the dome starts exactly where the plain comb left off and the join is invisible
-  const seamR = crownR ? crownArcAt(crownR, landAt(TIP_ZONE, 1, barbAngle)) : 0;
-  const seamL = crownL ? crownArcAt(crownL, landAt(TIP_ZONE,-1, barbAngle)) : 0;
-
-  // barbs — the rows they comb from. Over a ROUNDED crown the dome is a longer
-  // road than the shaft it is combed from, so the same rows may have more
-  // outline to cover and the weave can thin where the tip turns over. How much
-  // more is a thing we can now MEASURE rather than assume: the crown drinks as
-  // many interleaved sub-rows as its arc actually asks for, and usually that is
-  // none. (It used to double every row above the tip zone, flatly — twice the
-  // strokes laid on the stretch that was already the densest part of the vane.
-  // That was the other half of the clotted tip.)
-  let tipSub = 1;
-  if(apexType===0){
-    const crownRun = ((crownR.total-seamR) + (crownL.total-seamL))/2;   // dome left to cover
-    const shaftRun = (1-TIP_ZONE)*tipReach;                             // shaft it is combed from
-    tipSub = Math.max(1, Math.min(3, Math.round(crownRun/shaftRun)));
-  }
+  // THE GAUGE — the rows are spaced by the BARB, not by the shaft.
+  //
+  // The rows used to be ruled flat up the rachis, t = i/(n−1), so the gap
+  // between neighbours was the same number of pixels everywhere. That sounds
+  // even and it is not, because a gap is not read in pixels. It is read
+  // against the thing it is a gap IN, and the barbs get short at both ends of
+  // a feather while the gaps do not. Measured on a plain specimen, the gap as
+  // a fraction of a barb's own length:
+  //
+  //        mid-vane   t=0.8    t=0.9
+  //   rounded    3.8%    5.3%    13.2%
+  //   acuminate  4.0%   16.6%    59.4%
+  //
+  // Two and a half pixels between eighty-five-pixel barbs is a silky weave.
+  // The same two and a half pixels between five-pixel barbs is a comb with
+  // teeth, and on an acuminate the gaps up there ran longer than half a barb.
+  // Which is why every tip in this tool read as a fish bone however far the
+  // density slider went: the density slider was buying rows in the one place
+  // that already had enough of them.
+  //
+  // So the pitch follows the barb's length and the weave holds ONE GAUGE from
+  // calamus to crown. Where the vane narrows the rows crowd, in exactly the
+  // proportion the narrowing asks for, and nothing else in the tool has to be
+  // told about it. The density slider stops being a count of rows and becomes
+  // what it always meant: the gauge of the weave, set at the broadest part.
+  //
+  // It replaces the crown's sub-rows, which were this idea at one-third of the
+  // resolution — an integer of 1, 2 or 3, measured only over a rounded dome,
+  // and reading 1 nearly always. The right instinct, asked of the wrong
+  // quantity: it is not the crown that wants more rows, it is every place a
+  // barb is short, and the acuminate that wanted them most was never asked.
+  const blRaw = t => {
+    let bl = ((landAt(t, 1, barbAngle) - t) + (landAt(t, -1, barbAngle) - t))
+             * 0.5 * tipReach / Math.sin(barbAngle);
+    // a truncate's barbs are cut by the shear long before the outline would
+    // have stopped them, so the gauge reads the length they actually get
+    if(apexType===2) bl = Math.min(bl, Math.max(0, (gCut - t)*tipReach));
+    return Math.max(1e-3, bl);
+  };
+  let blPeak = 1e-3;
+  for(let i=0;i<=40;i++) blPeak = Math.max(blPeak, blRaw(i/40));
+  // THE GAUGE READS THE VANE, AND THE VANE BEGINS WHERE THE DOWN ENDS.
+  //
+  // A gauge is a gap measured against a barb, and that only means anything
+  // where the barbs are holding on to one another. A plumaceous barb is held
+  // by nothing and obeys no outline — it is a cloud, not a web — so there is
+  // no gap to keep in proportion, and crowding rows down there buys nothing
+  // but more fluff to hide behind the fluff already in front of it. Measured,
+  // that was two thirds of what the gauge cost and none of what it bought: the
+  // down wisps and the downy barbs went up by fourteen kilobytes a specimen
+  // for a thickening no one could see through the cloud standing over it.
+  //
+  // So below the down line the rows keep the plain pitch, and the gauge starts
+  // where the vane does. One more thing the plumaceous zone is simply not the
+  // business of.
+  const blAt = t => t < downFrac ? blPeak : blRaw(t);
+  // and a floor under the crowding, because the gauge is a proportion and a
+  // proportion of nothing is nothing: at the very point of an acuminate the
+  // barbs go to zero length and an unfloored gauge would grind there forever.
+  const GAUGE_FLOOR = 0.40;
+  const gauge = t => Math.max(GAUGE_FLOOR, Math.min(1, blAt(t)/blPeak));
+  // AND A BUDGET, because a gauge is a proportion and a proportion will happily
+  // spend whatever it is given. A long acuminate is narrowing over half its
+  // length, so at the bare gauge half the feather asks for the floor's full
+  // two-and-a-half times the rows, and the worst specimen on the moor went up
+  // by a fifth for a crowding past the point the page can show. So the row
+  // count is predicted first, and if it overruns, the whole pitch opens by the
+  // one factor: the gauge keeps its SHAPE — the tip still crowds exactly as
+  // much more than the mid-vane as the barbs there are shorter — and the
+  // feather keeps to something near the count the density slider asked for.
+  // A redistribution with a cap on it, rather than a multiplication.
+  const MAX_MULT = 1.75;
+  let want = 0;
+  for(let i=0;i<64;i++) want += 1/gauge((i+0.5)/64);
+  const over = Math.max(1, want/64/MAX_MULT);
   const rows = [];
-  for(let i=0;i<nBarbs;i++){
-    const t = i/(nBarbs-1);
+  for(let t = 0; t < 1 && rows.length < 1400; ){
     rows.push(t);
-    if(tipSub>1 && t>TIP_ZONE && i<nBarbs-1)
-      for(let k=1;k<tipSub;k++) rows.push(t + (k/tipSub)/(nBarbs-1));
+    t += over * gauge(t) / Math.max(1, nBarbs-1);
   }
+  if(rows[rows.length-1] < 0.999) rows.push(1);
   const barbLines = [];
   for(let ri=0; ri<rows.length; ri++){
     const t = rows[ri];
@@ -1182,8 +1262,10 @@ function drawFeather(){
       // never finer than the page can hold — and the floor rises with the comb,
       // because a vane already carrying twice the barbs is carrying twice the
       // hairlines, and past a point another rank of them is ink spent on a grey
-      // nobody can see
-      const pitch = Math.max(1.25*Math.max(1, nBarbs/130), b.reach*0.34);
+      // nobody can see. The knit then opens the whole thing out: it can only
+      // ever make the pitch coarser than that floor, never finer, so the page's
+      // own limit still has the last word.
+      const pitch = Math.max(1.25*Math.max(1, nBarbs/130), b.reach*0.34) / knitF;
       const len = b.reach*0.50/SB;                   // a shade past half the gap
       const SPAN = 0.80;                                  // the rank's run along the barb
       // a barbule reaches FOR ITS NEIGHBOUR, so where there is no neighbour to
@@ -1509,7 +1591,22 @@ function drawFeather(){
   // The DOWN stays out of it: plumaceous barbules carry no ordered melanosome
   // array, so a downy base is matt however the vane burns, and it grew before
   // any of these marks were laid.
-  const SEG = 10;
+  // AND THE WALK IS SAMPLED FINE ENOUGH TO RESOLVE WHAT IT IS LOOKING FOR, AND
+  // NO FINER — which the SPOTS learned some time ago and the marking frame
+  // never did. Ten stations were spent on every barb whatever its length, so a
+  // three-pixel barb at the point of an acuminate came out as an eleven-point
+  // polyline stepping a fifth of a pixel at a time: a hundred and fifty bytes
+  // to draw a line that two points would have drawn in twenty-five. That was
+  // invisible while there were only a handful of such barbs. Gauge the rows to
+  // the barbs and suddenly the tip is full of them, and the worst specimen on
+  // the moor went up by three fifths — not from the barbs it had gained, but
+  // from what each of the short ones cost.
+  //
+  // A station is only worth having where the FIELD might change between it and
+  // the next one, and the field's finest features — a bar's edge, a marbled
+  // wobble, a step of the camber's light — run several pixels across. So the
+  // count follows the barb's own length, and a barb too short to hold a
+  // feature is drawn with the two ends it has.
   const qkey = c => (((c.r|0)&248)<<16) | (((c.g|0)&248)<<8) | ((c.b|0)&248);
   for(const b of barbLines){
     if(b.downy){
@@ -1518,6 +1615,8 @@ function drawFeather(){
     }
     const climb = b.hLand - b.t, glint = 0.82 + 0.36*b.rowN;
     const ground = 0.15 + (1-b.t)*0.35;
+    const SEG = Math.max(2, Math.min(10,
+      Math.ceil(Math.hypot(b.ex-b.rpx, b.ey-b.rpy)/7)));
     const lit = sheen && (sheenTouches(b.rpx,b.rpy) || sheenTouches(b.tex,b.tey)
                           || sheenTouches((b.rpx+b.tex)/2, (b.rpy+b.tey)/2));
     const pts = [], tpts = [], cols = [], keys = [];
@@ -1715,7 +1814,29 @@ function drawFeather(){
       if(b.downy) continue;
       const wob = 1 + (b.rowN-0.5)*0.08;
       const glint = 0.82 + 0.36*b.rowN;
-      const SEG=9; let px=b.rpx, py=b.rpy, tx=b.rpx, ty=b.rpy;
+      // THE EYE LEARNS THE MERGE, which everything else in this tool already
+      // knew. The specks fold a run of covered segments into one path and the
+      // barb walk folds the stretches that come out the same colour — and the
+      // ocellus, the oldest of the three walks, was still emitting ONE PATH PER
+      // SEGMENT: nine two-point paths per barb, every one of them carrying its
+      // own colour, width, cap and opacity. On a peacock that was two fifths of
+      // the whole specimen, which is a great deal to pay for a mark whose rings
+      // are flat colour nearly all the way across. A barb crossing an eye
+      // changes colour four times — at the two golden rings and the rim — so
+      // four paths is what it should cost, not nine. And the stations follow
+      // the barb's length here too, for the same reason they do in the walk
+      // above: the point of an acuminate is no place to spend nine of them.
+      const SEG = Math.max(2, Math.min(9,
+        Math.ceil(Math.hypot(b.ex-b.rpx, b.ey-b.rpy)/7)));
+      let px=b.rpx, py=b.rpy, tx=b.rpx, ty=b.rpy;
+      let run='', runKey=null, runCol='', runW='', runO='', runRgb=null, runA=0;
+      const flushEye = kEnd => {
+        if(run){
+          eyeMarks += `<path d="${run}" fill="none" stroke="${runCol}" stroke-width="${runW}" stroke-linecap="round" opacity="${runO}"/>`;
+          paintBules(b, runA/SEG, kEnd/SEG, runRgb, +runO);
+        }
+        run=''; runKey=null;
+      };
       for(let k=1;k<=SEG;k++){
         const s=k/SEG, x=qAt(b.rpx,b.mx,b.ex,s), y=qAt(b.rpy,b.my,b.ey,s);
         const [nx2,ny2] = camR ? tAt(b,s) : [x,y];
@@ -1729,17 +1850,24 @@ function drawFeather(){
             const t = Math.max(0, 1 - re/IPHI2), haze = t*t*(3-2*t);   // 1 dead centre .. 0 at the ring
             o *= 1 - pupil*haze;
           }
-          if(o<0.02){ px=x; py=y; tx=nx2; ty=ny2; continue; }  // the window: no mark laid, the vane shows through
+          if(o<0.02){ flushEye(k-1); px=x; py=y; tx=nx2; ty=ny2; continue; }  // the window: no mark laid, the vane shows through
           // the eye follows the barbs it's grown from — a touch solider inside
           // the golden ring, and slimming with the comb like the rest of the
           // vane, so small feathers aren't overwhelmed
           const ew = vaneStroke*(re<IPHI ? 1.3 : 1.12);
           const ec2 = dim(sheen ? sheen(cxp, cyp, paint(re), glint) : paint(re), camAt(b,cxp,cyp));
-          eyeMarks += `<path d="M ${px.toFixed(1)} ${py.toFixed(1)} L ${x.toFixed(1)} ${y.toFixed(1)}" fill="none" stroke="${rgbStr(ec2)}" stroke-width="${ew.toFixed(2)}" stroke-linecap="round" opacity="${o.toFixed(2)}"/>`;
-          paintBules(b, (k-1)/SEG, s, ec2, o);
-        }
+          const col = rgbStr(ec2), wS = ew.toFixed(2), oS = o.toFixed(2);
+          const key = col+'|'+wS+'|'+oS;
+          if(key !== runKey){
+            flushEye(k-1);
+            runKey=key; runCol=col; runW=wS; runO=oS; runRgb=ec2; runA=k-1;
+            run = `M ${px.toFixed(1)} ${py.toFixed(1)}`;
+          }
+          run += ` L ${x.toFixed(1)} ${y.toFixed(1)}`;
+        } else flushEye(k-1);
         px=x; py=y; tx=nx2; ty=ny2;
       }
+      flushEye(SEG);
     }
     out += eyeMarks;
   }
@@ -1786,7 +1914,7 @@ function drawFeather(){
       }
       flush();
     }
-    if(ground) out += `<g opacity="${(0.12 + 0.72*knit).toFixed(2)}">${ground}</g>`;
+    if(ground) out += `<g opacity="${KNIT_ALPHA}">${ground}</g>`;
     if(marked) out += `<g opacity="0.85">${marked}</g>`;
   }
 
