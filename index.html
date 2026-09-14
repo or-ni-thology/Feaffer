@@ -356,6 +356,16 @@
       <div class="cap"><label for="margin">Margin</label><span class="val" id="margin-v"></span></div>
       <input type="range" id="margin" min="-100" max="100" value="0">
     </div>
+    <div class="card swatchcard" title="the bright — the one colour on a feather that is not melanin. It does not make a mark of its own; it rides the marks already there, claiming them from their outer edge inward. Its HUE decides what it is made of: warm and it is FOOD, a carotenoid out of the bird's diet, flat and matt and the same from every angle; cool and it is LIGHT, a nanostructure scattering blue off the barb, which blazes where the vane turns to the lamp and goes near-black where it turns away. There is no blue pigment in a bird, so nothing here needs asking — the colour says which it is">
+      <div class="cap"><span>The bright</span></div>
+      <div class="swatches">
+        <span class="well"><input type="color" id="bright" value="#d8a520" tabindex="-1" aria-hidden="true"><span class="wellhit" data-for="bright" role="button" tabindex="0" aria-label="The bright"></span></span>
+      </div>
+    </div>
+    <div class="card" title="how much of each mark the bright claims, measured from the mark's outer edge inward — so a terminal band comes out plain at its root and bright at the tip, which is the two-band finish half the moor wears. At nothing, no bright at all; at the full, the mark is bright end to end">
+      <div class="cap"><label for="brightcover">Bright cover</label><span class="val" id="brightcover-v"></span></div>
+      <input type="range" id="brightcover" min="0" max="100" value="0">
+    </div>
     <div class="card" title="the ocellus — a peacock's eye, grown into the barbs; past 100 it goes GIANT, taking its scale from the feather's whole length, until the rings are country the feather merely crosses">
       <div class="cap"><label for="eye">Eyespot</label><span class="val" id="eye-v"></span></div>
       <input type="range" id="eye" min="0" max="300" value="0">
@@ -432,6 +442,7 @@ const P = {
   density:$('density'), knit:$('knit'), down:$('down'), after:$('after'), wear:$('wear'),
   bars:$('bars'), barside:$('barside'), baredge:$('baredge'), tipband:$('tipband'), speck:$('speck'),
   margin:$('margin'), marble:$('marble'), specksize:$('specksize'),
+  brightcover:$('brightcover'),
   eye:$('eye'), eyepupil:$('eyepupil'), eyepos:$('eyepos'), eyeside:$('eyeside'),
   iridpos:$('iridpos'), iridspread:$('iridspread'), iridstr:$('iridstr')
 };
@@ -473,7 +484,18 @@ function pair(x,y){ const a=nm(x), b=nm(y);
   return a + (welds ? '' : ' ') + b; }
 
 function mix(a,b,t){ return {r:a.r+(b.r-a.r)*t, g:a.g+(b.g-a.g)*t, b:a.b+(b.b-a.b)*t}; }
-function rgbStr(c){ return `rgb(${c.r|0} ${c.g|0} ${c.b|0})`; }
+/* Colours are carried around this tool as unclamped numbers on purpose — the
+   camber multiplies, the sheen screens, the melange tilts, and a term that
+   clamped at every step would lose the headroom the next one needs. So the
+   clamp goes where a colour becomes TEXT, which is the only place it matters.
+   It matters more than it looks: the barbule key rounds with `&252`, and a
+   bitwise mask does not clamp, it WRAPS — a channel that came out at 281 was
+   being written as 24, and a pale vane lit past white grew a scatter of
+   electric-blue barbules where three channels wrapped at different moments.
+   The overflow was always possible; the melange's tilt is what pushed enough
+   of them over 255 to see it. */
+const cl255 = v => v < 0 ? 0 : v > 255 ? 255 : v|0;
+function rgbStr(c){ return `rgb(${cl255(c.r)} ${cl255(c.g)} ${cl255(c.b)})`; }
 function darken(c,f){ return {r:c.r*f,g:c.g*f,b:c.b*f}; }
 
 /* ---- the growing of a feather ---- */
@@ -562,6 +584,49 @@ function drawFeather(){
 
   const pig1 = hexToRgb($('pig1').value);
   const pig2 = hexToRgb($('pig2').value);
+
+  // ================= THE BRIGHT =================
+  //
+  // The one colour on a feather that is not melanin — and it is two quite
+  // different things wearing one slider, which is the whole reason this works.
+  //
+  // FOOD. Reds, oranges and yellows are carotenoids: pigment, eaten, deposited
+  // into the growing feather. A flamingo is pink because of what it stands in.
+  // Pigment absorbs, so it is flat and matt and exactly the same colour from
+  // every angle you hold it at.
+  //
+  // LIGHT. Blues are not pigment. THERE IS NO BLUE PIGMENT IN A BIRD — not one,
+  // the world over, bar a couple of turacos with a copper trick. Every blue
+  // feather there has ever been is a nanostructure: a spongy layer of keratin
+  // in the barb, scattering the short wavelengths back at you over a dark
+  // melanin backing that swallows the rest. Which is why a jay's blue blazes
+  // from one angle and dies from another, and why it needs the dark under it.
+  //
+  // And greens are both at once, nearly always — structural blue seen through a
+  // carotenoid yellow — which is the kingfisher, the greenfinch and the parrot
+  // in one sentence.
+  //
+  // So THE TOOL NEVER ASKS WHICH. It reads the hue and knows, because the
+  // physics has already decided: warm is food, cool is light, and the green
+  // between them is the mixture it really is. One fewer slider, and one more
+  // thing a feather works out for itself.
+  const brightRgb   = hexToRgb($('bright').value);
+  const brightCover = +P.brightcover.value/100;
+  const brightHsl   = hexToHsl($('bright').value);
+  // how much of this hue is structural: nothing at all through the reds and
+  // oranges and yellows, everything through the teals and blues and violets,
+  // and the crossover laid across the greens, where the real thing is a
+  // mixture. A grey bright has nothing to be structural WITH, so saturation
+  // damps it toward pigment — an unsaturated colour is not scattering anything.
+  const brightStruct = (() => {
+    const h = brightHsl.h;
+    const warm = h <= 70 || h >= 330;                 // scarlet .. gold
+    const cool = h >= 165 && h <= 300;                // teal .. violet
+    const f = warm ? 0 : cool ? 1
+            : h < 165 ? (h - 70)/95                   // the green crossover
+            :           1 - (h - 300)/30;             // and back through magenta
+    return Math.max(0, Math.min(1, f)) * Math.min(1, brightHsl.s/45);
+  })();
 
   const iridOn = $('irid').checked;
   const iridPos = +P.iridpos.value/100;
@@ -1550,8 +1615,34 @@ function drawFeather(){
   // shade, negative toward the ground. Bars and the terminal band are fields
   // of ALONG; the margin is a field of ACROSS, and being an edge it overrides
   // rather than adds — a pale rim on a dark bar reads pale.
+  // WHERE THE BRIGHT LANDS, and it makes no mark of its own.
+  //
+  // A bright does not decide where it goes; the feather has already decided.
+  // The goldfinch's gold is its wing bar, the wagtail's yellow is its terminal
+  // band, the jay's blue is its barring. So the bright rides the marks that are
+  // there and claims each one FROM ITS OUTER EDGE INWARD — which is what gives
+  // the two-band finish that half the moor wears: something sensible at the
+  // root of the mark and something loud at the end of it.
+  //
+  // Every mark family has its own outward coordinate, and each of them is a
+  // number the field was computing anyway. The band's is how far past its inner
+  // edge you are; a bar's is the phase within that bar, so a warped bar carries
+  // its bright along the wander with it; the margin's is how far over the web.
+  // (A spot's is its own radius, and that is read in the speck walk.)
+  //
+  // Set on the way past rather than returned, because markAt is called ten
+  // times a barb on every barb of the feather and an object a call is a great
+  // many objects. The caller reads it on the very next line.
+  let mkBright = 0;
   const markAt = (along, acr, rowN, side) => {
-    let d = 0;
+    let d = 0, bri = 0;
+    const claim = (present, outward) => {
+      if(!present || brightCover<=0) return;
+      // a short ramp at the bright's own frontier, quantised with everything
+      // else so the walk can still fold what it folds
+      const e = (outward - (1 - brightCover))/0.08;
+      if(e > 0) bri = Math.max(bri, Math.min(1, e));
+    };
     if(nBars>0){
       const wob = barEdge*(rowN-0.5)*0.6;
       let ph = along*Math.PI*nBars, thr = 0.45 + wob;
@@ -1581,22 +1672,55 @@ function drawFeather(){
       if(v>0 && barEdge>0) v *= 1 - barEdge*rowN*0.8;
       if(barBias>0 && side>0) v *= (1-barBias);     // the bars onto one web
       d = Math.max(d, v);
+      // within one bar the phase runs 0 at its rootward edge to 1 at its
+      // tipward one — warp and all, so a marbled bar's bright wanders with it
+      const q = ph/Math.PI;
+      claim(v > 0.25, q - Math.floor(q));
     }
     if(tipBand>0){
       const fade = 1 - barEdge*rowN*0.7;
       const f = Math.min(1, (along + (rowN-0.5)*(0.02+barEdge*0.12) - gBand)/bandSoft);
       if(f>0.05 && fade>0.08) d = Math.max(d, f*fade);
+      claim(f > 0.25 && fade > 0.08, (along - gBand)/Math.max(0.02, 1 - gBand));
     }
     if(marginW>0 && acr > 1-marginW){
       let f = Math.min(1, (acr-(1-marginW))/Math.max(0.02, marginW*0.5));
       if(barBias>0 && side>0) f *= (1-barBias);     // ...and the rim with them
       d = d*(1-f) + marginSign*f;
+      claim(f > 0.25, (acr - (1-marginW))/marginW);
     }
     // quantised, because the walk folds stretches that come out the same
     // colour and a value that never repeats can never be folded. Eight steps
     // is finer than the eye reads on a hairline and it is what keeps a barred
     // feather to a few paths a barb instead of a dozen.
+    mkBright = Math.round(bri*4)/4;
     return Math.round(d*5)/5;
+  };
+
+  // AND HOW IT WEARS, which is where the food and the light part company.
+  //
+  // A FOOD bright is paint. It replaces the pigment and then takes the
+  // ordinary light like everything else on the vane: the same colour at every
+  // angle, because that is what absorption is.
+  //
+  // A LIGHT bright is a lens. It is only there at all where the barb is turned
+  // right, so it is driven hard by the very tilt the camber and the melange
+  // already compute — blazing where the web turns to the lamp, falling to a
+  // near-black over its own dark backing where it turns away. Nothing new is
+  // measured for it; it is the tilt this tool has had all afternoon, read with
+  // a much steeper curve. Which is why a blue mark glitters barb to barb on a
+  // flat feather (the melange's own term is a tilt) and bands across a cambered
+  // one, and a yellow mark on the same feather lies perfectly still.
+  const brightAt = (c, bri, k) => {
+    if(bri <= 0) return c;
+    let paint = brightRgb;
+    if(brightStruct > 0){
+      const g = Math.max(0, Math.min(1, (k - 0.80)/0.40));
+      const blaze = g*g*(3-2*g);
+      const lens = mix(darken(mix(c, brightRgb, 0.25), 0.34), brightRgb, blaze);
+      paint = brightStruct >= 0.999 ? lens : mix(brightRgb, lens, brightStruct);
+    }
+    return mix(c, paint, bri);
   };
   // and the colour that pull lands on: the ground darkens toward the base of
   // the feather as it always did, only now read at the stretch's own height
@@ -1715,7 +1839,7 @@ function drawFeather(){
   // wobble, a step of the camber's light — run several pixels across. So the
   // count follows the barb's own length, and a barb too short to hold a
   // feature is drawn with the two ends it has.
-  const qkey = c => (((c.r|0)&248)<<16) | (((c.g|0)&248)<<8) | ((c.b|0)&248);
+  const qkey = c => ((cl255(c.r)&248)<<16) | ((cl255(c.g)&248)<<8) | (cl255(c.b)&248);
   for(const b of barbLines){
     if(b.downy){
       out += `<path d="${b.d}" fill="none" stroke="${b.col}" stroke-width="${b.dw}" stroke-linecap="round" opacity="${b.dop}"/>`;
@@ -1738,8 +1862,11 @@ function drawFeather(){
       const along = b.t + u*climb*(1 + leanK*b.side);
       const mx=(tpts[k][0]+tpts[k+1][0])/2, my=(tpts[k][1]+tpts[k+1][1])/2;
       let c = pigAt(ground, markAt(along, u, b.rowN, b.side));
+      const bri = mkBright;                       // set on the way past, read here
+      const tilt = camAt(b, mx, my);
+      if(bri > 0) c = brightAt(c, bri, tilt);
       if(lit) c = sheen(mx, my, c, glint);
-      c = dim(c, camAt(b, mx, my));
+      c = dim(c, tilt);
       cols.push(c); keys.push(qkey(c));
     }
     let a = 0;
@@ -1801,6 +1928,11 @@ function drawFeather(){
       spots.push({x:rp.x+rp.norm.x*sside*hw*f*latK, y:rp.y+rp.norm.y*sside*hw*f*latK, r, r2:r*r});
     }
     const spotRgb=mix(pig1,pig2,0.92);
+    // a spot's outward coordinate is its own radius, so the bright claims it
+    // from the rim inward: a dark fleck inside a bright ring at a little cover,
+    // the whole speck bright at the full. The radius is squared on both sides
+    // of the comparison so no square root is taken four hundred times a barb.
+    const briEdge2 = (1-brightCover)*(1-brightCover);
     let marks='';
     for(const b of barbLines){
       if(b.downy) continue;
@@ -1822,10 +1954,11 @@ function drawFeather(){
       // consecutive covered stretches go out as ONE path — a big splodge is a
       // run of twenty segments and has no business being twenty paths
       let run='', runCol=null, runA=0;
+      let runRgb = spotRgb;
       const flush = (kEnd) => {
         if(run){
           marks += `<path d="${run}" fill="none" stroke="${runCol}" stroke-width="${(vaneStroke*1.25).toFixed(2)}" stroke-linecap="round"/>`;
-          paintBules(b, runA/SEG, kEnd/SEG, spotRgb, 1);
+          paintBules(b, runA/SEG, kEnd/SEG, runRgb, 1);
         }
         run='';
       };
@@ -1833,15 +1966,20 @@ function drawFeather(){
         const sU=k/SEG, x=qAt(b.rpx,b.mx,b.ex,sU), y=qAt(b.rpy,b.my,b.ey,sU);
         const [nx2,ny2] = camR ? tAt(b,sU) : [x,y];
         const cxp=(tx+nx2)/2, cyp=(ty+ny2)/2;    // where it GREW: the spot's business
-        let hit=false;
-        for(const sp of near){ const dx=cxp-sp.x, dy=cyp-sp.y;
-          if(dx*dx+dy*dy<sp.r2){ hit=true; break; } }
+        let hit=false, bri=0;
+        for(const sp of near){ const dx=cxp-sp.x, dy=cyp-sp.y, q=(dx*dx+dy*dy)/sp.r2;
+          if(q<1){ hit=true;
+            if(brightCover>0 && q>briEdge2)
+              bri = Math.max(bri, Math.round(Math.min(1,(q-briEdge2)/0.18)*4)/4);
+            break; } }
         if(hit){
           // a mark on an iridescent vane still catches the sheen — the
           // pigment under the barbules changes, the barbules do not
-          const cr = rgbStr(dim(sheen ? sheen(cxp,cyp,spotRgb,glint) : spotRgb, camAt(b,cxp,cyp)));
-          if(!run){ run = `M ${px.toFixed(1)} ${py.toFixed(1)}`; runCol = cr; runA = k-1; }
-          else if(cr !== runCol){ flush(k-1); run = `M ${px.toFixed(1)} ${py.toFixed(1)}`; runCol = cr; runA = k-1; }
+          const kc = camAt(b,cxp,cyp);
+          const sc = bri>0 ? brightAt(spotRgb, bri, kc) : spotRgb;
+          const cr = rgbStr(dim(sheen ? sheen(cxp,cyp,sc,glint) : sc, kc));
+          if(!run){ run = `M ${px.toFixed(1)} ${py.toFixed(1)}`; runCol = cr; runRgb = sc; runA = k-1; }
+          else if(cr !== runCol){ flush(k-1); run = `M ${px.toFixed(1)} ${py.toFixed(1)}`; runCol = cr; runRgb = sc; runA = k-1; }
           run += ` L ${x.toFixed(1)} ${y.toFixed(1)}`;
         } else flush(k-1);
         px=x; py=y; tx=nx2; ty=ny2;
@@ -1999,7 +2137,7 @@ function drawFeather(){
   if(knit>0){
     let ground='', marked='';
     const bw = buleW.toFixed(2);
-    const key = c => `rgb(${(c.r|0)&252} ${(c.g|0)&252} ${(c.b|0)&252})`;
+    const key = c => `rgb(${cl255(c.r)&252} ${cl255(c.g)&252} ${cl255(c.b)&252})`;
     for(const b of barbLines){
       if(b.downy || !b.bules || !b.bules.length || !b.buleRgb) continue;
       let run='', runCol=null, runMk=false, penX=0, penY=0;
@@ -2164,6 +2302,18 @@ function updateReadouts(){
   $('marble-v').textContent = P.marble.value>0? P.marble.value+'%' : 'none';
   $('margin-v').textContent = +P.margin.value===0 ? 'none'
     : (+P.margin.value<0 ? 'pale ' : 'dark ') + Math.abs(+P.margin.value) + '%';
+  {
+    const bc = +P.brightcover.value;
+    if(!bc) $('brightcover-v').textContent = 'none';
+    else {
+      // the readout says which it turned out to be, because that is the one
+      // thing about the bright nobody chose and everybody should be told
+      const h = hexToHsl($('bright').value), sat = h.s;
+      const warm = h.h <= 70 || h.h >= 330, cool = h.h >= 165 && h.h <= 300;
+      const what = sat < 18 ? '' : warm ? ' food' : cool ? ' light' : ' both';
+      $('brightcover-v').textContent = bc + '%' + what;
+    }
+  }
   $('eye-v').textContent = P.eye.value>0? P.eye.value+'%' : 'none';
   $('eyepupil-v').textContent = P.eyepupil.value>0? P.eyepupil.value+'%' : 'solid';
   $('eyepos-v').textContent = P.eyepos.value+'%';
@@ -2229,6 +2379,7 @@ function conjureFrom(str){
   // owed the feather a coordinate grew last week.)
   P.bars.value = 0; P.barside.value = 0; P.baredge.value = 0;
   P.tipband.value = 0; P.speck.value = 0; P.margin.value = 0; P.marble.value = 0;
+  P.brightcover.value = 0;
   // the grain of the spotting, rolled apart from the amount of it — the moor
   // runs to fine freckling far oftener than to splodges, so the dice lean that
   // way and the big blotches stay a treat
@@ -2333,6 +2484,36 @@ function conjureFrom(str){
     if(rng()<0.3) P.tipband.value = 14 + Math.floor(rng()*20);
   }
 
+  // THE BRIGHT — rolled last, because it cannot be rolled at all until the
+  // marks are known. A bright makes no mark of its own; it rides what is
+  // already there, so a plain feather has nowhere to put one and does not get
+  // one. (Which is the mechanism doing the dice's job for it, and a good sign.)
+  const hasMark = +P.bars.value>0 || +P.tipband.value>0 || +P.speck.value>0
+                  || +P.margin.value!==0;
+  // how often, by coat: the two-tones are the goldfinch-and-woodpecker corner
+  // and take one readily; the moor's browns and fawns wear a touch of rust or
+  // gold now and then; a near-black wears the jackdaw's and the magpie's blue,
+  // which is structural and belongs to the dark; and the gaudy always says yes.
+  const brightOdds = coat==='gaudy' ? 0.85 : coat==='twotone' ? 0.30
+                   : coat==='dark'  ? 0.22 : coat==='pale' ? 0.16 : 0.12;
+  if(hasMark && rng() < brightOdds){
+    // FOOD or LIGHT, and the hue is the whole of that decision. A dark coat
+    // leans to the structural blues, because that is what a glossed black
+    // feather is; everything else leans warm, because most of what a moor bird
+    // eats comes out yellow.
+    const structural = coat==='dark' ? rng()<0.80 : coat==='gaudy' ? rng()<0.45 : rng()<0.18;
+    const h = structural ? 180 + rng()*95                       // teal .. violet
+            : rng()<0.30 ? 2 + rng()*22                         // rust .. scarlet
+            :              34 + rng()*22;                       // gold .. yellow
+    $('bright').value = hslToHex(h, structural ? 42+rng()*26 : 55+rng()*32,
+                                    structural ? 34+rng()*16 : 46+rng()*14);
+    // and the cover: mostly a partial claim, because the two-band finish is
+    // the commoner and the better-looking one — something sensible at the root
+    // of the mark and something loud at the end of it
+    P.brightcover.value = rng()<0.68 ? 35 + Math.floor(rng()*40)
+                                     : 80 + Math.floor(rng()*20);
+  }
+
   // iridescence: properly rare now, and tempered when it comes — at the
   // old odds the peacock was crowding out the pigeon. The pale and the
   // two-tones never conjure a sheen at all: screen-blent light has
@@ -2412,7 +2593,7 @@ $('irid').addEventListener('change', ()=>{ toggleIrid(); render(); });
    colours a feather actually wears are there to see and slide toward — not
    hunted for in the corner of a saturation square with no lightness at all. */
 let hslTarget = null;
-const HSLNAME = { pig1:'ground tone', pig2:'shade tone', eyecol:'eye heart',
+const HSLNAME = { pig1:'ground tone', pig2:'shade tone', bright:'the bright', eyecol:'eye heart',
                   eyecol2:'eye halo', iridcol:'sheen colour', iridcol2:'second sheen' };
 function paintHslTracks(){
   const h=+$('hslH').value, s=+$('hslS').value, l=+$('hslL').value;
@@ -2574,6 +2755,8 @@ $('receipt').addEventListener('click', ()=>{
   t += row('spots & splodges', rd('speck-v'));
   t += row('spot size', rd('specksize-v'));
   t += row('margin', rd('margin-v'));
+  t += crow('the bright', $('bright').value);
+  t += row('bright cover', rd('brightcover-v'));
   t += row('eyespot', rd('eye-v'));
   t += crow('eye heart', $('eyecol').value);
   t += crow('eye halo', $('eyecol2').value);
@@ -2599,6 +2782,7 @@ $('receipt').addEventListener('click', ()=>{
     bars:P.bars.value, barside:P.barside.value, baredge:P.baredge.value,
     tipband:P.tipband.value, speck:P.speck.value, margin:P.margin.value,
     marble:P.marble.value, specksize:P.specksize.value,
+    bright:$('bright').value, brightcover:P.brightcover.value,
     eye:P.eye.value, eyecol:$('eyecol').value, eyecol2:$('eyecol2').value,
     eyepupil:P.eyepupil.value, eyepos:P.eyepos.value, eyeside:P.eyeside.value,
     irid: iridOn ? 1 : 0, iridcol:$('iridcol').value, iridcol2:$('iridcol2').value,
@@ -2659,10 +2843,13 @@ function applyRecord(m){
   setR(P.specksize,'specksize');
   if(!numOk(m.marble)) P.marble.value = 0;       // ...and before the marbling, with their bars still marching
   if(!numOk(m.specksize)) P.specksize.value = 30;  // ...and before the grain, at the size the one slider used to give
+  setR(P.brightcover,'brightcover');
+  if(!numOk(m.brightcover)) P.brightcover.value = 0;   // feathers saved before the bright come back in plain melanin
   setR(P.eye,'eye'); setR(P.eyepupil,'eyepupil'); setR(P.eyepos,'eyepos'); setR(P.eyeside,'eyeside');
   if(!numOk(m.eyepupil)) P.eyepupil.value = 0;   // feathers saved before the window reload with a solid heart
   setR(P.iridpos,'iridpos'); setR(P.iridspread,'iridspread'); setR(P.iridstr,'iridstr');
-  setC('pig1','pig1'); setC('pig2','pig2'); setC('eyecol','eyecol'); setC('eyecol2','eyecol2');
+  setC('pig1','pig1'); setC('pig2','pig2'); setC('bright','bright');
+  setC('eyecol','eyecol'); setC('eyecol2','eyecol2');
   setC('iridcol','iridcol'); setC('iridcol2','iridcol2');
 
   $('irid').checked = (m.irid==='1' || m.irid==='true');
