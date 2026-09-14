@@ -297,7 +297,7 @@
     </div>
     <div class="card" title="the barbules that zip neighbouring barbs into a single web — two ranks off every barb, leaning opposite ways and meeting their neighbour's in the middle. Far too fine to draw them all, so a fraction of them is, at the finest pitch this page can still hold apart as lines. A loose weave is fewer of them, never fainter ones. At nothing, the bare comb">
       <div class="cap"><label for="knit">Barbule knit</label><span class="val" id="knit-v"></span></div>
-      <input type="range" id="knit" min="0" max="100" value="25">
+      <input type="range" id="knit" min="0" max="100" value="55">
     </div>
     <div class="card" title="soft, disordered barbs at the base">
       <div class="cap"><label for="down">Plumaceous down</label><span class="val" id="down-v"></span></div>
@@ -512,12 +512,38 @@ function drawFeather(){
   // the honest version of this error and was rightly thrown out; this was the
   // dishonest version, and it survived because it was hiding in an attribute.)
   //
-  // So the knit buys BARBULES. It opens and closes the rank's pitch, and the
-  // layer is drawn at the weight a hairline deserves whatever the setting. A
-  // loose weave is fewer lines, not fainter ones — which is what a loose weave
-  // is on the bird, and what it costs on the page. Measured at matched ink, the
-  // count reads the same and the file is a quarter smaller.
-  const knitF = Math.max(0.12, Math.pow(knit, 0.6));
+  // So the knit buys BARBULES, and the layer is drawn at the weight a hairline
+  // deserves whatever the setting. A loose weave is fewer lines, not fainter
+  // ones — which is what a loose weave is on the bird, and what it costs on
+  // the page.
+  //
+  // BUT IT MUST NOT BUY THEM BY CHANGING THEIR PITCH, which the first cut of
+  // this did, and a moiré came out of the middle of the slider to say so.
+  //
+  // A vane carries two lattices. The barbs sit at one spacing across the web —
+  // on a middling feather, 4.35 px — and the barbules sit at another along each
+  // barb, leaning 42° across the first. Drive the barbule pitch with the knit
+  // and it sweeps straight through the barb spacing on its way:
+  //
+  //     knit   10    20    30    45    65    90
+  //     pitch 6.43  4.25  3.34  2.62  2.10  1.73 px
+  //     ratio 1.48  0.98  0.77  0.60  0.48  0.40
+  //
+  // At knit 20 the two lattices are the SAME SPACING, and two combs of one
+  // pitch crossed at an angle are the definition of a moiré. Which is exactly
+  // what the middle of the slider drew — a watermark of lozenges standing up
+  // the inner vane — while both ends ran clean, one too coarse to phase-lock
+  // and the other too fine to resolve.
+  //
+  // So the pitch stays pinned at the finest the page can hold, always, and the
+  // knit moves HOW FAR OUT ALONG THE BARB the rank runs instead. Which is the
+  // better answer twice over, because a spacing can beat against another
+  // spacing and an EXTENT CANNOT — there is no frequency in it to beat with —
+  // and because it is what an unzipping vane actually does. Hooks let go at the
+  // margin first. A well-knit vane is zipped nearly to the ends of its barbs; a
+  // poorly-knit one holds on close to the rachis and flies loose outside that,
+  // which is both what a worn feather looks like and what "unzipped" means.
+  const knitSpan = knit;
   const KNIT_ALPHA = 0.62;   // the weight of a barbule, and it does not move
   const downFrac = +P.down.value/100;
   const wear = +P.wear.value/100;
@@ -1262,10 +1288,10 @@ function drawFeather(){
       // never finer than the page can hold — and the floor rises with the comb,
       // because a vane already carrying twice the barbs is carrying twice the
       // hairlines, and past a point another rank of them is ink spent on a grey
-      // nobody can see. The knit then opens the whole thing out: it can only
-      // ever make the pitch coarser than that floor, never finer, so the page's
-      // own limit still has the last word.
-      const pitch = Math.max(1.25*Math.max(1, nBarbs/130), b.reach*0.34) / knitF;
+      // nobody can see. Nothing moves it: this is the one spacing in the weave
+      // and it stays where the page put it, which is what keeps it from ever
+      // beating against the spacing of the barbs.
+      const pitch = Math.max(1.25*Math.max(1, nBarbs/130), b.reach*0.34);
       const len = b.reach*0.50/SB;                   // a shade past half the gap
       const SPAN = 0.80;                                  // the rank's run along the barb
       // a barbule reaches FOR ITS NEIGHBOUR, so where there is no neighbour to
@@ -1286,23 +1312,39 @@ function drawFeather(){
       // feather at once, because those are the same coordinate. Open at the
       // foot, shut at the tip, and no second mechanism anywhere to say so.
       const CLOSE_SPAN = 0.34;                  // how much growth it takes to shut
-      const climb = Math.max(1e-4, b.hLand - b.t);
       const openFrom = Math.max(downFrac*0.5, 0.04);
-      const u0 = 0.05, uEnd = 0.05 + SPAN;
+      // ...and the contour says its piece the same way, for the same reason.
+      // It used to open the PITCH where the vane was still young — which was
+      // the second place a spacing moved in this weave, and it left the foot of
+      // every vane sitting at a pitch three quarters of the barb gap, which is
+      // inside the beat. Looseness is an EXTENT. A young pennaceous web shows
+      // the light through it because the zip has not got far out along the barb
+      // yet, not because its barbules are further apart, and now there is no
+      // spacing anywhere in the knit that anything can move.
+      const shut = Math.min(1, Math.max(0, (b.t - openFrom)/CLOSE_SPAN));
+      // HOW FAR THE ZIP HAS HELD. The rank leaves the rachis and runs out along
+      // the barb as far as the knit and the contour between them take it, with
+      // a whisper of per-row wobble on the end so that where it gives out is a
+      // ragged frontier and not a line ruled up the vane parallel to the margin.
+      const u0 = 0.05;
+      const uEnd = u0 + SPAN*knitSpan*(0.25 + 0.75*shut)*(0.88 + 0.24*b.rowN);
+      const uRun = Math.max(1e-4, uEnd - u0);
       const bules = [];
+      const step = pitch/vl;                    // the one spacing, and it never moves
       for(let u = u0; u < uEnd && bules.length < 90 && (up1||dn1); ){
-        const g = b.t + u*climb;                             // where this barbule grew
-        const shut = Math.min(1, Math.max(0, (g - openFrom)/CLOSE_SPAN));
-        const step = (pitch/vl)*(1 + 1.6*(1-shut));
         const P = qpt(b,u), T = qtan(b,u);
         // the perpendicular pointing at the next barb up the shaft
         const dp = b.ux*T.x + b.uy*T.y;
         let px = b.ux - T.x*dp, py = b.uy - T.y*dp;
         const pm = Math.hypot(px,py)||1; px/=pm; py/=pm;
-        // and shortening hard over the last third of the barb, because barbules
+        // and shortening hard over the last third of the RANK, because barbules
         // do — the bare end of every barb is what keeps a vane's margin a crisp
-        // sawtooth of tips instead of a fuzz
-        const f = (u > 0.55 ? Math.max(0, 1 - Math.pow((u-0.55)/0.45, 1.4)) : 1) * len;
+        // sawtooth of tips instead of a fuzz. Read against the rank's own run
+        // rather than against the barb's, so a half-zipped vane fades out where
+        // its zip gives up instead of running full length and then stopping
+        // dead at a frontier of its own.
+        const ur = (u - u0)/uRun;
+        const f = (ur > 0.6 ? Math.max(0, 1 - Math.pow((ur-0.6)/0.4, 1.4)) : 1) * len;
         const ax = (T.x*CB + px*SB)*f, ay = (T.y*CB + py*SB)*f;   // distal rank
         const bx = (T.x*CB - px*SB)*f, by = (T.y*CB - py*SB)*f;   // proximal rank
         // A barbule keeps its start point and the LEGS from it, spelled as
@@ -2085,10 +2127,15 @@ function conjureFrom(str){
   P.camber.value  = rng()<0.75 ? 20 + Math.floor(rng()*55) : 0;
   P.angle.value   = 28 + Math.floor(rng()*38);
   P.density.value = 60 + Math.floor(rng()*85);
-  // the sweet spot found by looking: around a quarter, where the barbules are
-  // invisible at a glance and unmistakable close up, which is exactly how they
-  // behave on the bird. A little either side of it, and never the whole way.
-  P.knit.value    = 12 + Math.floor(rng()*30);
+  // the sweet spot found by looking — and moved, because the number under it
+  // changed. When the knit was an opacity a quarter was right; now that it is
+  // HOW FAR OUT THE ZIP HAS HELD, a quarter is a vane hooked together round the
+  // rachis and flying loose over three quarters of its width, which is a bird
+  // that has had a very bad month. Half to three quarters is a feather in good
+  // order: the barbules invisible at a glance and unmistakable close up, which
+  // is how they behave on the bird. Never quite the whole way — a vane zipped
+  // to the very ends of its barbs has no margin left to be crisp with.
+  P.knit.value    = 38 + Math.floor(rng()*38);
   // and never none: a feather with no plumaceous base at all is not a
   // feather, it is a leaf. The floor is the conjure's; the slider still goes
   // to zero for anyone who wants to see what a leaf looks like.
