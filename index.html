@@ -283,6 +283,10 @@
       <div class="cap"><label for="asym">Vane asymmetry</label><span class="val" id="asym-v"></span></div>
       <input type="range" id="asym" min="0" max="100" value="0">
     </div>
+    <div class="card" title="the vane cups out of the page — the webs foreshorten toward their margins and the light falls across the curve. 0 is a pressed specimen">
+      <div class="cap"><label for="camber">Camber</label><span class="val" id="camber-v"></span></div>
+      <input type="range" id="camber" min="0" max="100" value="0">
+    </div>
     <div class="card" title="the angle the barbs comb off the shaft">
       <div class="cap"><label for="angle">Barb angle</label><span class="val" id="angle-v"></span></div>
       <input type="range" id="angle" min="20" max="72" value="46">
@@ -298,6 +302,10 @@
     <div class="card" title="soft, disordered barbs at the base">
       <div class="cap"><label for="down">Plumaceous down</label><span class="val" id="down-v"></span></div>
       <input type="range" id="down" min="0" max="45" value="18">
+    </div>
+    <div class="card" title="the aftershaft — a whole second downy plume off the superior umbilicus, the way a grouse wears one">
+      <div class="cap"><label for="after">Aftershaft</label><span class="val" id="after-v"></span></div>
+      <input type="range" id="after" min="0" max="100" value="0">
     </div>
     <div class="card" title="the fraying and gaps of a feather that has flown">
       <div class="cap"><label for="wear">Age &amp; wear</label><span class="val" id="wear-v"></span></div>
@@ -332,9 +340,21 @@
       <div class="cap"><label for="tipband">Terminal band</label><span class="val" id="tipband-v"></span></div>
       <input type="range" id="tipband" min="0" max="40" value="0">
     </div>
+    <div class="card" title="the bars stop marching and start wandering — a woodcock's vermiculation. Wind the barring up alongside it for the finest weather">
+      <div class="cap"><label for="marble">Marbling</label><span class="val" id="marble-v"></span></div>
+      <input type="range" id="marble" min="0" max="100" value="0">
+    </div>
     <div class="card" title="flecks &amp; splodges grown into the barbs themselves">
       <div class="cap"><label for="speck">Spots &amp; splodges</label><span class="val" id="speck-v"></span></div>
       <input type="range" id="speck" min="0" max="100" value="0">
+    </div>
+    <div class="card" title="the grain of the spotting — fine freckle at the left, splodge at the right. The count follows: at a given amount, smaller spots means more of them">
+      <div class="cap"><label for="specksize">Spot size</label><span class="val" id="specksize-v"></span></div>
+      <input type="range" id="specksize" min="0" max="100" value="30">
+    </div>
+    <div class="card" title="a paler or darker edge to the vane, curving round from the terminal band — left of centre pale, right of centre dark; follows Bar side onto one web">
+      <div class="cap"><label for="margin">Margin</label><span class="val" id="margin-v"></span></div>
+      <input type="range" id="margin" min="-100" max="100" value="0">
     </div>
     <div class="card" title="the ocellus — a peacock's eye, grown into the barbs; past 100 it goes GIANT, taking its scale from the feather's whole length, until the rings are country the feather merely crosses">
       <div class="cap"><label for="eye">Eyespot</label><span class="val" id="eye-v"></span></div>
@@ -407,9 +427,11 @@ function freshDraw(){ return mulberry(drawSeed); }
 
 const $ = id => document.getElementById(id);
 const P = {
-  len:$('len'), curve:$('curve'), width:$('width'), apex:$('apex'), asym:$('asym'), angle:$('angle'),
-  density:$('density'), knit:$('knit'), down:$('down'), wear:$('wear'),
+  len:$('len'), curve:$('curve'), width:$('width'), apex:$('apex'), asym:$('asym'),
+  camber:$('camber'), angle:$('angle'),
+  density:$('density'), knit:$('knit'), down:$('down'), after:$('after'), wear:$('wear'),
   bars:$('bars'), barside:$('barside'), baredge:$('baredge'), tipband:$('tipband'), speck:$('speck'),
+  margin:$('margin'), marble:$('marble'), specksize:$('specksize'),
   eye:$('eye'), eyepupil:$('eyepupil'), eyepos:$('eyepos'), eyeside:$('eyeside'),
   iridpos:$('iridpos'), iridspread:$('iridspread'), iridstr:$('iridstr')
 };
@@ -436,8 +458,19 @@ function nm(v){ let r=Math.round(v*10); if(!r) return '0';
   const neg = r<0; if(neg) r=-r;
   const w=(r/10)|0, d=r-w*10;
   return (neg?'-':'') + (w?w:'') + (d?'.'+d:''); }
+/* Two numbers, run together wherever the grammar lets them be — and it lets
+   them less often than this once assumed. A leading '-' always delimits: a
+   minus sign cannot continue the number before it. A leading '.' only
+   delimits if that number ALREADY carries a point, because a second point is
+   what ends the first number — '3.5.2' is two numbers, but '3' and '.2' run
+   together into the single number '3.2', and the whole rest of the path dies
+   on the spot. Which is exactly what a knitted vane was doing: nearly half of
+   its barbule paths were invalid, and a renderer that meets a bad number
+   draws the valid prefix and abandons the rest of the path. Every welded
+   barbule took all its followers with it. */
 function pair(x,y){ const a=nm(x), b=nm(y);
-  return a + (b[0]==='-'||b[0]==='.' ? '' : ' ') + b; }
+  const welds = b[0]==='-' || (b[0]==='.' && a.indexOf('.')>=0);
+  return a + (welds ? '' : ' ') + b; }
 
 function mix(a,b,t){ return {r:a.r+(b.r-a.r)*t, g:a.g+(b.g-a.g)*t, b:a.b+(b.b-a.b)*t}; }
 function rgbStr(c){ return `rgb(${c.r|0} ${c.g|0} ${c.b|0})`; }
@@ -457,16 +490,21 @@ function drawFeather(){
   const vaneW = +P.width.value;
   const apexDeg = +P.apex.value/100;              // the degree within the apex family
   const asym = +P.asym.value/100;                 // 0 symmetric .. 1 strong flight feather
+  const camber = +P.camber.value/100;             // 0 a pressed specimen .. 1 a cupped one
   const barbAngle = +P.angle.value * Math.PI/180;
   const nBarbs = +P.density.value;
   const knit = +P.knit.value/100;         // 0 the bare comb .. 1 a zipped web
   const downFrac = +P.down.value/100;
   const wear = +P.wear.value/100;
+  const afterFrac = +P.after.value/100;   // the aftershaft: 0 none .. 1 a grouse's
   const nBars = +P.bars.value;
   const tipBand = +P.tipband.value/100;
   const barBias = +P.barside.value/100;   // 0 bars on both webs .. 1 one web only
   const barEdge = +P.baredge.value/100;   // 0 crisp bands .. 1 ragged, mottled
-  const speck = +P.speck.value/100;
+  const speck = +P.speck.value/100;        // how MUCH of the vane is spotted
+  const speckSize = +P.specksize.value/100;// and how COARSE the spotting is
+  const margin = +P.margin.value/100;     // −1 a pale edge .. 0 none .. +1 a dark one
+  const marble = +P.marble.value/100;     // 0 bars that march .. 1 bars that wander
   const eyeSize = +P.eye.value/100;       // 0 no ocellus .. 1 the vane's breadth .. 3 truly giant
   const eyeT = +P.eyepos.value/100;       // where along the shaft the eye sits
   const eyeSide = +P.eyeside.value/100;   // the cast: 0 a true eye .. ±1 sent off a web
@@ -487,21 +525,26 @@ function drawFeather(){
 
   // barbules pool here — one shared path for the whole feather, so a cloud
   // of micro-wisps costs the SVG almost nothing.
-  let fluffD = '';
+  const fluffPool = [], afterPool = [];
 
   // a wandering strand: chained gentle turns around a per-strand curl, with a
   // whisper of droop — the shape of down. Draws only from the fluff stream.
-  function strand(x0, y0, dx0, dy0, len, wildness){
+  // A strand draws from whichever stream and pools its wisps wherever it is
+  // told, so the aftershaft can wander on its own dice — faffing the plume
+  // then never re-rolls the down, exactly as faffing the down never re-rolls
+  // the vane.
+  function strand(x0, y0, dx0, dy0, len, wildness, rn, pool){
+    rn = rn || drng; pool = pool || fluffPool;
     const segs = 4;
     let px=x0, py=y0, dx=dx0, dy=dy0;
-    const curl = (drng()-0.5)*2.6*wildness;   // the strand's own persuasion
+    const curl = (rn()-0.5)*2.6*wildness;   // the strand's own persuasion
     const pts = [[px,py]];
     for(let k=0;k<segs;k++){
-      const turn = curl/segs + (drng()-0.5)*0.45*wildness;
+      const turn = curl/segs + (rn()-0.5)*0.45*wildness;
       const ct=Math.cos(turn), st=Math.sin(turn);
       const ndx=dx*ct-dy*st, ndy=dx*st+dy*ct+0.08;   // +0.08 is gravity's word
       const dm=Math.hypot(ndx,ndy)||1; dx=ndx/dm; dy=ndy/dm;
-      const sl=(len/segs)*(0.8+drng()*0.4);
+      const sl=(len/segs)*(0.8+rn()*0.4);
       px+=dx*sl; py+=dy*sl; pts.push([px,py]);
     }
     let d=`M ${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
@@ -517,14 +560,14 @@ function drawFeather(){
       const pdx=pts[k][0]-pts[k-1][0], pdy=pts[k][1]-pts[k-1][1];
       const pm=Math.hypot(pdx,pdy)||1;
       for(const j of [1,-1]){
-        if(drng() > 0.85) continue;
-        const rot=j*(0.35+drng()*0.45), blen=len*(0.07+drng()*0.13);
+        if(rn() > 0.85) continue;
+        const rot=j*(0.35+rn()*0.45), blen=len*(0.07+rn()*0.13);
         const cr=Math.cos(rot), sr=Math.sin(rot);
         const bdx=(pdx*cr-pdy*sr)/pm, bdy=(pdx*sr+pdy*cr)/pm;
         const er=Math.cos(rot*1.7), es=Math.sin(rot*1.7);
         const edx=(pdx*er-pdy*es)/pm, edy=(pdx*es+pdy*er)/pm;
         const bx=pts[k][0], by=pts[k][1];
-        fluffD += `M ${bx.toFixed(1)} ${by.toFixed(1)} Q ${(bx+bdx*blen*0.6).toFixed(1)} ${(by+bdy*blen*0.6).toFixed(1)} ${(bx+edx*blen).toFixed(1)} ${(by+edy*blen).toFixed(1)}`;
+        pool.push(`M ${bx.toFixed(1)} ${by.toFixed(1)} Q ${(bx+bdx*blen*0.6).toFixed(1)} ${(by+bdy*blen*0.6).toFixed(1)} ${(bx+edx*blen).toFixed(1)} ${(by+edy*blen).toFixed(1)}`);
       }
     }
     return d;
@@ -566,17 +609,82 @@ function drawFeather(){
   //               asymmetry skews the cut toward a parallelogram unaided.
   const peak = apexType===1 ? 0.63 - apexDeg*0.24 : 0.63;
   const latK = Math.cos(barbAngle);   // the across-vane share of a barb's length
+
+  // ================= THE CAMBER =================
+  //
+  // A feather is not flat, and everything above this line has drawn one that
+  // is. The vane CUPS: the two webs curl out of the page toward their margins,
+  // which does two things at once and they are the same thing.
+  //
+  // It FORESHORTENS. A web that curls away shows less of itself the further
+  // out you look, so the barbs crowd together toward the margin — and that
+  // crowding is most of what the eye reads as depth. The vane is modelled as a
+  // cylinder about the rachis: a point at a true across-distance a sits at
+  // angle a/R on it, so it draws at R·sin(a/R) and its surface tilts by a/R.
+  //
+  // And it LIGHTS. The tilt is a surface normal, so one web turns toward the
+  // light and the other falls away from it, which is the oldest trick there is
+  // for making a curved thing look curved. It is arithmetic on each stroke's
+  // own colour — a multiply, where the sheen is a screen, light removed rather
+  // than light added — so nothing is painted on top and the rule holds.
+  //
+  // The feather's real geometry stays FLAT and everything is solved on it as
+  // before: the landing, the outline, the crown, the marks. Camber is a
+  // projection applied at the moment of drawing, which is why every barb keeps
+  // both its true control points and its drawn ones. A mark lives on the
+  // feather, not on the picture of it, so the specks and the eye go on reading
+  // the true ones and shear with the vane exactly as they did.
+  //
+  // The DOWN is left flat on purpose. A plumaceous barb is not part of the
+  // vane's sheet — it fluffs in every direction there is — so projecting it
+  // onto one surface would be a worse lie than leaving it alone.
+  const camR = camber > 0 ? (vaneW*latK)/(camber*1.15) : 0;
+  const camMap = a => {
+    if(!camR) return a;
+    const th = Math.max(-1.40, Math.min(1.40, a/camR));   // never fold right over
+    return camR*Math.sin(th);
+  };
+  // THE LIGHT, which wants to come from well off to one side and not from
+  // just beside the eye. A lamp near face-on puts the cosine's crest in the
+  // middle of the vane, so the near web hardly brightens at all and the whole
+  // effect is shadow on the far web — a vane that has been dirtied down one
+  // side rather than turned. Set the lamp out at about the angle the margin
+  // itself reaches and the term runs MONOTONE across the feather: brightest at
+  // the near margin, mid at the shaft, falling to the far one. Which is what a
+  // cupped thing looks like.
+  //
+  // It is normalised on the shaft, so the middle of the vane keeps the colour
+  // it was dyed and the camber only ever says which way a stretch is turned.
+  // And quantised, because a gradient is paths: the walk can only fold
+  // stretches that come out the same colour, and light that never repeats
+  // never folds. Twenty steps is below what the eye reads on a hairline.
+  const CAM_LIGHT = -1.0, CAM_L0 = Math.cos(CAM_LIGHT);
+  const camLit = at => {
+    if(!camR) return 1;
+    const k = 1 + camber*0.24*(Math.cos(at/camR - CAM_LIGHT) - CAM_L0);
+    return Math.round(Math.max(0.62, Math.min(1.16, k))*40)/40;
+  };
+
   const pBase = (1-peak)*tipReach/(vaneW*latK);
   const pApex = apexType===2 ? Math.max(2.5, pBase*1.15)
               : Math.max(1.4 + apexDeg*0.6, pBase*(0.6 + apexDeg*1.2));
   const kFine = 0.9 + apexDeg*1.3;
+  const BASE_SHOULDER = 0.17;   // the vane's breadth where the barbs first strike
   function widthAt(t){
     if(t >= 1) return 0;
     let w;
     if(t < peak){
       const u = t/peak;
-      w = Math.sin(u*Math.PI/2);          // ease up to full — rounded, not angular
-      w = Math.pow(w, 0.85);
+      w = Math.pow(Math.sin(u*Math.PI/2), 0.85);   // ease up to full — rounded, not angular
+      // THE SHOULDER. That ease ran all the way to nothing at t = 0, so the
+      // foot of every vane was drawn as a needle — and a vane does not come to
+      // a point at the bottom. It BEGINS, at the superior umbilicus, at a
+      // definite width, and the lowest barbs are already a fair reach long. On
+      // a well-downed feather the fluff stands in front of this and you never
+      // see it; on a feather with little down the spear was the whole of the
+      // base. So the ease is lifted onto a shoulder and the vane starts where
+      // the barbs start.
+      w = BASE_SHOULDER + (1-BASE_SHOULDER)*w;
     } else {
       const u = (t-peak)/(1-peak);
       w = apexType===1 ? Math.pow(1-u, kFine)
@@ -595,6 +703,43 @@ function drawFeather(){
     const base = widthAt(t);
     if(side>0) return base * (1 - asym*0.62);   // leading edge narrower
     return base * (1 + asym*0.42);              // trailing edge broader
+  }
+
+  // THE DOWN'S OWN BREADTH — because a plumaceous barb obeys no outline.
+  // A vane barb is cut where it MEETS the envelope, and that is right, because
+  // its neighbours hold it there. A downy barb is held by nothing: it is a
+  // cloud, not a web, and it reaches as far as it grew. Reading its length off
+  // the vane's envelope instead — which eases to nothing at the base — tapered
+  // the down to the same needle the vane made, so a feather narrowed to a
+  // spike at the foot however much fluff you gave it.
+  // So the down carries a plump lens of its own: broad through the middle of
+  // the plumaceous zone, rounding off where it meets the calamus, and never
+  // narrower than the vane it hands over to — which is what keeps the join
+  // seamless, since the lens closes to nothing exactly where the vane takes up.
+  // Given as a barb LENGTH rather than a half-breadth, because that is what
+  // the fluff is measured in: how far this barb goes on past where the vane
+  // gave out.
+  // It is the LENS ALONE and nothing else — no floor of the vane's own width
+  // under it. A floor read at the barb's ROOT exceeds the barb's real length
+  // everywhere above the vane's widest point, where the envelope is closing;
+  // so a floor put fluff on every barb in the top third of the feather, and
+  // the specimen came out standing in a cloud of thistledown. The lens closes
+  // to nothing at the top of the plumaceous zone, which is all the continuity
+  // the join needs, the firm stretch having already grown to the whole barb
+  // by then.
+  function downReach(t, side){
+    if(downFrac <= 0) return 0;
+    const x = t/downFrac;
+    if(x >= 1) return 0;
+    // No secant. This is a LENGTH and vaneW is already one — latK is the
+    // across-vane SHARE of a length, so dividing by it here multiplied the
+    // down by sec(comb): 1.06 at twenty degrees, 3.24 at seventy-two. Which is
+    // why a steeply combed feather grew fluff at what looked like an
+    // exponential rate, and why it looked fine everywhere else. The comb sets
+    // the direction a downy barb leaves in. It has no business setting how far
+    // it goes: a plumaceous barb is bounded by no outline, so its length is
+    // the feather's business and nobody else's.
+    return vaneW*0.82*Math.pow(Math.sin(Math.PI*x), 0.45);
   }
 
   // a point on the vane's outline — the fan lands its barbs here, and wants
@@ -703,8 +848,6 @@ function drawFeather(){
     const t = rows[ri];
     if(t < 0.04) continue;
     const rp = rachisPt(t);
-    const downy = t < downFrac;
-    const ang = downy ? barbAngle*1.5 : barbAngle;
     const up = rp.tan, norm = rp.norm;
 
     // as a barb nears the tip its TIP is drawn toward the end of the rachis,
@@ -715,30 +858,84 @@ function drawFeather(){
     const tf = t <= TIP_ZONE ? 0 : (t - TIP_ZONE) / (1 - TIP_ZONE);
     const sw = tf*tf*(3 - 2*tf);   // smoothstepped, so the pull arrives seamlessly
 
-    // barring: is this barb-row within a dark band? barEdge wobbles the band
-    // boundary and mottles the fill using a deterministic per-row hash (kept off
-    // the main rng so the bars stay stable and don't disturb wear/jitter).
-    let bandDark = 0;
+    // a deterministic per-row hash, kept off the main rng so the marks it
+    // ragges never jog the wear or the jitter. The BARS used to be worked out
+    // here and painted onto the whole barb; they have moved into the marking
+    // frame below, where they belong.
     const hsh = Math.sin(t*311.7 + nBars*57.3)*43758.5;
     const rowN = hsh - Math.floor(hsh);   // 0..1 stable per barb-row
-    if(nBars>0){
-      const wob = barEdge*(rowN-0.5)*0.6;                 // ragged band boundary
-      const phase = Math.sin(t*Math.PI*nBars);
-      bandDark = Math.max(0, (Math.abs(phase)-(0.45+wob))/0.55);
-      if(bandDark>0 && barEdge>0) bandDark *= 1 - barEdge*rowN*0.8;   // mottle: some rows fade
-    }
 
     for(const side of [1,-1]){
       const wearChance = wear * (0.4 + 0.6*t);
       if(rng() < wearChance*0.5){ continue; }
 
+      // THE GROWTH CONTOUR, and the thing it decides.
+      //
+      // Plumaceous and pennaceous are properties of the BARBULES, not of the
+      // barb. A ramus runs unbroken from shaft to tip; what changes along it is
+      // whether the barbules it carries are short and hooked — a vane — or long
+      // and free — down. So the boundary between them cannot be a waterline in
+      // t, a flat line ruled across the feather with all fluff below it and all
+      // vane above, which is what it was. It is a GROWTH CONTOUR: everything
+      // the follicle laid down at one moment, level at the rachis and drooping
+      // toward the base out along each web. Which is the terminal band's own
+      // chevron, and a feather has only the one.
+      //
+      // That makes the plumaceous fraction of a barb a very small sum, because
+      // the landing solve has already done the work. It knows this barb's
+      // growth coordinate at its root (t) and at its tip (hLand). The boundary
+      // lies somewhere between the two, and all we want is how far along:
+      //
+      //     uDown = (downFrac − t) / (hLand − t)
+      //
+      // At or below 0 the barb is wholly vane. At or above 1 the boundary is
+      // past its tip and the barb is wholly down. In between — over a band as
+      // deep as one barb's own climb, which is a far better transition than the
+      // hard-coded 0.08 the old fringe used — the barb is downy at the base and
+      // zipped further out, which is exactly what the lower vane of a contour
+      // feather does. No trigonometry: the climb was already solved for.
+      // WHICH END OF A BARB IS THE DOWNY ONE — and the pheasant settled it
+      // against the textbook, which is the right way round for that argument.
+      //
+      // Yesterday's guess put the plumaceous stretch at the barb's BASE, next
+      // to the shaft, with the vane taking over further out. Held up to a real
+      // feather that is backwards. The lowest barbs that carry barbules at all
+      // are firm where they leave the shaft and fade to down at their OUTER
+      // ends; the firm share grows as you climb, until it is the whole barb.
+      // Which is why the boundary between down and clean vane is a V — lowest
+      // where it crosses the rachis, rising out along each web — and not the
+      // level line the first pass drew.
+      //
+      // And it is not a new mechanism at all. Every barb in this tool already
+      // goes bare at its far end: the ranks shorten hard over the last third,
+      // which is what keeps a vane's margin a sawtooth of tips and not a fuzz.
+      // The plumaceous base is THAT, grown. Slide the bare fraction back down
+      // the barb and the vane gives out earlier and earlier, until at the foot
+      // of the feather there is no firm part left and the barb is all down.
+      // One number, read at two depths: a crisp margin at the top of a feather
+      // and a cloud at the bottom of it are the same fact about a barb.
       const halfW = sideWidth(t, side);
+      const landVane = landAt(t, side, barbAngle);
+      // the firm share: nothing at all through most of the plumaceous zone —
+      // that is the pure down, barbs that never harden — and then climbing to
+      // the whole barb over the last third of it. Held against a real feather
+      // the changeover is QUICK: a broad block of down, a narrow band where
+      // the two argue, and then clean vane. A ramp spread over the whole zone
+      // drew a deep V; the thing itself is a shallow one.
+      const xf = downFrac>0 ? Math.min(1, t/downFrac) : 1;
+      const q = Math.max(0, (xf - 0.68)/0.32);
+      const uFirm = q*q*(3-2*q);             // how much of this barb is vane
+      const allDown = uFirm <= 0.02;
+      // down sweeps more upright than the vane does — but never past the
+      // vertical, which a bare 1.5× reaches at a comb of sixty degrees and
+      // then walks backwards over the far web
+      const ang = allDown ? Math.min(barbAngle*1.5, 1.30) : barbAngle;
       const dirx = norm.x*side*Math.cos(ang) + up.x*Math.sin(ang);
       const diry = norm.y*side*Math.cos(ang) + up.y*Math.sin(ang);
       const m = Math.hypot(dirx,diry)||1;
-      let bl = halfW, hLand = t;
-      if(downy){
-        bl *= 1.1+rng()*0.5;
+      let bl = halfW, hLand = landVane;
+      if(allDown){
+        bl = downReach(t, side)*(1.1+rng()*0.5);
       } else {
         // a barb is cut where it MEETS the outline, not to the envelope at
         // its root: a barb climbs as it reaches out, and the silhouette is
@@ -747,7 +944,6 @@ function drawFeather(){
         // the crown at full breadth — the square-shouldered fat head — so
         // the landing is solved instead (see landAt: bisection, which holds
         // where the old damped iteration rang itself apart on a steep crown).
-        hLand = landAt(t, side, ang);
         bl = (hLand - t)*tipReach/Math.sin(ang);
         if(apexType===2){
           // the truncate shear: a barb grows only until the scissors'
@@ -761,6 +957,7 @@ function drawFeather(){
           if(bl < 1) continue;
         }
         bl *= notchFactor(t, side);   // the unzipped vane bites in
+        bl *= uFirm;                  // ...and the vane gives out at the contour
         // a barb too short to read as a stroke renders as a floating dot —
         // the acuminate needle's last reaches are carried by the sprig of
         // bare shaft instead (drawn with the quill), so let the dots go. In a
@@ -769,11 +966,17 @@ function drawFeather(){
         if(bl < 1.4 && !(apexType===0 && sw>0)) continue;
       }
 
+      // the growth coordinate of this barb's far end, read off the length it
+      // ACTUALLY got — so a notched, sheared or contour-shortened barb carries
+      // its markings at the height it really reaches, not the height it would
+      // have reached unmolested
+      hLand = t + bl*Math.sin(ang)/tipReach;
+
       // jitter, held to a constant width of wobble: a steep barb runs nearly
       // along the shaft, so the same angular shake used to swing its tip far
       // wider of the vane edge — that was the scruff. Scale the shake back by
       // the slope so the edge stays equally calm at every barb angle.
-      const jAmp = downy ? ang*0.9 : 0.12*Math.min(1, 1.035/Math.tan(ang));   // 1.035 = tan 46°
+      const jAmp = allDown ? ang*0.9 : 0.12*Math.min(1, 1.035/Math.tan(ang));   // 1.035 = tan 46°
       const jitter = (rng()-0.5)*jAmp;
       const ca=Math.cos(jitter), sa=Math.sin(jitter);
       const rx=(dirx*ca-diry*sa)/m, ry=(dirx*sa+diry*ca)/m;
@@ -795,7 +998,7 @@ function drawFeather(){
       // neighbours and ARRIVES skimming the crown, which is curvature, not
       // position. Its tip is where the comb put it.
       let fanPull = 0, ftx = 0, fty = 0;
-      if(apexType===0 && sw>0 && !downy){
+      if(apexType===0 && sw>0 && !allDown){
         const dd = 0.006;
         const o1 = outlineAt(Math.max(peak, hLand-dd), side);
         const o2 = outlineAt(Math.min(1, hLand+dd), side);
@@ -805,7 +1008,7 @@ function drawFeather(){
       }
 
       const vx=ex-rp.x, vy=ey-rp.y, vl=Math.hypot(vx,vy);
-      if(!downy && vl < 1.4) continue;    // the dots go, measured on what is drawn
+      if(!allDown && vl < 1.4) continue;    // the dots go, measured on what is drawn
       let midx=rp.x+vx*0.5+up.x*vl*0.18, midy=rp.y+vy*0.5+up.y*vl*0.18;
       if(fanPull>0){
         // a fanned barb LEAVES the shaft like its unfanned neighbours and
@@ -824,46 +1027,54 @@ function drawFeather(){
         }
       }
 
-      // one-sided barring: fade the bars out on the leading (right) web as the
-      // bias climbs, so at full bias the bars sit on one web of the vane only.
-      let bd = bandDark;
-      if(barBias>0 && side>0) bd *= (1-barBias);
+      // the barb's own ground tone. Every MARK it wears is decided later, in
+      // the rachis frame, at the place on the page each stretch of it occupies.
+      let col = mix(pig1, pig2, Math.min(1, 0.15 + (1-t)*0.35));
+      if(allDown) col = mix(col, {r:200,g:190,b:170}, 0.25);
 
-      // pigment: ground tone -> darker toward base & within bands
-      let shade = 0.15 + (1-t)*0.35 + bd*0.7;
-      shade = Math.min(1, shade);
-      let col = mix(pig1, pig2, shade);
-      if(downy) col = mix(col, {r:200,g:190,b:170}, 0.25);
-
-      if(downy){
+      if(allDown){
         // down is not a stroke but a wander — wildest deep in the plumage,
         // calming as it climbs toward the vane so the join doesn't snap.
         const fluff = 0.35 + 0.65*Math.max(0, 1 - t/downFrac);
         barbLines.push({
           d: strand(rp.x, rp.y, rx, ry, bl, fluff),
-          downy, t, col: rgbStr(col),
+          downy: true, t, col: rgbStr(col),
           dw: 0.5+drng()*0.3, dop: 0.36+drng()*0.22
         });
       } else {
-        if(downFrac>0){
-          // the afterfeather: for a short way above the down each vane barb
-          // keeps a downy base, so a faint strand under the web's shoulder
-          // eases fluff into clean vane instead of a hard waterline.
-          const fringe = 1 - (t - downFrac)/0.08;
-          if(fringe > 0){
-            const wl = halfW*(0.35+drng()*0.45)*(0.4+0.6*fringe);
-            barbLines.push({
-              d: strand(rp.x, rp.y, rx, ry, wl, 0.9),
-              downy: true, t, col: rgbStr(mix(col,{r:200,g:190,b:170},0.35)),
-              dw: 0.5+drng()*0.2, dop: 0.12+0.26*fringe
-            });
-          }
+        // the drawn barb is the true barb, projected: only the ACROSS part of
+        // each point is bent, in this barb's own root frame, which is the frame
+        // the whole barb was built in anyway
+        let dmx=midx, dmy=midy, dex=ex, dey=ey;
+        if(camR){
+          const bend = (px,py) => {
+            const ax = (px-rp.x)*norm.x + (py-rp.y)*norm.y;
+            const al = (px-rp.x)*up.x   + (py-rp.y)*up.y;
+            const a2 = camMap(ax);
+            return [rp.x + norm.x*a2 + up.x*al, rp.y + norm.y*a2 + up.y*al];
+          };
+          [dmx,dmy] = bend(midx,midy); [dex,dey] = bend(ex,ey);
         }
         barbLines.push({
-          d:`M ${rp.x.toFixed(1)} ${rp.y.toFixed(1)} Q ${midx.toFixed(1)} ${midy.toFixed(1)} ${ex.toFixed(1)} ${ey.toFixed(1)}`,
-          downy, t, rowN, col: rgbStr(col), rgb: col, ri, side, ux: up.x, uy: up.y,
-          rpx:rp.x, rpy:rp.y, mx:midx, my:midy, ex, ey    // geometry for in-barb markings
+          d:`M ${rp.x.toFixed(1)} ${rp.y.toFixed(1)} Q ${dmx.toFixed(1)} ${dmy.toFixed(1)} ${dex.toFixed(1)} ${dey.toFixed(1)}`,
+          downy: false, t, rowN, hLand, col: rgbStr(col), rgb: col, ri, side, ux: up.x, uy: up.y,
+          rpx:rp.x, rpy:rp.y, mx:dmx, my:dmy, ex:dex, ey:dey,   // as drawn
+          tmx:midx, tmy:midy, tex:ex, tey:ey                    // as grown
         });
+        // THE DOWNY CONTINUATION — where the vane gave out, the barb carries
+        // on as fluff. It leaves from the far end of the firm stretch, not
+        // from the shaft, and it runs to the down's own reach: so the lower a
+        // barb sits, the shorter its vane and the longer its tail of down,
+        // and at the foot of the feather there is nothing else left.
+        const dr = downReach(t, side);
+        if(dr > bl + 1.5){
+          const fx = rp.x + rx*bl, fy = rp.y + ry*bl;
+          barbLines.push({
+            d: strand(fx, fy, rx, ry, (dr-bl)*(0.85+drng()*0.4), 0.9),
+            downy: true, t, col: rgbStr(mix(col,{r:200,g:190,b:170},0.35)),
+            dw: 0.5+drng()*0.2, dop: 0.16 + 0.30*(1-uFirm)
+          });
+        }
       }
     }
   }
@@ -871,6 +1082,14 @@ function drawFeather(){
   // a point on a barb's own quadratic — every mark in this tool walks the barbs
   // it is grown from, and now the knit and the sheen do too
   const qAt=(a,b,c,s)=>{const mt=1-s;return mt*mt*a+2*mt*s*b+s*s*c;};
+
+  // A barb has two sets of points now: the ones it GREW as, which every mark
+  // and the sheen are tested against, and the ones the camber DRAWS it at.
+  const tAt = (b,u) => [qAt(b.rpx,b.tmx,b.tex,u), qAt(b.rpy,b.tmy,b.tey,u)];
+  // and the light the camber throws on a point, read off its true across-distance
+  const camAt = (b,x,y) => camR ? camLit((x-b.rpx)*(-b.uy) + (y-b.rpy)*b.ux) : 1;
+  const dim = (c,k) => k===1 ? c : {r:c.r*k, g:c.g*k, b:c.b*k};
+
 
   // HOW FAR A BARBULE HAS TO REACH — the span from a barb to the one beside it
   // in its own web, which is the one measurement the knit below is made of.
@@ -967,16 +1186,32 @@ function drawFeather(){
       const pitch = Math.max(1.25*Math.max(1, nBarbs/130), b.reach*0.34);
       const len = b.reach*0.50/SB;                   // a shade past half the gap
       const SPAN = 0.80;                                  // the rank's run along the barb
-      const n = Math.max(0, Math.min(90, Math.floor(SPAN*vl/pitch)));
       // a barbule reaches FOR ITS NEIGHBOUR, so where there is no neighbour to
       // reach for there is nothing to draw: that is what kept a halo of stray
       // whiskers standing off the apex, where the topmost barb was fringing
       // out into open sky.
       const up1 = byRow.has(b.side*100000 + b.ri + 1);
       const dn1 = byRow.has(b.side*100000 + b.ri - 1);
+      // ...AND THE RANK TIGHTENS AS THE VANE CLOSES.
+      //
+      // A barb's firm stretch already ends at the contour — it was cut there —
+      // so the rank simply runs the length of what is left, and the fluff
+      // beyond it is drawn as fluff. What the contour still has to say is how
+      // TIGHT the weave is: a vane does not open fully knit. A young pennaceous
+      // web is loose and shows the light through it, and it shuts as it climbs.
+      // So the PITCH is read off the growth coordinate, which thins the weave
+      // where the vane is still opening, along each barb and up the whole
+      // feather at once, because those are the same coordinate. Open at the
+      // foot, shut at the tip, and no second mechanism anywhere to say so.
+      const CLOSE_SPAN = 0.34;                  // how much growth it takes to shut
+      const climb = Math.max(1e-4, b.hLand - b.t);
+      const openFrom = Math.max(downFrac*0.5, 0.04);
+      const u0 = 0.05, uEnd = 0.05 + SPAN;
       const bules = [];
-      for(let i=0;i<n && (up1||dn1);i++){
-        const u = 0.05 + (i+0.5)*(SPAN/n);
+      for(let u = u0; u < uEnd && bules.length < 90 && (up1||dn1); ){
+        const g = b.t + u*climb;                             // where this barbule grew
+        const shut = Math.min(1, Math.max(0, (g - openFrom)/CLOSE_SPAN));
+        const step = (pitch/vl)*(1 + 1.6*(1-shut));
         const P = qpt(b,u), T = qtan(b,u);
         // the perpendicular pointing at the next barb up the shaft
         const dp = b.ux*T.x + b.uy*T.y;
@@ -1001,6 +1236,7 @@ function drawFeather(){
           legs += 'l'+pair(pts[j][0]-pts[j-1][0], pts[j][1]-pts[j-1][1]);
         const last = pts[pts.length-1];
         bules.push({ u, legs, sx:pts[0][0], sy:pts[0][1], ex:last[0], ey:last[1], x:P.x, y:P.y });
+        u += step;
       }
       b.bules = bules;
     }
@@ -1063,6 +1299,128 @@ function drawFeather(){
     };
   }
 
+
+  // ================= THE MARKING FRAME =================
+  //
+  // A pattern is a FIELD IN THE RACHIS FRAME, sampled along the barbs. It is
+  // not a property of the barb it lands on, and that distinction is the whole
+  // of this section.
+  //
+  // Until now a bar was decided by where a barb's ROOT sat and then painted
+  // along the whole barb. But a barb climbs as it reaches out, so the set of
+  // barbs rooted inside a band of t sweeps out a PARALLELOGRAM leaning tipward
+  // by exactly the comb angle. Feaffer's bars were not slightly wrong, they
+  // were wrong BY THE BARB ANGLE — lean the comb to 40° and the bars leant 40°
+  // with it, and no bird does that. A pheasant combed at forty degrees wears
+  // level bars.
+  //
+  // So the field is read at the point on the page each stretch of barb
+  // actually occupies, in the two coordinates the vane is built on:
+  //
+  //   along — the growth coordinate, t at the barb's root climbing to hLand at
+  //           its tip, which is simply how far up the shaft this stretch sits
+  //   acr   — how far across the web, 0 at the rachis and 1 at the margin,
+  //           and that is just the barb's own parameter u, because a barb is
+  //           solved to LAND on the outline
+  //
+  // Which is how the ocellus has always worked — a field in the rachis frame,
+  // sampled per stretch of barb. The eye was right and everything else was the
+  // odd one out. Now nothing is.
+  //
+  // THE LEAN comes off the vane's asymmetry, which is where looking says it
+  // comes from: a symmetric feather's bars run level, and a flight feather's
+  // slant. So it is derived, not dialled — one fewer slider, and one more
+  // thing the feather works out for itself.
+  // Smooth value noise on a unit lattice, for the marbling to wander on. A
+  // warp built of plain sines does not work here and it is worth saying why:
+  // ALONG changes by a whole 1 up the feather but only by a barb's climb —
+  // about a tenth of that — across one barb. So any frequency fine enough to
+  // give detail up the shaft lays ten times as much of it along every barb,
+  // and the bands break into a blotch that follows the comb instead of
+  // crossing it. Noise has a LENGTH instead of a frequency: set the cell to
+  // about one bar's spacing and the warp wanders by the same amount whichever
+  // way you travel, which is what a wandering line actually does.
+  const vnoise = (x, y) => {
+    const xi = Math.floor(x), yi = Math.floor(y), xf = x-xi, yf = y-yi;
+    const h = (a,b) => { const n = Math.sin(a*127.1 + b*311.7)*43758.5453; return n - Math.floor(n); };
+    const u = xf*xf*(3-2*xf), v = yf*yf*(3-2*yf);
+    return (h(xi,yi)*(1-u) + h(xi+1,yi)*u)*(1-v) + (h(xi,yi+1)*(1-u) + h(xi+1,yi+1)*u)*v;
+  };
+  // the web's breadth in the shaft's own units, so the noise is the same size
+  // in both directions and a wander is a wander whichever way it runs
+  const awide = vaneW*latK/tipReach;
+
+  const leanK = asym*0.62/Math.tan(barbAngle);
+  const gBand = 1 - tipBand;                 // the terminal band's contour
+  const bandSoft = 0.02 + tipBand*0.12;      // the fade at its inner edge
+  const marginW = Math.abs(margin)*0.34;     // the edge's share of the web
+  const marginSign = margin >= 0 ? 1 : -1;   // dark, or pale
+
+  // how strongly the pigment is pulled at (along, acr): positive toward the
+  // shade, negative toward the ground. Bars and the terminal band are fields
+  // of ALONG; the margin is a field of ACROSS, and being an edge it overrides
+  // rather than adds — a pale rim on a dark bar reads pale.
+  const markAt = (along, acr, rowN, side) => {
+    let d = 0;
+    if(nBars>0){
+      const wob = barEdge*(rowN-0.5)*0.6;
+      let ph = along*Math.PI*nBars, thr = 0.45 + wob;
+      // MARBLING — the bars stop marching and start wandering.
+      //
+      // Which is the field's gift, and the reason it is worth having built
+      // one. A bar was a property of the barb and there was nothing you could
+      // do to it but move it; a bar is a FUNCTION now, and a function can have
+      // its argument bent. So the phase is warped — three sines of the across
+      // and along coordinates, coarse, middling and fine — and the bands buckle,
+      // break and wander off, which is a woodcock, a snipe, a grouse, and about
+      // half the gamebirds on the moor. The warp is read on the SIGNED across
+      // coordinate, so the two webs wander differently instead of mirroring
+      // each other about the shaft, which would fool nobody.
+      //
+      // And vermiculation is fine LINES, not bands, so the threshold rises
+      // with it and the bars thin as they break. Wind the barring up alongside
+      // and the weather gets finer still.
+      if(marble>0){
+        const nx = acr*side*awide, cell = 2*nBars;
+        ph += marble*( (vnoise(nx*cell*0.75 +  3.1, along*cell*0.75)-0.5)*3.6
+                     + (vnoise(nx*cell*2.30 + 11.7, along*cell*2.30)-0.5)*1.5
+                     + (rowN-0.5)*0.35 );
+        thr += marble*0.17;
+      }
+      let v = Math.min(1, Math.max(0, (Math.abs(Math.sin(ph))-thr)/0.22));
+      if(v>0 && barEdge>0) v *= 1 - barEdge*rowN*0.8;
+      if(barBias>0 && side>0) v *= (1-barBias);     // the bars onto one web
+      d = Math.max(d, v);
+    }
+    if(tipBand>0){
+      const fade = 1 - barEdge*rowN*0.7;
+      const f = Math.min(1, (along + (rowN-0.5)*(0.02+barEdge*0.12) - gBand)/bandSoft);
+      if(f>0.05 && fade>0.08) d = Math.max(d, f*fade);
+    }
+    if(marginW>0 && acr > 1-marginW){
+      let f = Math.min(1, (acr-(1-marginW))/Math.max(0.02, marginW*0.5));
+      if(barBias>0 && side>0) f *= (1-barBias);     // ...and the rim with them
+      d = d*(1-f) + marginSign*f;
+    }
+    // quantised, because the walk folds stretches that come out the same
+    // colour and a value that never repeats can never be folded. Eight steps
+    // is finer than the eye reads on a hairline and it is what keeps a barred
+    // feather to a few paths a barb instead of a dozen.
+    return Math.round(d*5)/5;
+  };
+  // and the colour that pull lands on: the ground darkens toward the base of
+  // the feather as it always did, only now read at the stretch's own height
+  // rather than at the root of the barb carrying it
+  // The ground stays a property of the BARB — where it sits on the feather —
+  // and not of the stretch, deliberately. It is a slow darkening toward the
+  // base, not a mark; read per stretch it would creep a level or two along
+  // every barb in the feather and split runs that ought to fold, which is a
+  // lot of paths bought for a gradient nobody can see turn.
+  const pigAt = (ground, d) => {
+    const c = mix(pig1, pig2, Math.min(1, ground + Math.max(0,d)*0.7));
+    return d < 0 ? mix(c, pig1, Math.min(1,-d)*0.88) : c;
+  };
+
   // barbs — a steeply-combed vane crowds them nearly parallel and a couple of
   // pixels apart, so the strokes slim down a touch as the angle climbs,
   // keeping the weave silky instead of clotted.
@@ -1104,7 +1462,7 @@ function drawFeather(){
   if(knit>0) for(const b of barbLines){
     if(b.downy || !b.bules) continue;
     const glint = 0.82 + 0.36*b.rowN;
-    const base = sheen ? sheen(b.cx, b.cy, b.rgb, glint) : b.rgb;
+    const base = dim(sheen ? sheen(b.cx, b.cy, b.rgb, glint) : b.rgb, camAt(b, b.cx, b.cy));
     b.buleRgb = b.bules.map(() => base);
     b.buleMk = new Array(b.bules.length).fill(0);   // how strongly a mark claims it
   }
@@ -1113,6 +1471,18 @@ function drawFeather(){
   // used to lay a heavier stroke over the barbs instead, and a heavier stroke
   // is a flatter one: the fine grain that makes a feather read as a feather got
   // buried under the very colour that was supposed to be growing out of it.
+  // a FIELD tints the structure; a SPOT claims it. The bars, the band and the
+  // margin are fields — they set a barbule's colour and leave it in the vane's
+  // own faint layer, so the knit reads at one weight all over. The specks and
+  // the eye are spots: they claim the barbules they cover and those carry the
+  // mark at the weight the barbs do, or an ocellus pales out where its own
+  // grain shows through. (Which is why a barred vane does not suddenly grow a
+  // visible weave inside its bars and none outside them.)
+  const tintBules = (b, u0, u1, rgb) => {
+    if(!b.buleRgb) return;
+    for(let i=0;i<b.bules.length;i++)
+      if(b.bules[i].u >= u0 && b.bules[i].u < u1) b.buleRgb[i] = rgb;
+  };
   const paintBules = (b, u0, u1, rgb, alpha) => {
     if(!b.buleRgb) return;
     const bu = b.bules;
@@ -1123,107 +1493,161 @@ function drawFeather(){
     }
   };
 
+  // THE BARB WALK — one pass, and the only place a vane barb's colour is
+  // decided. It reads the marking frame and the sheen at each stretch of the
+  // barb, then MERGES the stretches that come out the same colour and draws
+  // each run as one path.
+  //
+  // The merge is what makes the field affordable. A plain barb comes out one
+  // colour from end to end and is drawn as the single bowed quadratic it
+  // always was — so an unmarked feather costs exactly what it did, and keeps
+  // its curve. A barb crossing the edge of a bar costs two paths, or three.
+  // Only where the pattern actually changes does anything get spent, which is
+  // a better bargain than the terminal band's old flat eight segments a barb —
+  // that pass has gone, its work done here.
+  //
+  // The DOWN stays out of it: plumaceous barbules carry no ordered melanosome
+  // array, so a downy base is matt however the vane burns, and it grew before
+  // any of these marks were laid.
+  const SEG = 10;
+  const qkey = c => (((c.r|0)&248)<<16) | (((c.g|0)&248)<<8) | ((c.b|0)&248);
   for(const b of barbLines){
-    if(sheen && !b.downy && (sheenTouches(b.rpx,b.rpy) || sheenTouches(b.ex,b.ey)
-                             || sheenTouches((b.rpx+b.ex)/2, (b.rpy+b.ey)/2))){
-      // a sheened barb is laid in short runs, each taking the lens where it
-      // sits, so the colour turns along the stroke instead of being averaged
-      // over it. Interior joins are butt-capped — round caps would double
-      // their alpha and bead the barb — and only the two ends round off.
-      // The DOWN is left out of this entirely: plumaceous barbules carry no
-      // ordered melanosome array, so a real downy base stays matt however the
-      // vane burns, and that matt base is half of what sells the vane's blaze.
-      const SEG = 6; let px = b.rpx, py = b.rpy;
-      const glint = 0.82 + 0.36*b.rowN;
-      for(let k=1;k<=SEG;k++){
-        const u=k/SEG, x=qAt(b.rpx,b.mx,b.ex,u), y=qAt(b.rpy,b.my,b.ey,u);
-        const c = sheen((px+x)/2, (py+y)/2, b.rgb, glint);
-        const cap = (k===1||k===SEG) ? 'round' : 'butt';
-        out += `<path d="M ${px.toFixed(1)} ${py.toFixed(1)} L ${x.toFixed(1)} ${y.toFixed(1)}" fill="none" stroke="${rgbStr(c)}" stroke-width="${vaneStroke}" stroke-linecap="${cap}" opacity="0.85"/>`;
-        px=x; py=y;
-      }
+    if(b.downy){
+      out += `<path d="${b.d}" fill="none" stroke="${b.col}" stroke-width="${b.dw}" stroke-linecap="round" opacity="${b.dop}"/>`;
       continue;
     }
-    const w = b.downy ? b.dw : vaneStroke;
-    const op = b.downy ? b.dop : 0.85;
-    out += `<path d="${b.d}" fill="none" stroke="${b.col}" stroke-width="${w}" stroke-linecap="round" opacity="${op}"/>`;
+    const climb = b.hLand - b.t, glint = 0.82 + 0.36*b.rowN;
+    const ground = 0.15 + (1-b.t)*0.35;
+    const lit = sheen && (sheenTouches(b.rpx,b.rpy) || sheenTouches(b.tex,b.tey)
+                          || sheenTouches((b.rpx+b.tex)/2, (b.rpy+b.tey)/2));
+    const pts = [], tpts = [], cols = [], keys = [];
+    for(let k=0;k<=SEG;k++){
+      const u=k/SEG;
+      pts.push([qAt(b.rpx,b.mx,b.ex,u), qAt(b.rpy,b.my,b.ey,u)]);
+      tpts.push(camR ? tAt(b,u) : pts[k]);
+    }
+    for(let k=0;k<SEG;k++){
+      const u=(k+0.5)/SEG;
+      const along = b.t + u*climb*(1 + leanK*b.side);
+      const mx=(tpts[k][0]+tpts[k+1][0])/2, my=(tpts[k][1]+tpts[k+1][1])/2;
+      let c = pigAt(ground, markAt(along, u, b.rowN, b.side));
+      if(lit) c = sheen(mx, my, c, glint);
+      c = dim(c, camAt(b, mx, my));
+      cols.push(c); keys.push(qkey(c));
+    }
+    let a = 0;
+    for(let k=1;k<=SEG;k++){
+      if(k<SEG && keys[k]===keys[a]) continue;
+      const col = rgbStr(cols[a]);
+      if(a===0 && k===SEG){
+        // one colour the whole way: the barb as it was drawn, bow and all
+        out += `<path d="${b.d}" fill="none" stroke="${col}" stroke-width="${vaneStroke}" stroke-linecap="round" opacity="0.85"/>`;
+      } else {
+        // a run: its stations sit ON the curve, so the polyline keeps the bow.
+        // Interior joins are butt-capped — round caps would double their alpha
+        // and bead the barb — and only the barb's true ends round off.
+        let d = `M ${pts[a][0].toFixed(1)} ${pts[a][1].toFixed(1)}`;
+        for(let j=a+1;j<=k;j++) d += ` L ${pts[j][0].toFixed(1)} ${pts[j][1].toFixed(1)}`;
+        const cap = (a===0 || k===SEG) ? 'round' : 'butt';
+        out += `<path d="${d}" fill="none" stroke="${col}" stroke-width="${vaneStroke}" stroke-linecap="${cap}" opacity="0.85"/>`;
+      }
+      tintBules(b, a/SEG, k/SEG, cols[a]);
+      a = k;
+    }
   }
   // the barbule cloud — every strand's micro-wisps in a single faint pass
-  if(fluffD){
+  if(fluffPool.length){
     const fc = mix(mix(pig1,pig2,0.35), {r:200,g:190,b:170}, 0.3);
-    out += `<path d="${fluffD}" fill="none" stroke="${rgbStr(fc)}" stroke-width="0.36" stroke-linecap="round" opacity="0.35"/>`;
+    out += `<path d="${fluffPool.join('')}" fill="none" stroke="${rgbStr(fc)}" stroke-width="0.36" stroke-linecap="round" opacity="0.35"/>`;
   }
 
-  // in-barb spots — flecks & splodges grown INTO the vane. Instead of ellipses
+  // IN-BARB SPOTS — flecks & splodges grown INTO the vane. Instead of ellipses
   // laid on top, we darken the stretch of each barb that passes through a
   // scattered spot, so the mark is made of the barbs themselves and moves with
-  // them. Each barb is sampled along its own curve and only the covered
-  // segments are redrawn darker.
+  // them.
+  //
+  // The one slider used to set the SIZE and the COUNT together, and so could
+  // only ever walk one diagonal of the two things spotting actually is. It
+  // could reach a scatter of middling flecks and a scatter of larger ones, and
+  // it could not reach the corner that most of the moor lives in: SMALL, AND A
+  // GREAT MANY. Twenty-eight spots on a whole feather is not a freckled bird,
+  // it is a bird that has been rained on.
+  //
+  // So the two are separated, and separated the honest way round: the amount
+  // slider is COVERAGE — how much of the vane the spotting takes — and the size
+  // slider is GRAIN. The count then falls out of the two rather than being
+  // asked for, because a coverage and a grain already imply it. Wind the grain
+  // down at a fixed amount and the spots shrink and multiply together, which is
+  // what a thrush's breast does as you walk away from it.
   if(speck>0){
     const spots=[];
-    const nSpots=Math.floor(speck*28);
+    // the spot's radius is the feather's, not a constant — a wren's freckle
+    // and a magpie's splodge are the same fraction of their own vane
+    const sR = (0.04 + speckSize*0.22) * vaneW*latK;
+    const cover = speck*0.5;
+    const vaneArea = 1.25 * vaneW*latK * tipReach;
+    const nSpots = Math.max(0, Math.min(450, Math.round(cover*vaneArea/(Math.PI*sR*sR*1.1))));
     for(let i=0;i<nSpots;i++){
       const st=0.14+rng()*0.78, sside=rng()<0.5?1:-1, f=0.15+rng()*0.8;
       const hw=sideWidth(st,sside); if(hw<3) continue;
-      const rp=rachisPt(st);
-      spots.push({x:rp.x+rp.norm.x*sside*hw*f, y:rp.y+rp.norm.y*sside*hw*f, r2:Math.pow((1.8+speck*5)*(0.6+rng()*0.9),2)});
+      const rp=rachisPt(st), r=sR*(0.6+rng()*0.9);
+      spots.push({x:rp.x+rp.norm.x*sside*hw*f*latK, y:rp.y+rp.norm.y*sside*hw*f*latK, r, r2:r*r});
     }
-    const spotRgb=mix(pig1,pig2,0.92), spotCol=rgbStr(spotRgb);
+    const spotRgb=mix(pig1,pig2,0.92);
     let marks='';
     for(const b of barbLines){
       if(b.downy) continue;
+      // a barb only ever meets the handful of spots near it, so sift them once
+      // against its own box rather than four hundred times a segment
+      const bx0=Math.min(b.rpx,b.tmx,b.tex), bx1=Math.max(b.rpx,b.tmx,b.tex);
+      const by0=Math.min(b.rpy,b.tmy,b.tey), by1=Math.max(b.rpy,b.tmy,b.tey);
+      const near=[];
+      for(const sp of spots)
+        if(sp.x>bx0-sp.r && sp.x<bx1+sp.r && sp.y>by0-sp.r && sp.y<by1+sp.r) near.push(sp);
+      if(!near.length) continue;
       const glint = 0.82 + 0.36*b.rowN;
-      const SEG=7; let px=b.rpx, py=b.rpy;
+      // and sampled fine enough to RESOLVE the grain it is looking for: a
+      // freckle three pixels across cannot be found by a walk that steps
+      // thirteen, and drawn by one it comes out a dash rather than a speck
+      const vl = Math.hypot(b.tex-b.rpx, b.tey-b.rpy);
+      const SEG = Math.max(7, Math.min(36, Math.ceil(vl/Math.max(1.6, sR*0.7))));
+      let px=b.rpx, py=b.rpy, tx=b.rpx, ty=b.rpy;
+      // consecutive covered stretches go out as ONE path — a big splodge is a
+      // run of twenty segments and has no business being twenty paths
+      let run='', runCol=null, runA=0;
+      const flush = (kEnd) => {
+        if(run){
+          marks += `<path d="${run}" fill="none" stroke="${runCol}" stroke-width="${(vaneStroke*1.25).toFixed(2)}" stroke-linecap="round"/>`;
+          paintBules(b, runA/SEG, kEnd/SEG, spotRgb, 1);
+        }
+        run='';
+      };
       for(let k=1;k<=SEG;k++){
-        const s=k/SEG, x=qAt(b.rpx,b.mx,b.ex,s), y=qAt(b.rpy,b.my,b.ey,s);
-        const cxp=(px+x)/2, cyp=(py+y)/2;
-        for(const sp of spots){ const dx=cxp-sp.x, dy=cyp-sp.y;
-          if(dx*dx+dy*dy<sp.r2){
-            // a mark on an iridescent vane still catches the sheen — the
-            // pigment under the barbules changes, the barbules do not
-            const cr = sheen ? sheen(cxp,cyp,spotRgb,glint) : spotRgb;
-            marks+=`<path d="M ${px.toFixed(1)} ${py.toFixed(1)} L ${x.toFixed(1)} ${y.toFixed(1)}" fill="none" stroke="${rgbStr(cr)}" stroke-width="${(vaneStroke*1.25).toFixed(2)}" stroke-linecap="round"/>`;
-            paintBules(b, (k-1)/SEG, s, cr, 1); break; } }
-        px=x; py=y;
+        const sU=k/SEG, x=qAt(b.rpx,b.mx,b.ex,sU), y=qAt(b.rpy,b.my,b.ey,sU);
+        const [nx2,ny2] = camR ? tAt(b,sU) : [x,y];
+        const cxp=(tx+nx2)/2, cyp=(ty+ny2)/2;    // where it GREW: the spot's business
+        let hit=false;
+        for(const sp of near){ const dx=cxp-sp.x, dy=cyp-sp.y;
+          if(dx*dx+dy*dy<sp.r2){ hit=true; break; } }
+        if(hit){
+          // a mark on an iridescent vane still catches the sheen — the
+          // pigment under the barbules changes, the barbules do not
+          const cr = rgbStr(dim(sheen ? sheen(cxp,cyp,spotRgb,glint) : spotRgb, camAt(b,cxp,cyp)));
+          if(!run){ run = `M ${px.toFixed(1)} ${py.toFixed(1)}`; runCol = cr; runA = k-1; }
+          else if(cr !== runCol){ flush(k-1); run = `M ${px.toFixed(1)} ${py.toFixed(1)}`; runCol = cr; runA = k-1; }
+          run += ` L ${x.toFixed(1)} ${y.toFixed(1)}`;
+        } else flush(k-1);
+        px=x; py=y; tx=nx2; ty=ny2;
       }
+      flush(SEG);
     }
     out+=marks;
   }
 
-  // the terminal band — one spell of pigment as the feather grew, so its
-  // inner edge follows a growth contour: level with the tip at the rachis and
-  // drooping toward the base out along each web (the chevron on a hawk's
-  // tail), never a per-row waterline. Like the specks it darkens stretches of
-  // the barbs themselves, fading in over a soft inner edge; the Bar edge
-  // slider lends the band the same raggedness it gives the barring.
-  if(tipBand>0){
-    const gB = 1 - tipBand;              // the growth contour where the band begins
-    const soft = 0.02 + tipBand*0.12;    // breadth of the fade at the inner edge
-    const bandRgb = mix(pig1,pig2,0.95), bandCol = rgbStr(bandRgb);
-    let band='';
-    for(const b of barbLines){
-      if(b.downy) continue;
-      const chordT = Math.hypot(b.ex-b.rpx, b.ey-b.rpy)/tipReach;   // barb reach in rachis units
-      if(b.t + chordT + 0.09 < gB) continue;    // wholly below the band, wobble included
-      const wob = (b.rowN-0.5)*(0.02 + barEdge*0.12);   // ragged boundary
-      const fade = 1 - barEdge*b.rowN*0.7;              // mottle: some rows thin out
-      if(fade < 0.08) continue;
-      const glint = 0.82 + 0.36*b.rowN;
-      const SEG=8; let px=b.rpx, py=b.rpy;
-      for(let k=1;k<=SEG;k++){
-        const s=k/SEG, x=qAt(b.rpx,b.mx,b.ex,s), y=qAt(b.rpy,b.my,b.ey,s);
-        const f = Math.min(1, (b.t + ((k-0.5)/SEG)*chordT + wob - gB)/soft);
-        if(f > 0.05){
-          const cr = sheen ? sheen((px+x)/2,(py+y)/2,bandRgb,glint) : bandRgb;
-          const a = f*fade*0.9;
-          band += `<path d="M ${px.toFixed(1)} ${py.toFixed(1)} L ${x.toFixed(1)} ${y.toFixed(1)}" fill="none" stroke="${rgbStr(cr)}" stroke-width="${(vaneStroke*1.15).toFixed(2)}" stroke-linecap="round" opacity="${a.toFixed(2)}"/>`;
-          paintBules(b, (k-1)/SEG, s, cr, a);
-        }
-        px=x; py=y;
-      }
-    }
-    out += band;
-  }
+  // (The terminal band's own pass has gone. It walked every barb in eight flat
+  // segments and redrew the covered ones; it is a field of the growth
+  // coordinate like the bars are, so it is read in the marking frame now and
+  // drawn by the barb walk, in as few runs as the pattern actually needs.)
 
   // THE PHI EYE — the peacock's ocellus, and the reason the Maybe-peacock
   // branch was ever named. Like the specks and the terminal band it is not
@@ -1291,10 +1715,11 @@ function drawFeather(){
       if(b.downy) continue;
       const wob = 1 + (b.rowN-0.5)*0.08;
       const glint = 0.82 + 0.36*b.rowN;
-      const SEG=9; let px=b.rpx, py=b.rpy;
+      const SEG=9; let px=b.rpx, py=b.rpy, tx=b.rpx, ty=b.rpy;
       for(let k=1;k<=SEG;k++){
         const s=k/SEG, x=qAt(b.rpx,b.mx,b.ex,s), y=qAt(b.rpy,b.my,b.ey,s);
-        const cxp=(px+x)/2, cyp=(py+y)/2;
+        const [nx2,ny2] = camR ? tAt(b,s) : [x,y];
+        const cxp=(tx+nx2)/2, cyp=(ty+ny2)/2;    // an ocellus is grown, not projected
         const dxp=cxp-ecx, dyp=cyp-ecy;
         const re = Math.hypot((dxp*ec.tan.x+dyp*ec.tan.y)/eRa,
                               (dxp*ec.norm.x+dyp*ec.norm.y)/eRb) * wob;
@@ -1304,16 +1729,16 @@ function drawFeather(){
             const t = Math.max(0, 1 - re/IPHI2), haze = t*t*(3-2*t);   // 1 dead centre .. 0 at the ring
             o *= 1 - pupil*haze;
           }
-          if(o<0.02){ px=x; py=y; continue; }                 // the window: no mark laid, the vane shows through
+          if(o<0.02){ px=x; py=y; tx=nx2; ty=ny2; continue; }  // the window: no mark laid, the vane shows through
           // the eye follows the barbs it's grown from — a touch solider inside
           // the golden ring, and slimming with the comb like the rest of the
           // vane, so small feathers aren't overwhelmed
           const ew = vaneStroke*(re<IPHI ? 1.3 : 1.12);
-          const ec2 = sheen ? sheen(cxp, cyp, paint(re), glint) : paint(re);
+          const ec2 = dim(sheen ? sheen(cxp, cyp, paint(re), glint) : paint(re), camAt(b,cxp,cyp));
           eyeMarks += `<path d="M ${px.toFixed(1)} ${py.toFixed(1)} L ${x.toFixed(1)} ${y.toFixed(1)}" fill="none" stroke="${rgbStr(ec2)}" stroke-width="${ew.toFixed(2)}" stroke-linecap="round" opacity="${o.toFixed(2)}"/>`;
           paintBules(b, (k-1)/SEG, s, ec2, o);
         }
-        px=x; py=y;
+        px=x; py=y; tx=nx2; ty=ny2;
       }
     }
     out += eyeMarks;
@@ -1426,7 +1851,55 @@ function drawFeather(){
   const uw = rachisPt(calT*0.88);
   out += `<circle cx="${uw.x.toFixed(1)}" cy="${uw.y.toFixed(1)}" r="${(qHW*0.42).toFixed(2)}" fill="${quillDark}" opacity="0.55"/>`;
 
-  svg.innerHTML = (defs?`<defs>${defs}</defs>`:'') + out;
+  // THE AFTERSHAFT — a whole second plume, hung off the SUPERIOR UMBILICUS at
+  // the top of the calamus, where the vane begins. It is the one piece of
+  // feather anatomy this tool had a name for and no thing to go with it: the
+  // downy base of a vane barb wore the word "afterfeather" for a while, which
+  // it never was. This is the real one — a hyporachis of its own carrying
+  // nothing but plumaceous barbs, modest on most birds and very nearly the
+  // length of the feather on a grouse, which is a bird the North Pennines has
+  // rather a lot of.
+  //
+  // It grows from the UNDERSIDE, so it is laid behind everything: the vane's
+  // own down stands in front of it and the plume shows around and below, which
+  // is what doubles the fluff at the foot of a body feather. It wanders on a
+  // fourth stream of dice, so faffing the plume never re-rolls the down, just
+  // as faffing the down never re-rolls the vane.
+  let afterOut = '';
+  if(afterFrac > 0){
+    const arng = mulberry((drawSeed ^ 0x2545F491) >>> 0);
+    // and it must REACH PAST the vane's own down, or it is simply more of it:
+    // a plume tucked inside the plumaceous base is invisible however carefully
+    // it is drawn, which is the first thing this one did.
+    const aT = 0.08 + afterFrac*0.50;              // how far up the shaft it reaches
+    const aW = vaneW*(0.34 + afterFrac*1.00);      // and how far out, as a barb length
+    const aRows = Math.max(7, Math.round(nBarbs*aT*0.8));
+    const aAng = Math.min(barbAngle*1.2, 1.30);
+    // paler and greyer than the vane's own down, because it is behind it
+    const aCol = rgbStr(mix(mix(pig1, pig2, 0.30), {r:208,g:200,b:182}, 0.45));
+    // the hyporachis: the same taper as everything else on this shaft, read
+    // thinner still, because it is a lesser quill on a lesser feather
+    let d = `<path d="${spindle(0, aT, (f,u)=>qHW*0.42*(0.12+0.88*Math.pow(Math.max(0,1-f),0.8)), 16)}" fill="${aCol}" opacity="0.5"/>`;
+    let strands = '';
+    for(let i=1;i<=aRows;i++){
+      const t = (i/aRows)*aT, rp = rachisPt(t);
+      const x = i/aRows;
+      // the plume's own plump lens, closing to a point at its tip
+      const w = aW*Math.pow(Math.sin(Math.PI*Math.min(1, 0.10 + x*0.88)), 0.5);
+      for(const side of [1,-1]){
+        const dx = rp.norm.x*side*Math.cos(aAng) + rp.tan.x*Math.sin(aAng);
+        const dy = rp.norm.y*side*Math.cos(aAng) + rp.tan.y*Math.sin(aAng);
+        const m = Math.hypot(dx,dy)||1;
+        strands += strand(rp.x, rp.y, dx/m, dy/m, w*(0.75+arng()*0.55), 1.1, arng, afterPool);
+      }
+    }
+    d += `<path d="${strands}" fill="none" stroke="${aCol}" stroke-width="0.58" stroke-linecap="round" opacity="0.42"/>`;
+    if(afterPool.length)
+      d += `<path d="${afterPool.join('')}" fill="none" stroke="${aCol}" stroke-width="0.34" stroke-linecap="round" opacity="0.30"/>`;
+    afterOut = d;
+  }
+
+  svg.innerHTML = (defs?`<defs>${defs}</defs>`:'') + afterOut + out;
 }
 
 /* ---- readouts ---- */
@@ -1437,17 +1910,24 @@ function updateReadouts(){
   $('apextype-v').textContent = ['rounded','acuminate','truncate'][apexType];
   $('apex-label').textContent = ['Fullness','Fineness','Corner'][apexType];
   $('apex-v').textContent = P.apex.value+'%';
+  $('camber-v').textContent = P.camber.value>0? P.camber.value+'%' : 'pressed';
   $('asym-v').textContent = P.asym.value+'%';
   $('angle-v').textContent = P.angle.value+'°';
   $('density-v').textContent = P.density.value;
   $('knit-v').textContent = P.knit.value>0? P.knit.value+'%' : 'bare comb';
   $('down-v').textContent = P.down.value+'%';
+  $('after-v').textContent = P.after.value>0? P.after.value+'%' : 'none';
   $('wear-v').textContent = P.wear.value+'%';
   $('bars-v').textContent = P.bars.value>0? P.bars.value : 'none';
   $('barside-v').textContent = P.barside.value>0? P.barside.value+'%' : 'both';
   $('baredge-v').textContent = P.baredge.value>0? P.baredge.value+'%' : 'crisp';
   $('tipband-v').textContent = P.tipband.value>0? P.tipband.value+'%' : 'none';
   $('speck-v').textContent = P.speck.value>0? P.speck.value+'%' : 'none';
+  $('specksize-v').textContent = +P.specksize.value<18 ? 'freckle'
+    : +P.specksize.value>72 ? 'splodge' : P.specksize.value+'%';
+  $('marble-v').textContent = P.marble.value>0? P.marble.value+'%' : 'none';
+  $('margin-v').textContent = +P.margin.value===0 ? 'none'
+    : (+P.margin.value<0 ? 'pale ' : 'dark ') + Math.abs(+P.margin.value) + '%';
   $('eye-v').textContent = P.eye.value>0? P.eye.value+'%' : 'none';
   $('eyepupil-v').textContent = P.eyepupil.value>0? P.eyepupil.value+'%' : 'solid';
   $('eyepos-v').textContent = P.eyepos.value+'%';
@@ -1473,17 +1953,25 @@ function conjureFrom(str){
   apexType = fam<0.55 ? 0 : fam<0.85 ? 1 : 2;
   P.apex.value    = 10 + Math.floor(rng()*80);
   P.asym.value    = rng()<0.45 ? Math.floor(rng()*90) : 0;  // some birds fly, some don't
+  // most feathers off a bird are cupped; a few lie nearly flat
+  P.camber.value  = rng()<0.75 ? 20 + Math.floor(rng()*55) : 0;
   P.angle.value   = 28 + Math.floor(rng()*38);
   P.density.value = 60 + Math.floor(rng()*85);
   // the sweet spot found by looking: around a quarter, where the barbules are
   // invisible at a glance and unmistakable close up, which is exactly how they
   // behave on the bird. A little either side of it, and never the whole way.
   P.knit.value    = 12 + Math.floor(rng()*30);
-  P.down.value    = Math.floor(rng()*40);
+  // and never none: a feather with no plumaceous base at all is not a
+  // feather, it is a leaf. The floor is the conjure's; the slider still goes
+  // to zero for anyone who wants to see what a leaf looks like.
+  P.down.value    = 14 + Math.floor(rng()*30);
   // age & wear stays a hand control, off the wander entirely: even a
   // little damage catches the eye and distracts from the odd bird
   // underneath. Every conjured feather arrives pristine.
   P.wear.value    = 0;
+  // the aftershaft: most birds wear a modest one, the grouse a great cloud,
+  // and a flight feather barely any at all
+  P.after.value   = rng()<0.55 ? Math.floor(rng()*rng()*55) : 0;
 
   // THE PLUMAGE — coat first, and the pattern dice loaded to suit it,
   // because a colourway mostly IS its pattern: the hand-made feathers
@@ -1495,7 +1983,11 @@ function conjureFrom(str){
   // moor DEFINED, a fettle is a feather free-for-all, and nobody is
   // owed the feather a coordinate grew last week.)
   P.bars.value = 0; P.barside.value = 0; P.baredge.value = 0;
-  P.tipband.value = 0; P.speck.value = 0;
+  P.tipband.value = 0; P.speck.value = 0; P.margin.value = 0; P.marble.value = 0;
+  // the grain of the spotting, rolled apart from the amount of it — the moor
+  // runs to fine freckling far oftener than to splodges, so the dice lean that
+  // way and the big blotches stay a treat
+  P.specksize.value = Math.floor(Math.pow(rng(), 1.9)*95);
   const dye = rng();
   const coat = dye<0.20 ? 'brown' : dye<0.32 ? 'pale' : dye<0.46 ? 'dark'
              : dye<0.72 ? 'twotone' : dye<0.88 ? 'fawn' : 'gaudy';
@@ -1511,6 +2003,14 @@ function conjureFrom(str){
     }
     if(rng()<0.35) P.tipband.value = 10 + Math.floor(rng()*28);
     if(rng()<0.4)  P.speck.value = 15 + Math.floor(rng()*55);
+    // the moor is largely gamebird, and a gamebird is largely vermiculated
+    if(+P.bars.value>0 && rng()<0.45){
+      P.marble.value = 30 + Math.floor(rng()*55);
+      P.bars.value = 6 + Math.floor(rng()*7);
+    }
+    // a pale rim is the moor's commonest finish — the scaled look of a wren,
+    // a dunnock, a juvenile's fresh edging
+    if(rng()<0.45) P.margin.value = -(20 + Math.floor(rng()*45));
   } else if(coat==='pale'){
     // dove-greys and off-whites — the curly little ones from under
     // everything, softly barred or faintly freckled when marked at all
@@ -1529,6 +2029,7 @@ function conjureFrom(str){
     $('pig1').value = hslToHex(hd, 6 + rng()*14, 14 + rng()*10);
     $('pig2').value = hslToHex(hd, 8 + rng()*12, 4 + rng()*5);
     if(rng()<0.25) P.bars.value = 3 + Math.floor(rng()*6);   // self-coloured, barely-there
+    if(rng()<0.3)  P.margin.value = -(18 + Math.floor(rng()*30));   // the blackbird's faint fringe
     if(+P.density.value < 105) P.density.value = 105 + Math.floor(rng()*45);
   } else if(coat==='twotone'){
     // WHITE-AND-ANYTHING — the contrasty ones, the biggest share on the
@@ -1553,6 +2054,7 @@ function conjureFrom(str){
       if(rng()<0.4) P.barside.value = 50 + Math.floor(rng()*50);
     }
     if(rng()<0.25) P.speck.value = 15 + Math.floor(rng()*35);
+    if(rng()<0.3)  P.margin.value = 30 + Math.floor(rng()*45);   // a dark rim on white
     if(+P.density.value < 100) P.density.value = 100 + Math.floor(rng()*45);
   } else if(coat==='fawn'){
     // warm buff over deep sepia, and never plain — barred like a
@@ -1565,7 +2067,12 @@ function conjureFrom(str){
       P.baredge.value = 20 + Math.floor(rng()*60);
       if(rng()<0.3) P.barside.value = 40 + Math.floor(rng()*60);
     } else P.speck.value = 25 + Math.floor(rng()*45);
+    if(+P.bars.value>0 && rng()<0.5){
+      P.marble.value = 25 + Math.floor(rng()*55);
+      P.bars.value = 6 + Math.floor(rng()*7);
+    }
     if(rng()<0.3) P.tipband.value = 10 + Math.floor(rng()*24);
+    if(rng()<0.5) P.margin.value = (rng()<0.7?-1:1)*(25 + Math.floor(rng()*40));
   } else {
     // and these being imaginary feathers, a few may as well say so: a
     // pale ground whose marks — spots, bars, band, the darkened base,
@@ -1800,10 +2307,12 @@ $('receipt').addEventListener('click', ()=>{
   t += row('apex', apexName);
   t += row($('apex-label').textContent.toLowerCase(), rd('apex-v'));
   t += row('vane asymmetry', rd('asym-v'));
+  t += row('camber', rd('camber-v'));
   t += row('barb angle', rd('angle-v'));
   t += row('barb density', rd('density-v'));
   t += row('barbule knit', rd('knit-v'));
   t += row('plumaceous down', rd('down-v'));
+  t += row('aftershaft', rd('after-v'));
   t += row('age & wear', rd('wear-v'));
   // colour rows carry HSL beside the hex — the reading that lines feathers up
   // for comparing (a clutch of real finds all sitting at low saturation, say)
@@ -1816,7 +2325,10 @@ $('receipt').addEventListener('click', ()=>{
   t += row('bar side', rd('barside-v'));
   t += row('bar edge', rd('baredge-v'));
   t += row('terminal band', rd('tipband-v'));
+  t += row('marbling', rd('marble-v'));
   t += row('spots & splodges', rd('speck-v'));
+  t += row('spot size', rd('specksize-v'));
+  t += row('margin', rd('margin-v'));
   t += row('eyespot', rd('eye-v'));
   t += crow('eye heart', $('eyecol').value);
   t += crow('eye halo', $('eyecol2').value);
@@ -1835,11 +2347,13 @@ $('receipt').addEventListener('click', ()=>{
   const m = {
     grid: $('coord').value, seed: drawSeed, apex: apexType,
     len:P.len.value, curve:P.curve.value, width:P.width.value, apexdeg:P.apex.value,
-    asym:P.asym.value, angle:P.angle.value, density:P.density.value, knit:P.knit.value,
-    down:P.down.value, wear:P.wear.value,
+    asym:P.asym.value, camber:P.camber.value, angle:P.angle.value,
+    density:P.density.value, knit:P.knit.value,
+    down:P.down.value, after:P.after.value, wear:P.wear.value,
     pig1:$('pig1').value, pig2:$('pig2').value,
     bars:P.bars.value, barside:P.barside.value, baredge:P.baredge.value,
-    tipband:P.tipband.value, speck:P.speck.value,
+    tipband:P.tipband.value, speck:P.speck.value, margin:P.margin.value,
+    marble:P.marble.value, specksize:P.specksize.value,
     eye:P.eye.value, eyecol:$('eyecol').value, eyecol2:$('eyecol2').value,
     eyepupil:P.eyepupil.value, eyepos:P.eyepos.value, eyeside:P.eyeside.value,
     irid: iridOn ? 1 : 0, iridcol:$('iridcol').value, iridcol2:$('iridcol2').value,
@@ -1888,10 +2402,18 @@ function applyRecord(m){
   apexType = numOk(m.apex) ? ((+m.apex % 3) + 3) % 3 : 0;
 
   setR(P.len,'len'); setR(P.curve,'curve'); setR(P.width,'width'); setR(P.apex,'apexdeg');
-  setR(P.asym,'asym'); setR(P.angle,'angle'); setR(P.density,'density'); setR(P.knit,'knit');
-  setR(P.down,'down'); setR(P.wear,'wear');
+  setR(P.asym,'asym'); setR(P.camber,'camber'); setR(P.angle,'angle');
+  setR(P.density,'density'); setR(P.knit,'knit');
+  if(!numOk(m.camber)) P.camber.value = 0;       // feathers saved before the camber come back pressed flat
+  setR(P.down,'down'); setR(P.after,'after'); setR(P.wear,'wear');
+  if(!numOk(m.after)) P.after.value = 0;         // feathers saved before the aftershaft come back with none
   if(!numOk(m.knit)) P.knit.value = 0;           // feathers saved before the knit come back as the bare comb they were
   setR(P.bars,'bars'); setR(P.barside,'barside'); setR(P.baredge,'baredge'); setR(P.tipband,'tipband'); setR(P.speck,'speck');
+  setR(P.margin,'margin'); setR(P.marble,'marble');
+  if(!numOk(m.margin)) P.margin.value = 0;       // feathers saved before the margin come back unedged
+  setR(P.specksize,'specksize');
+  if(!numOk(m.marble)) P.marble.value = 0;       // ...and before the marbling, with their bars still marching
+  if(!numOk(m.specksize)) P.specksize.value = 30;  // ...and before the grain, at the size the one slider used to give
   setR(P.eye,'eye'); setR(P.eyepupil,'eyepupil'); setR(P.eyepos,'eyepos'); setR(P.eyeside,'eyeside');
   if(!numOk(m.eyepupil)) P.eyepupil.value = 0;   // feathers saved before the window reload with a solid heart
   setR(P.iridpos,'iridpos'); setR(P.iridspread,'iridspread'); setR(P.iridstr,'iridstr');
