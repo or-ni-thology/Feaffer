@@ -332,6 +332,10 @@
       <div class="cap"><label for="tipband">Terminal band</label><span class="val" id="tipband-v"></span></div>
       <input type="range" id="tipband" min="0" max="40" value="0">
     </div>
+    <div class="card" title="the bars stop marching and start wandering — a woodcock's vermiculation. Wind the barring up alongside it for the finest weather">
+      <div class="cap"><label for="marble">Marbling</label><span class="val" id="marble-v"></span></div>
+      <input type="range" id="marble" min="0" max="100" value="0">
+    </div>
     <div class="card" title="flecks &amp; splodges grown into the barbs themselves">
       <div class="cap"><label for="speck">Spots &amp; splodges</label><span class="val" id="speck-v"></span></div>
       <input type="range" id="speck" min="0" max="100" value="0">
@@ -414,7 +418,7 @@ const P = {
   len:$('len'), curve:$('curve'), width:$('width'), apex:$('apex'), asym:$('asym'), angle:$('angle'),
   density:$('density'), knit:$('knit'), down:$('down'), wear:$('wear'),
   bars:$('bars'), barside:$('barside'), baredge:$('baredge'), tipband:$('tipband'), speck:$('speck'),
-  margin:$('margin'),
+  margin:$('margin'), marble:$('marble'),
   eye:$('eye'), eyepupil:$('eyepupil'), eyepos:$('eyepos'), eyeside:$('eyeside'),
   iridpos:$('iridpos'), iridspread:$('iridspread'), iridstr:$('iridstr')
 };
@@ -484,6 +488,7 @@ function drawFeather(){
   const barEdge = +P.baredge.value/100;   // 0 crisp bands .. 1 ragged, mottled
   const speck = +P.speck.value/100;
   const margin = +P.margin.value/100;     // −1 a pale edge .. 0 none .. +1 a dark one
+  const marble = +P.marble.value/100;     // 0 bars that march .. 1 bars that wander
   const eyeSize = +P.eye.value/100;       // 0 no ocellus .. 1 the vane's breadth .. 3 truly giant
   const eyeT = +P.eyepos.value/100;       // where along the shaft the eye sits
   const eyeSide = +P.eyeside.value/100;   // the cast: 0 a true eye .. ±1 sent off a web
@@ -649,7 +654,15 @@ function drawFeather(){
     if(downFrac <= 0) return 0;
     const x = t/downFrac;
     if(x >= 1) return 0;
-    return vaneW*0.60*Math.pow(Math.sin(Math.PI*x), 0.45)/latK;
+    // No secant. This is a LENGTH and vaneW is already one — latK is the
+    // across-vane SHARE of a length, so dividing by it here multiplied the
+    // down by sec(comb): 1.06 at twenty degrees, 3.24 at seventy-two. Which is
+    // why a steeply combed feather grew fluff at what looked like an
+    // exponential rate, and why it looked fine everywhere else. The comb sets
+    // the direction a downy barb leaves in. It has no business setting how far
+    // it goes: a plumaceous barb is bounded by no outline, so its length is
+    // the feather's business and nobody else's.
+    return vaneW*0.82*Math.pow(Math.sin(Math.PI*x), 0.45);
   }
 
   // a point on the vane's outline — the fan lands its barbs here, and wants
@@ -826,14 +839,20 @@ function drawFeather(){
       // and a cloud at the bottom of it are the same fact about a barb.
       const halfW = sideWidth(t, side);
       const landVane = landAt(t, side, barbAngle);
-      // the firm share: nothing at all through the bottom third of the
-      // plumaceous zone — that is the pure down, barbs that never harden —
-      // and then climbing to the whole barb by the top of it
+      // the firm share: nothing at all through most of the plumaceous zone —
+      // that is the pure down, barbs that never harden — and then climbing to
+      // the whole barb over the last third of it. Held against a real feather
+      // the changeover is QUICK: a broad block of down, a narrow band where
+      // the two argue, and then clean vane. A ramp spread over the whole zone
+      // drew a deep V; the thing itself is a shallow one.
       const xf = downFrac>0 ? Math.min(1, t/downFrac) : 1;
-      const q = Math.max(0, (xf - 0.30)/0.70);
+      const q = Math.max(0, (xf - 0.68)/0.32);
       const uFirm = q*q*(3-2*q);             // how much of this barb is vane
       const allDown = uFirm <= 0.02;
-      const ang = allDown ? barbAngle*1.5 : barbAngle;
+      // down sweeps more upright than the vane does — but never past the
+      // vertical, which a bare 1.5× reaches at a comb of sixty degrees and
+      // then walks backwards over the far web
+      const ang = allDown ? Math.min(barbAngle*1.5, 1.30) : barbAngle;
       const dirx = norm.x*side*Math.cos(ang) + up.x*Math.sin(ang);
       const diry = norm.y*side*Math.cos(ang) + up.y*Math.sin(ang);
       const m = Math.hypot(dirx,diry)||1;
@@ -1213,6 +1232,25 @@ function drawFeather(){
   // comes from: a symmetric feather's bars run level, and a flight feather's
   // slant. So it is derived, not dialled — one fewer slider, and one more
   // thing the feather works out for itself.
+  // Smooth value noise on a unit lattice, for the marbling to wander on. A
+  // warp built of plain sines does not work here and it is worth saying why:
+  // ALONG changes by a whole 1 up the feather but only by a barb's climb —
+  // about a tenth of that — across one barb. So any frequency fine enough to
+  // give detail up the shaft lays ten times as much of it along every barb,
+  // and the bands break into a blotch that follows the comb instead of
+  // crossing it. Noise has a LENGTH instead of a frequency: set the cell to
+  // about one bar's spacing and the warp wanders by the same amount whichever
+  // way you travel, which is what a wandering line actually does.
+  const vnoise = (x, y) => {
+    const xi = Math.floor(x), yi = Math.floor(y), xf = x-xi, yf = y-yi;
+    const h = (a,b) => { const n = Math.sin(a*127.1 + b*311.7)*43758.5453; return n - Math.floor(n); };
+    const u = xf*xf*(3-2*xf), v = yf*yf*(3-2*yf);
+    return (h(xi,yi)*(1-u) + h(xi+1,yi)*u)*(1-v) + (h(xi,yi+1)*(1-u) + h(xi+1,yi+1)*u)*v;
+  };
+  // the web's breadth in the shaft's own units, so the noise is the same size
+  // in both directions and a wander is a wander whichever way it runs
+  const awide = vaneW*latK/tipReach;
+
   const leanK = asym*0.62/Math.tan(barbAngle);
   const gBand = 1 - tipBand;                 // the terminal band's contour
   const bandSoft = 0.02 + tipBand*0.12;      // the fade at its inner edge
@@ -1227,12 +1265,30 @@ function drawFeather(){
     let d = 0;
     if(nBars>0){
       const wob = barEdge*(rowN-0.5)*0.6;
-      // a bar has a FLAT TOP. The ramp used to be 0.55 of the sine wide, which
-      // never reached full dark except at the crest — so every bar was a soft
-      // hump rather than a band, and no two stretches of a barb came out the
-      // same colour, which is also why nothing merged. A narrow ramp gives a
-      // real bar with a soft edge, and gives the walk long plateaus to fold.
-      let v = Math.min(1, Math.max(0, (Math.abs(Math.sin(along*Math.PI*nBars))-(0.45+wob))/0.22));
+      let ph = along*Math.PI*nBars, thr = 0.45 + wob;
+      // MARBLING — the bars stop marching and start wandering.
+      //
+      // Which is the field's gift, and the reason it is worth having built
+      // one. A bar was a property of the barb and there was nothing you could
+      // do to it but move it; a bar is a FUNCTION now, and a function can have
+      // its argument bent. So the phase is warped — three sines of the across
+      // and along coordinates, coarse, middling and fine — and the bands buckle,
+      // break and wander off, which is a woodcock, a snipe, a grouse, and about
+      // half the gamebirds on the moor. The warp is read on the SIGNED across
+      // coordinate, so the two webs wander differently instead of mirroring
+      // each other about the shaft, which would fool nobody.
+      //
+      // And vermiculation is fine LINES, not bands, so the threshold rises
+      // with it and the bars thin as they break. Wind the barring up alongside
+      // and the weather gets finer still.
+      if(marble>0){
+        const nx = acr*side*awide, cell = 2*nBars;
+        ph += marble*( (vnoise(nx*cell*0.75 +  3.1, along*cell*0.75)-0.5)*3.6
+                     + (vnoise(nx*cell*2.30 + 11.7, along*cell*2.30)-0.5)*1.5
+                     + (rowN-0.5)*0.35 );
+        thr += marble*0.17;
+      }
+      let v = Math.min(1, Math.max(0, (Math.abs(Math.sin(ph))-thr)/0.22));
       if(v>0 && barEdge>0) v *= 1 - barEdge*rowN*0.8;
       if(barBias>0 && side>0) v *= (1-barBias);     // the bars onto one web
       d = Math.max(d, v);
@@ -1667,6 +1723,7 @@ function updateReadouts(){
   $('baredge-v').textContent = P.baredge.value>0? P.baredge.value+'%' : 'crisp';
   $('tipband-v').textContent = P.tipband.value>0? P.tipband.value+'%' : 'none';
   $('speck-v').textContent = P.speck.value>0? P.speck.value+'%' : 'none';
+  $('marble-v').textContent = P.marble.value>0? P.marble.value+'%' : 'none';
   $('margin-v').textContent = +P.margin.value===0 ? 'none'
     : (+P.margin.value<0 ? 'pale ' : 'dark ') + Math.abs(+P.margin.value) + '%';
   $('eye-v').textContent = P.eye.value>0? P.eye.value+'%' : 'none';
@@ -1719,7 +1776,7 @@ function conjureFrom(str){
   // moor DEFINED, a fettle is a feather free-for-all, and nobody is
   // owed the feather a coordinate grew last week.)
   P.bars.value = 0; P.barside.value = 0; P.baredge.value = 0;
-  P.tipband.value = 0; P.speck.value = 0; P.margin.value = 0;
+  P.tipband.value = 0; P.speck.value = 0; P.margin.value = 0; P.marble.value = 0;
   const dye = rng();
   const coat = dye<0.20 ? 'brown' : dye<0.32 ? 'pale' : dye<0.46 ? 'dark'
              : dye<0.72 ? 'twotone' : dye<0.88 ? 'fawn' : 'gaudy';
@@ -1735,6 +1792,11 @@ function conjureFrom(str){
     }
     if(rng()<0.35) P.tipband.value = 10 + Math.floor(rng()*28);
     if(rng()<0.4)  P.speck.value = 15 + Math.floor(rng()*55);
+    // the moor is largely gamebird, and a gamebird is largely vermiculated
+    if(+P.bars.value>0 && rng()<0.45){
+      P.marble.value = 30 + Math.floor(rng()*55);
+      P.bars.value = 6 + Math.floor(rng()*7);
+    }
     // a pale rim is the moor's commonest finish — the scaled look of a wren,
     // a dunnock, a juvenile's fresh edging
     if(rng()<0.45) P.margin.value = -(20 + Math.floor(rng()*45));
@@ -1794,6 +1856,10 @@ function conjureFrom(str){
       P.baredge.value = 20 + Math.floor(rng()*60);
       if(rng()<0.3) P.barside.value = 40 + Math.floor(rng()*60);
     } else P.speck.value = 25 + Math.floor(rng()*45);
+    if(+P.bars.value>0 && rng()<0.5){
+      P.marble.value = 25 + Math.floor(rng()*55);
+      P.bars.value = 6 + Math.floor(rng()*7);
+    }
     if(rng()<0.3) P.tipband.value = 10 + Math.floor(rng()*24);
     if(rng()<0.5) P.margin.value = (rng()<0.7?-1:1)*(25 + Math.floor(rng()*40));
   } else {
@@ -2046,6 +2112,7 @@ $('receipt').addEventListener('click', ()=>{
   t += row('bar side', rd('barside-v'));
   t += row('bar edge', rd('baredge-v'));
   t += row('terminal band', rd('tipband-v'));
+  t += row('marbling', rd('marble-v'));
   t += row('spots & splodges', rd('speck-v'));
   t += row('margin', rd('margin-v'));
   t += row('eyespot', rd('eye-v'));
@@ -2071,6 +2138,7 @@ $('receipt').addEventListener('click', ()=>{
     pig1:$('pig1').value, pig2:$('pig2').value,
     bars:P.bars.value, barside:P.barside.value, baredge:P.baredge.value,
     tipband:P.tipband.value, speck:P.speck.value, margin:P.margin.value,
+    marble:P.marble.value,
     eye:P.eye.value, eyecol:$('eyecol').value, eyecol2:$('eyecol2').value,
     eyepupil:P.eyepupil.value, eyepos:P.eyepos.value, eyeside:P.eyeside.value,
     irid: iridOn ? 1 : 0, iridcol:$('iridcol').value, iridcol2:$('iridcol2').value,
@@ -2123,8 +2191,9 @@ function applyRecord(m){
   setR(P.down,'down'); setR(P.wear,'wear');
   if(!numOk(m.knit)) P.knit.value = 0;           // feathers saved before the knit come back as the bare comb they were
   setR(P.bars,'bars'); setR(P.barside,'barside'); setR(P.baredge,'baredge'); setR(P.tipband,'tipband'); setR(P.speck,'speck');
-  setR(P.margin,'margin');
+  setR(P.margin,'margin'); setR(P.marble,'marble');
   if(!numOk(m.margin)) P.margin.value = 0;       // feathers saved before the margin come back unedged
+  if(!numOk(m.marble)) P.marble.value = 0;       // ...and before the marbling, with their bars still marching
   setR(P.eye,'eye'); setR(P.eyepupil,'eyepupil'); setR(P.eyepos,'eyepos'); setR(P.eyeside,'eyeside');
   if(!numOk(m.eyepupil)) P.eyepupil.value = 0;   // feathers saved before the window reload with a solid heart
   setR(P.iridpos,'iridpos'); setR(P.iridspread,'iridspread'); setR(P.iridstr,'iridstr');
