@@ -299,6 +299,10 @@
       <div class="cap"><label for="down">Plumaceous down</label><span class="val" id="down-v"></span></div>
       <input type="range" id="down" min="0" max="45" value="18">
     </div>
+    <div class="card" title="the aftershaft — a whole second downy plume off the superior umbilicus, the way a grouse wears one">
+      <div class="cap"><label for="after">Aftershaft</label><span class="val" id="after-v"></span></div>
+      <input type="range" id="after" min="0" max="100" value="0">
+    </div>
     <div class="card" title="the fraying and gaps of a feather that has flown">
       <div class="cap"><label for="wear">Age &amp; wear</label><span class="val" id="wear-v"></span></div>
       <input type="range" id="wear" min="0" max="100" value="22">
@@ -416,7 +420,7 @@ function freshDraw(){ return mulberry(drawSeed); }
 const $ = id => document.getElementById(id);
 const P = {
   len:$('len'), curve:$('curve'), width:$('width'), apex:$('apex'), asym:$('asym'), angle:$('angle'),
-  density:$('density'), knit:$('knit'), down:$('down'), wear:$('wear'),
+  density:$('density'), knit:$('knit'), down:$('down'), after:$('after'), wear:$('wear'),
   bars:$('bars'), barside:$('barside'), baredge:$('baredge'), tipband:$('tipband'), speck:$('speck'),
   margin:$('margin'), marble:$('marble'),
   eye:$('eye'), eyepupil:$('eyepupil'), eyepos:$('eyepos'), eyeside:$('eyeside'),
@@ -482,6 +486,7 @@ function drawFeather(){
   const knit = +P.knit.value/100;         // 0 the bare comb .. 1 a zipped web
   const downFrac = +P.down.value/100;
   const wear = +P.wear.value/100;
+  const afterFrac = +P.after.value/100;   // the aftershaft: 0 none .. 1 a grouse's
   const nBars = +P.bars.value;
   const tipBand = +P.tipband.value/100;
   const barBias = +P.barside.value/100;   // 0 bars on both webs .. 1 one web only
@@ -509,21 +514,26 @@ function drawFeather(){
 
   // barbules pool here — one shared path for the whole feather, so a cloud
   // of micro-wisps costs the SVG almost nothing.
-  let fluffD = '';
+  const fluffPool = [], afterPool = [];
 
   // a wandering strand: chained gentle turns around a per-strand curl, with a
   // whisper of droop — the shape of down. Draws only from the fluff stream.
-  function strand(x0, y0, dx0, dy0, len, wildness){
+  // A strand draws from whichever stream and pools its wisps wherever it is
+  // told, so the aftershaft can wander on its own dice — faffing the plume
+  // then never re-rolls the down, exactly as faffing the down never re-rolls
+  // the vane.
+  function strand(x0, y0, dx0, dy0, len, wildness, rn, pool){
+    rn = rn || drng; pool = pool || fluffPool;
     const segs = 4;
     let px=x0, py=y0, dx=dx0, dy=dy0;
-    const curl = (drng()-0.5)*2.6*wildness;   // the strand's own persuasion
+    const curl = (rn()-0.5)*2.6*wildness;   // the strand's own persuasion
     const pts = [[px,py]];
     for(let k=0;k<segs;k++){
-      const turn = curl/segs + (drng()-0.5)*0.45*wildness;
+      const turn = curl/segs + (rn()-0.5)*0.45*wildness;
       const ct=Math.cos(turn), st=Math.sin(turn);
       const ndx=dx*ct-dy*st, ndy=dx*st+dy*ct+0.08;   // +0.08 is gravity's word
       const dm=Math.hypot(ndx,ndy)||1; dx=ndx/dm; dy=ndy/dm;
-      const sl=(len/segs)*(0.8+drng()*0.4);
+      const sl=(len/segs)*(0.8+rn()*0.4);
       px+=dx*sl; py+=dy*sl; pts.push([px,py]);
     }
     let d=`M ${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
@@ -539,14 +549,14 @@ function drawFeather(){
       const pdx=pts[k][0]-pts[k-1][0], pdy=pts[k][1]-pts[k-1][1];
       const pm=Math.hypot(pdx,pdy)||1;
       for(const j of [1,-1]){
-        if(drng() > 0.85) continue;
-        const rot=j*(0.35+drng()*0.45), blen=len*(0.07+drng()*0.13);
+        if(rn() > 0.85) continue;
+        const rot=j*(0.35+rn()*0.45), blen=len*(0.07+rn()*0.13);
         const cr=Math.cos(rot), sr=Math.sin(rot);
         const bdx=(pdx*cr-pdy*sr)/pm, bdy=(pdx*sr+pdy*cr)/pm;
         const er=Math.cos(rot*1.7), es=Math.sin(rot*1.7);
         const edx=(pdx*er-pdy*es)/pm, edy=(pdx*es+pdy*er)/pm;
         const bx=pts[k][0], by=pts[k][1];
-        fluffD += `M ${bx.toFixed(1)} ${by.toFixed(1)} Q ${(bx+bdx*blen*0.6).toFixed(1)} ${(by+bdy*blen*0.6).toFixed(1)} ${(bx+edx*blen).toFixed(1)} ${(by+edy*blen).toFixed(1)}`;
+        pool.push(`M ${bx.toFixed(1)} ${by.toFixed(1)} Q ${(bx+bdx*blen*0.6).toFixed(1)} ${(by+bdy*blen*0.6).toFixed(1)} ${(bx+edx*blen).toFixed(1)} ${(by+edy*blen).toFixed(1)}`);
       }
     }
     return d;
@@ -1454,9 +1464,9 @@ function drawFeather(){
     }
   }
   // the barbule cloud — every strand's micro-wisps in a single faint pass
-  if(fluffD){
+  if(fluffPool.length){
     const fc = mix(mix(pig1,pig2,0.35), {r:200,g:190,b:170}, 0.3);
-    out += `<path d="${fluffD}" fill="none" stroke="${rgbStr(fc)}" stroke-width="0.36" stroke-linecap="round" opacity="0.35"/>`;
+    out += `<path d="${fluffPool.join('')}" fill="none" stroke="${rgbStr(fc)}" stroke-width="0.36" stroke-linecap="round" opacity="0.35"/>`;
   }
 
   // in-barb spots — flecks & splodges grown INTO the vane. Instead of ellipses
@@ -1701,7 +1711,55 @@ function drawFeather(){
   const uw = rachisPt(calT*0.88);
   out += `<circle cx="${uw.x.toFixed(1)}" cy="${uw.y.toFixed(1)}" r="${(qHW*0.42).toFixed(2)}" fill="${quillDark}" opacity="0.55"/>`;
 
-  svg.innerHTML = (defs?`<defs>${defs}</defs>`:'') + out;
+  // THE AFTERSHAFT — a whole second plume, hung off the SUPERIOR UMBILICUS at
+  // the top of the calamus, where the vane begins. It is the one piece of
+  // feather anatomy this tool had a name for and no thing to go with it: the
+  // downy base of a vane barb wore the word "afterfeather" for a while, which
+  // it never was. This is the real one — a hyporachis of its own carrying
+  // nothing but plumaceous barbs, modest on most birds and very nearly the
+  // length of the feather on a grouse, which is a bird the North Pennines has
+  // rather a lot of.
+  //
+  // It grows from the UNDERSIDE, so it is laid behind everything: the vane's
+  // own down stands in front of it and the plume shows around and below, which
+  // is what doubles the fluff at the foot of a body feather. It wanders on a
+  // fourth stream of dice, so faffing the plume never re-rolls the down, just
+  // as faffing the down never re-rolls the vane.
+  let afterOut = '';
+  if(afterFrac > 0){
+    const arng = mulberry((drawSeed ^ 0x2545F491) >>> 0);
+    // and it must REACH PAST the vane's own down, or it is simply more of it:
+    // a plume tucked inside the plumaceous base is invisible however carefully
+    // it is drawn, which is the first thing this one did.
+    const aT = 0.08 + afterFrac*0.50;              // how far up the shaft it reaches
+    const aW = vaneW*(0.34 + afterFrac*1.00);      // and how far out, as a barb length
+    const aRows = Math.max(7, Math.round(nBarbs*aT*0.8));
+    const aAng = Math.min(barbAngle*1.2, 1.30);
+    // paler and greyer than the vane's own down, because it is behind it
+    const aCol = rgbStr(mix(mix(pig1, pig2, 0.30), {r:208,g:200,b:182}, 0.45));
+    // the hyporachis: the same taper as everything else on this shaft, read
+    // thinner still, because it is a lesser quill on a lesser feather
+    let d = `<path d="${spindle(0, aT, (f,u)=>qHW*0.42*(0.12+0.88*Math.pow(Math.max(0,1-f),0.8)), 16)}" fill="${aCol}" opacity="0.5"/>`;
+    let strands = '';
+    for(let i=1;i<=aRows;i++){
+      const t = (i/aRows)*aT, rp = rachisPt(t);
+      const x = i/aRows;
+      // the plume's own plump lens, closing to a point at its tip
+      const w = aW*Math.pow(Math.sin(Math.PI*Math.min(1, 0.10 + x*0.88)), 0.5);
+      for(const side of [1,-1]){
+        const dx = rp.norm.x*side*Math.cos(aAng) + rp.tan.x*Math.sin(aAng);
+        const dy = rp.norm.y*side*Math.cos(aAng) + rp.tan.y*Math.sin(aAng);
+        const m = Math.hypot(dx,dy)||1;
+        strands += strand(rp.x, rp.y, dx/m, dy/m, w*(0.75+arng()*0.55), 1.1, arng, afterPool);
+      }
+    }
+    d += `<path d="${strands}" fill="none" stroke="${aCol}" stroke-width="0.58" stroke-linecap="round" opacity="0.42"/>`;
+    if(afterPool.length)
+      d += `<path d="${afterPool.join('')}" fill="none" stroke="${aCol}" stroke-width="0.34" stroke-linecap="round" opacity="0.30"/>`;
+    afterOut = d;
+  }
+
+  svg.innerHTML = (defs?`<defs>${defs}</defs>`:'') + afterOut + out;
 }
 
 /* ---- readouts ---- */
@@ -1717,6 +1775,7 @@ function updateReadouts(){
   $('density-v').textContent = P.density.value;
   $('knit-v').textContent = P.knit.value>0? P.knit.value+'%' : 'bare comb';
   $('down-v').textContent = P.down.value+'%';
+  $('after-v').textContent = P.after.value>0? P.after.value+'%' : 'none';
   $('wear-v').textContent = P.wear.value+'%';
   $('bars-v').textContent = P.bars.value>0? P.bars.value : 'none';
   $('barside-v').textContent = P.barside.value>0? P.barside.value+'%' : 'both';
@@ -1765,6 +1824,9 @@ function conjureFrom(str){
   // little damage catches the eye and distracts from the odd bird
   // underneath. Every conjured feather arrives pristine.
   P.wear.value    = 0;
+  // the aftershaft: most birds wear a modest one, the grouse a great cloud,
+  // and a flight feather barely any at all
+  P.after.value   = rng()<0.55 ? Math.floor(rng()*rng()*55) : 0;
 
   // THE PLUMAGE — coat first, and the pattern dice loaded to suit it,
   // because a colourway mostly IS its pattern: the hand-made feathers
@@ -2100,6 +2162,7 @@ $('receipt').addEventListener('click', ()=>{
   t += row('barb density', rd('density-v'));
   t += row('barbule knit', rd('knit-v'));
   t += row('plumaceous down', rd('down-v'));
+  t += row('aftershaft', rd('after-v'));
   t += row('age & wear', rd('wear-v'));
   // colour rows carry HSL beside the hex — the reading that lines feathers up
   // for comparing (a clutch of real finds all sitting at low saturation, say)
@@ -2134,7 +2197,7 @@ $('receipt').addEventListener('click', ()=>{
     grid: $('coord').value, seed: drawSeed, apex: apexType,
     len:P.len.value, curve:P.curve.value, width:P.width.value, apexdeg:P.apex.value,
     asym:P.asym.value, angle:P.angle.value, density:P.density.value, knit:P.knit.value,
-    down:P.down.value, wear:P.wear.value,
+    down:P.down.value, after:P.after.value, wear:P.wear.value,
     pig1:$('pig1').value, pig2:$('pig2').value,
     bars:P.bars.value, barside:P.barside.value, baredge:P.baredge.value,
     tipband:P.tipband.value, speck:P.speck.value, margin:P.margin.value,
@@ -2188,7 +2251,8 @@ function applyRecord(m){
 
   setR(P.len,'len'); setR(P.curve,'curve'); setR(P.width,'width'); setR(P.apex,'apexdeg');
   setR(P.asym,'asym'); setR(P.angle,'angle'); setR(P.density,'density'); setR(P.knit,'knit');
-  setR(P.down,'down'); setR(P.wear,'wear');
+  setR(P.down,'down'); setR(P.after,'after'); setR(P.wear,'wear');
+  if(!numOk(m.after)) P.after.value = 0;         // feathers saved before the aftershaft come back with none
   if(!numOk(m.knit)) P.knit.value = 0;           // feathers saved before the knit come back as the bare comb they were
   setR(P.bars,'bars'); setR(P.barside,'barside'); setR(P.baredge,'baredge'); setR(P.tipband,'tipband'); setR(P.speck,'speck');
   setR(P.margin,'margin'); setR(P.marble,'marble');

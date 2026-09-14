@@ -128,6 +128,14 @@ And the down carries **a reach of its own**, because a plumaceous barb obeys no 
 
 And it is a **length**, with no secant in it. The lens was first written as a breadth and divided by `cos(barb angle)` to make a length of it — but `vaneW` is already a length in this tool, and `cos` is the across-vane *share* of one. So the down was being multiplied by sec(comb): 1.06 at twenty degrees, 1.44 at the default, **3.24 at seventy-two**. Which is why a steeply combed feather grew fluff at what looked like an exponential rate while every gentler one behaved perfectly. The comb sets the direction a downy barb leaves in. It has no business setting how far it goes — a plumaceous barb is bounded by no outline, so its length is the feather's business and nobody else's. (The same angle, taken 1.5× for the down's steeper sweep, walks past the vertical and back over the far web at a comb of sixty degrees. It is held short of that now.)
 
+### The aftershaft — a second plume, and a name given back
+
+The **aftershaft** — the hyporachis, the afterfeather proper — is a whole second downy plume hung off the **superior umbilicus** at the top of the calamus, where the vane begins. It is the one piece of feather anatomy this tool had a word for and no thing to go with it: the downy base of a vane barb wore the name for a while, which it never was. Modest on most birds, and very nearly the length of the feather on a grouse, which is a bird the North Pennines has rather a lot of.
+
+It grows from the *underside*, so it is laid behind everything — the vane's own down stands in front of it and the plume shows around and below, which is what doubles the fluff at the foot of a body feather. Its hyporachis is the quill's own taper again, read thinner still, because it is a lesser quill on a lesser feather. And it wanders on a fourth stream of dice, so faffing the plume never re-rolls the down, just as faffing the down never re-rolls the vane.
+
+The one thing it must do is **reach past the vane's own down**, or it is simply more of it. A plume tucked inside the plumaceous base is invisible however carefully it is drawn, which is the first thing this one did.
+
 ### Wear — the vane unzips
 
 Age is more than missing barbs. A flown feather unzips: neighbouring barbs let go of one another and the edge bites in a V-shaped notch. The notches live on their own stream too, so a specimen's wear is part of its fixed identity, not a thing that reshuffles every time you nudge another slider.
