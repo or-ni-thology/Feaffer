@@ -88,7 +88,24 @@ Two more honesties keep the vane silky: the tip jitter is scaled back by a barb'
 
 The fan used to do more than that, and wanted to do less. It hauled every tip-zone barb's endpoint toward a target near the axis, shrinking the target the higher the row, so the strokes converged on one point and combed a ladder of nested chevrons down the middle of the dome with a knot at the top of it. It was there because the broken solve left the top sixth of the crown's arc unreached by anything at all, and something had to get strokes up there. With the landing solved, the haul is gone. The fan is curvature now, not position, and a barb's tip is where the comb put it.
 
-The rows are counted by measurement too, rather than by assumption. Over a rounded crown the dome may be a longer road than the shaft it is combed from, and then the weave thins where the tip turns over — so the crown's arc is measured against that shaft, and it drinks as many interleaved sub-rows as the ratio actually asks for. Usually that is none. (It used to double every row above the tip zone, flatly, which laid twice the strokes on the stretch that was already the densest part of the vane: on that same broad feather the natural tip pitch up there is 3.0px against a 4.2px root pitch. The doubling was the other half of the clotted tip.)
+### The gauge — a gap is read against the barb it is a gap in
+
+The rows were ruled flat up the rachis, *t* = *i*/(*n*−1), which sounds even and is not. It keeps the gap between neighbours at the same number of **pixels** everywhere — but nobody reads a gap in pixels. A gap is read against the thing it is a gap *in*, and the barbs get short at the ends of a feather while the gaps do not. Measured on a plain specimen, the gap as a fraction of a barb's own length:
+
+| | mid-vane | *t* = 0.8 | *t* = 0.9 |
+|---|---|---|---|
+| rounded | 3.8% | 5.3% | 13.2% |
+| acuminate | 4.0% | 16.6% | **59.4%** |
+
+Two and a half pixels between eighty-five-pixel barbs is a silky weave. The same two and a half pixels between five-pixel barbs is a comb with teeth, and near the point of an acuminate the gaps ran longer than half a barb. Which is why every tip in this tool read as a fish bone however far the density slider went: **the density slider was buying rows in the one place that already had enough of them.**
+
+So the pitch follows the barb's length, and the weave holds **one gauge** from calamus to crown. Where the vane narrows the rows crowd, in exactly the proportion the narrowing asks for, and nothing else in the tool has to be told about it. The density slider stops being a count of rows and becomes what it always meant — the gauge of the weave, set at the broadest part.
+
+It replaces the crown's interleaved sub-rows, which were this same idea at a third of the resolution: an integer of 1, 2 or 3, measured only over a rounded dome, and reading 1 nearly always. The right instinct asked of the wrong quantity. It is not the crown that wants more rows, it is *every place a barb is short* — and the acuminate, which wanted them most, was never asked.
+
+Two things bound it. The gauge is a proportion, and a proportion of nothing is nothing, so there is a **floor** under the crowding — without one, the vanishing point of an acuminate would grind there forever. And the whole pitch opens by one factor if the predicted row count overruns its budget, so the gauge keeps its *shape* — the tip still crowds exactly as much more than the mid-vane as its barbs are shorter — while the feather keeps near the count that was asked for. A redistribution with a cap on it, rather than a multiplication.
+
+And **the gauge reads the vane, because the vane is where the barbs hold on to one another.** A plumaceous barb is held by nothing and obeys no outline; it is a cloud, not a web, so there is no gap there to keep in proportion. Crowding rows into the down bought nothing but more fluff to hide behind the fluff already in front of it — measured, that was two thirds of what the gauge cost and none of what it bought. So below the down line the rows keep the plain pitch. One more thing the plumaceous zone is simply not the business of.
 
 ### The ragged margin, and a trade taken on purpose
 
@@ -110,13 +127,40 @@ They are not drawn, and should not be — which was wrong, and instructively so.
 
 Because a feather is not a tone with lines on it. It is a **hierarchy of line densities** — barbs at one pitch, barbules at a finer — and the eye reads the second order as *grain*, not as grey. Averaging it away is the one thing you must not do to it. The sample-rate argument was answering the wrong question: not "what is the mean brightness here" but "what is the finest order this page can still hold apart".
 
-So they are drawn, and the under-sampling goes the other way: roughly one barbule in six, at the finest pitch the canvas can still resolve as separate lines, with the floor rising as the comb crowds — past a point another rank is ink spent on a grey nobody can see. Two ranks per barb, leaning opposite ways, each reaching a shade past half the gap so it meets its neighbour's coming the other way, which is what interlocking *is*. A barbule reaches **for its neighbour**, so where there is no neighbour to reach for there is nothing to draw — that is what stopped a halo of stray whiskers standing off the apex, where the topmost barb was fringing out into open sky. And the ranks shorten hard over the last third of a barb, because barbules do: the bare end of every barb is what keeps a vane's margin a crisp sawtooth of tips instead of a fuzz.
+So they are drawn, and the under-sampling goes the other way: roughly one barbule in six, at the finest pitch the canvas can still resolve as separate lines, with the floor rising as the comb crowds and nothing ever moving it — past a point another rank is ink spent on a grey nobody can see. Two ranks per barb, leaning opposite ways, each reaching a shade past half the gap so it meets its neighbour's coming the other way, which is what interlocking *is*. A barbule reaches **for its neighbour**, so where there is no neighbour to reach for there is nothing to draw — that is what stopped a halo of stray whiskers standing off the apex, where the topmost barb was fringing out into open sky. And the ranks shorten hard over the last third of their run, because barbules do: the bare end of every barb is what keeps a vane's margin a crisp sawtooth of tips instead of a fuzz. Read against the rank's own run rather than the barb's, so a half-zipped vane fades out where its zip gives up instead of running full length and then stopping dead at a frontier of its own.
 
 The **reach** — how far a barbule has to go — is measured per barb, and measuring it properly took two wrong turns. First the gap was read from one barb's *curve* against the next barb's *chord*; but a barb is a bowed quadratic and its chord is not, and the two part company by nearly a tenth of the barb's length at the middle, so that folds the whole bow into the answer — too far on one flank, too near on the other, and taking the nearer of the two then keeps the wrong one every time. Both readings are taken on the curves now, midpoint to midpoint's tangent. (A quadratic's tangent at the halfway mark is parallel to its chord, which makes the honest version the cheap one as well.) Then it was read at one place and used everywhere, and the web stalled at half the vane covered however far the slider went: two barbs three pixels apart at the root need not be three apart at the tip, because they bow by their own lengths and the tip jitter shakes them. It is read at three places now, and the widest kept.
 
 A barb carries barbules on both flanks, so the reach is the *mean* of its two gaps. Where wear has carried a neighbour off there is only the one reading and the rank keeps that width, so the gap the missing barb left stays a gap. An unzipped vane should show daylight; that is what unzipped means.
 
-And the rank **begins where the vane does, and tightens as the vane closes** — both halves of that being the growth contour again, read at the barbule instead of at the barb. Below the contour a barb's barbules are the long free ones already drawn as its plumaceous base, and the hooked rank has no business down there, so the rank starts at *uDown*. Above it, a vane does not open fully knit: a young pennaceous web is loose and shows the light through it, and it shuts as it climbs. So the *pitch* is read off the contour too, and one number does both jobs — it empties the rank out of the down and it thins the weave where the vane is still opening, along each barb and up the whole feather at once, because those are the same coordinate. Open at the foot, shut at the tip, and no second mechanism anywhere to say so. It pays for itself twice over: a loose weave is fewer strokes, and every specimen came out smaller than it was before.
+And the rank **begins where the vane does, and reaches further as the vane closes** — both halves of that being the growth contour again. Below the contour a barb's barbules are the long free ones already drawn as its plumaceous base, and the hooked rank has no business down there. Above it, a vane does not open fully knit: a young pennaceous web is loose and shows the light through it, and it shuts as it climbs. So the contour scales the rank's *run* alongside the knit's own, and one number does both jobs — it empties the rank out of the down and it holds the weave close to the rachis where the vane is still opening. Open at the foot, shut at the tip, and no second mechanism anywhere to say so. It pays for itself twice over: a loose weave is fewer strokes, and every specimen came out smaller than it was before.
+
+**And the knit is a count, not a fade** — which took until now to notice, because it was hiding in an attribute. For its whole life the slider did exactly one thing: it set the *opacity* of the barbule layer. The same barbules were laid in the same places at every setting from 1 to 100, and the dial only chose how hard to wash them out. Two feathers at knit 25 and knit 50 came out **byte for byte identical** — 278k, 665 paths, both — and differed only in how much of it you could see. So a vane paid for the whole weave and showed a third of it: at the conjure's usual quarter, fifty-seven per cent of a specimen's bytes went out at three-tenths alpha.
+
+Worse, it quietly committed the one error this section exists to argue against. A hairline at 0.3 alpha is not a hairline. It is a third of a line, which is a **tone** — so fading the barbules until they average is the same mistake as the soft ribbon that came before them, wearing a different hat, and it was the more expensive hat. The ribbon made the honest version of the error and was rightly thrown out. This was the dishonest version, and it survived because nobody looks at an opacity.
+
+So the knit buys **barbules**, and the layer is drawn at the weight a hairline deserves whatever the setting. A loose weave is fewer lines, not fainter ones — which is what a loose weave is on the bird, and what it should cost on the page.
+
+**But it must not buy them by moving their pitch**, which the first attempt did, and a moiré came out of the middle of the slider to say so.
+
+A vane carries two lattices. The barbs sit at one spacing across the web — 4.35 px on the feather this was measured on — and the barbules sit at another along each barb, leaning 42° across the first. Drive the barbule pitch with the knit and it sweeps straight through the barb spacing on the way:
+
+| knit | 10 | 20 | 30 | 45 | 65 | 90 |
+|---|---|---|---|---|---|---|
+| barbule pitch | 6.43 | 4.25 | 3.34 | 2.62 | 2.10 | 1.73 px |
+| against the barb gap | 1.48 | **0.98** | 0.77 | 0.60 | 0.48 | 0.40 |
+
+At knit 20 the two lattices are **the same spacing**, and two combs of one pitch crossed at an angle are the definition of a moiré. Which is precisely what the middle of the slider drew — a watermark of lozenges standing up the inner vane — while both ends ran clean, one too coarse to phase-lock and the other too fine to resolve. The bug reported itself as *"low is lovely, high I love, the middle is a moiré"*, which is a description of a beat frequency by someone who had not yet been told there was one.
+
+So the pitch stays pinned at the finest the page can hold, always, and the knit moves **how far out along the barb the rank runs** instead. Which is the better answer twice over.
+
+It is better because **a spacing can beat against another spacing and an extent cannot** — there is no frequency in an extent to beat with. The moiré is not damped or dithered or jittered out; the mechanism that made it no longer exists.
+
+And it is better because it is what an unzipping vane actually does. Hooks let go at the **margin** first. A well-knit vane is zipped nearly to the ends of its barbs; a poorly-knit one holds on close to the rachis and flies loose outside that, which is both what a worn feather looks like and what *unzipped* means. The slider had been a fader, then briefly a frequency, and turned out all along to be a **frontier** — how far the zip has held.
+
+The growth contour then says its piece the same way, because it is the same kind of statement. It used to open the pitch where the vane was still young, which was the second place a spacing moved and which left the foot of every vane sitting at a pitch three quarters of the barb gap — inside the beat. A young pennaceous web shows the light through it because the zip has not got far out along the barb yet, not because its barbules stand further apart. With that moved too there is **no spacing anywhere in the knit that anything can move**, and the ratio sits between 0.37 and 0.50 at every setting, at every height, on every feather.
+
+The saving went back into the gauge above, which is the honest way to run an account: the barbules paid for the barbs.
 
 The ranks go down in two flat layers — flat, because a layer that is flat is what keeps ranks that interlock from doubling their alpha and striping the vane with a moiré of its own rows. Consecutive barbules of one colour go out as a single path, spelled in relative deltas of a pixel or two, which is what keeps a plain vane to about a path a barb and saves most of a megabyte on a busy one.
 
@@ -183,6 +227,16 @@ Barring is `sin(along·π·n)` for *n* bands, its edges wobbled and mottled by a
 
 The warp is **smooth value noise**, not a stack of sines, and the reason is worth the four lines it costs. `along` changes by a whole 1 up the feather but only by a barb's climb — about a tenth of that — across one barb. So any sine fine enough to give detail up the shaft lays ten times as much of it along every barb, and the bands break into a blotch that follows the comb instead of crossing it. Noise has a *length* where a sine has a frequency: set the cell to about one bar's spacing, read it on the signed across-coordinate so the two webs wander differently instead of mirroring each other about the shaft, and the warp wanders by the same amount whichever way you travel — which is what a wandering line actually does. It is cheaper, too: a smoothly warped field merges into longer runs than a busy one does. The terminal band is the same field read once instead of *n* times. The **margin** is the new one and the cheapest: a paler or darker rim to the vane, a field of **across** alone, which is the scaled look of a wren, the crescent edging on a juvenile, the dark rim on a white body feather — and because it shares the frame with the terminal band, it curves round into it at the crown without being told to. One slider, signed: pale to the left of centre, dark to the right. And the eye is its own chapter.
 
+### The three walks, and what they each had left to learn
+
+Everything marked in this tool is drawn by walking the barbs — the barb walk for the fields, the speck walk, and the eye's. They were written at different times and each had worked out something the others hadn't, which only showed once the gauge filled the tips with short barbs.
+
+**A station is only worth having where the field might change before the next one.** The speck walk knew this — it samples fine enough to resolve the grain it is hunting. The barb walk spent a flat ten stations on every barb whatever its length, so a three-pixel barb at the point of an acuminate came out as an eleven-point polyline stepping a fifth of a pixel at a time: a hundred and fifty bytes to draw a line two points would have drawn in twenty-five. Invisible while such barbs were rare. Gauge the rows to the barbs and the tip is suddenly full of them — the worst specimen on the moor went up by three fifths, and not one byte of it was a barb it had gained. The field's finest features run several pixels across, so the station count follows the barb's own length, and a barb too short to hold a feature is drawn with the two ends it has.
+
+**And the eye learned the merge.** The ocellus is the oldest of the three walks and it was still emitting *one path per segment* — nine two-point paths per barb, each carrying its own colour, width, cap and opacity. On a peacock that was two fifths of the entire specimen. A barb crossing an eye changes colour four times, at the two golden rings and the rim; four paths is what it should cost. The rings are flat colour nearly all the way across, and flat colour is exactly what a merge is for.
+
+Neither was caused by the gauge. The gauge only turned the lights on.
+
 ### The camber — the feather stops being flat
 
 A feather is not flat, and for a long while every line above this one drew one that was. The vane **cups**: the two webs curl out of the page toward their margins, and that does two things which are really one thing.
@@ -213,6 +267,44 @@ The down is left out of it on purpose. Plumaceous barbules carry no ordered arra
 
 With that, the last mask, the last Gaussian blur and the last blend mode left the building. A feather is plain stroked paths all the way down — no `<defs>` at all, nothing for the next program to mistake — so a Specimen opens the same wherever it lands.
 
+### The bright — made of food, or made of light
+
+Every colour in the vane, until now, was a point on the segment from the ground tone to the shade. One pigment axis — which models melanin beautifully, because eumelanin and phaeomelanin genuinely *are* one axis, laid by the same cells under different switching. It is why the browns sing. What it cannot reach is any colour that is not melanin, and there is no yellowhammer on a moor that has only melanin.
+
+So there is a **bright**, and it is the one colour on a feather that is not melanin. Two things about it matter, and neither is the obvious one.
+
+**It makes no mark of its own.** A bright does not decide where it goes; the feather has already decided. The goldfinch's gold *is* its wing bar. The wagtail's yellow *is* its terminal band. The jay's blue *is* its barring. So the bright rides the marks that are already there and claims each one **from its outer edge inward** — which is what gives the two-band finish half the moor wears: something sensible at the root of the mark and something loud at the end of it. One colour, one coverage, and the marking frame does the rest. Every mark family already had its own outward coordinate and never had to be asked for it: the band's is how far past its inner edge you are, a bar's is the phase within that bar (so a marbled bar carries its bright along the wander with it), the margin's is how far over the web, and a speck's is its own radius — wind the cover down and a speck becomes a dark fleck inside a bright ring.
+
+**And it is two entirely different substances wearing one control**, which is the part that makes it work.
+
+Reds, oranges and yellows are **carotenoids**: pigment, eaten, deposited into the growing feather. A flamingo is pink because of what it stands in. Pigment absorbs, so it is flat and matt and exactly the same colour from every angle you hold it at.
+
+Blues are not pigment. **There is no blue pigment in a bird** — not one, the world over, bar a couple of turacos with a copper trick. Every blue feather there has ever been is a nanostructure: a spongy layer of keratin in the barb scattering the short wavelengths back at you, over a dark melanin backing that swallows the rest. Which is why a jay's blue blazes from one angle and dies from another, and why it needs the dark underneath it.
+
+And greens are both at once, nearly always — structural blue seen through a carotenoid yellow — which is the kingfisher, the greenfinch and the parrot in one sentence.
+
+So **the tool never asks which**. It reads the hue and knows, because the physics has already decided. Warm is food, cool is light, and the crossover lies across the greens where the real thing is a mixture. Saturation damps it toward pigment as the colour greys off, because an unsaturated colour is not scattering anything. The readout says which it turned out to be, that being the one thing about the bright nobody chose and everybody should be told.
+
+They then **wear differently, and for free**. A food bright is paint: it replaces the pigment and takes the ordinary light like everything else on the vane. A light bright is a lens — it is only there at all where the barb is turned right — so it is driven hard by the very tilt the camber and the melange already compute, blazing where the web turns to the lamp and falling to near-black over its own dark backing where it turns away. Nothing new is measured for it. It is the tilt this tool already had, read with a much steeper curve. Which is why a blue mark glitters barb to barb on a flat feather (the melange's own term is a tilt) and bands across a cambered one, while a yellow mark on the same feather lies perfectly still.
+
+The **'patameter** needs no slider of its own, because the cover *is* the scale from curlew to flamingo: at nothing there is no bright at all, at the full the mark is bright end to end, and a flamingo is simply a bird that is entirely its own terminal band. Wind the marks up underneath it and the bright takes the whole feather. No moor has grown one yet.
+
+### The melange — a barb is not the same colour as its neighbour
+
+Every barb in an unmarked vane wore **exactly** the same colour as every other one, and a feather is not that. A feather is a melange. The tone shifts barb to barb in soft patches a few barbs across, and that shifting is a good part of what tells the eye a vane is a sheet of separate things at slightly different depths rather than an area of one colour. Tone shows form.
+
+It is **free**, which is why it went unnoticed for so long. The barb walk folds stretches *within* a barb that come out the same colour; it has never folded anything *between* barbs, because a barb is its own path either way. So a tone that varies per barb costs nothing — not a path, barely a byte — while a tone that varied *along* a barb would cost a fortune, barbules being what they are. Which settles the scale of the thing without anyone needing an opinion about it. Happily that is also the right scale: a barb is what the follicle lays down in one go, so a barb is the unit that would vary.
+
+And it is **two things**, because barb-to-barb variation on a real feather is two things.
+
+A barb carries a little more or less **pigment** than its neighbour, which moves it along the ground-to-shade ramp. That term scales with the pigment there is to vary — a white feather's barbs really are all the same colour, and a multiply rather than an offset is what says so.
+
+And a barb sits at a slightly different **angle to the light**, because a vane is a sheet of separate stiff things and not a surface. That term does not scale with pigment, because a white feather's barbs are as three-dimensional as anybody's, and it is the one that carries most of the effect. It is what stops a vane reading as an area of colour with lines ruled on it.
+
+The camber says the same thing one order up: it turns the whole web to the light and shades it across. This is that argument at the scale of the single barb, where the camber's smooth cosine has nothing to say because two neighbours sit at very nearly the same across-distance. The feather is curved; it is also, close up, slightly rough.
+
+The noise is smooth rather than static — a patch about nine barbs across, so the vane mottles in bands rather than fizzing — and read on the signed side, so the two webs mottle differently instead of mirroring each other about the rachis, which is the marbling's lesson borrowed one section over. It rides its own hash rather than the row's, because the row's number already ragges the bars, and a vane whose darker barbs were also the ones with the ragged bar edges would be showing a correlation no bird has.
+
 ### Colour — hex, worn as H·S·L
 
 Every colour is a hex triple under the bonnet — the thing the drawing actually reads — and shown to you as hue, saturation and lightness, which is the honest way to hunt a greyed-off dove-grey: saturation on its own axis, lightness on its own axis, nothing crammed into the corner of a square. The Record writes both, so a clutch of finds that all sit at low saturation look like a cluster on the page.
@@ -222,6 +314,45 @@ Every colour is a hex triple under the bonnet — the thing the drawing actually
 Randomness is seeded: a hash of the grid reference feeds a mulberry32 generator, so a coordinate always grows the same feather. The draw is deterministic, and its order is the specimen's identity — the exact sequence in which barbs are dropped for wear, jittered, and fluffed *is* the feather. Three streams are forked off the one seed by XOR (`⊕ 0x9E3779B9` for the down, `⊕ 0x51633E2D` for the wear-notches), so faffing the fluff never re-rolls the vane, and adding wear never disturbs the barbs.
 
 That determinism is a promise about *today's* Feaffer, not about forever. While the fettling is on, a re-roll of the conjure may redraw any feather on the moor, and nobody is owed the one a coordinate grew last week. Some day, perhaps, we'll randomly decide that today is the day the feathers are defined — but nobody has called it, and until then a fettle is a feather free-for-all. (A hand-faffed specimen is different: its Record carries the draw seed and every dial, so Restore brings *that* feather back regardless of what the conjure has become.)
+
+### The tract — a feather has a place it grew
+
+The conjure had always rolled a **coat** first and then loaded the pattern dice to suit it, because a colourway mostly *is* its pattern. Nothing did that job for the shape. Length, breadth, asymmetry, camber, down and aftershaft were six unrelated dice, so the moor grew short fat asymmetric flight feathers carrying a grouse's cloud of fluff. Half of it flew. A quarter of it was pressed flat.
+
+The missing variable has a name, and the name is **where on the bird**. A feather does not have a length and a breadth and an asymmetry; it has a *place it grew*, and that place settles all of them at once. So a tract is rolled first and loads the form dice exactly the way the coat loads the pattern dice — the same mechanism, one drawer up.
+
+| | |
+|---|---|
+| **flight** | long, narrow, stiff, strongly asymmetric; barely any down and no afterfeather at all, because every part of it is for flying |
+| **tail** | as long, broader, and very nearly symmetric — it steers with its whole width instead of cutting the air with one edge |
+| **covert** | short, broad, neat and round: the tidy little roof-tiles of a wing, and the feathers that most often carry the finery |
+| **contour** | the body of the bird, and much the commonest thing on the ground underneath it — a proper plumaceous base and a real afterfeather |
+| **fluff** | off a flank or a rump: mostly down, with a little vane on the end as an afterthought |
+
+The shares are **a walk's and not a bird's**. You find what falls, and what falls is mostly body feathers and coverts. A primary is a lucky day.
+
+The apex family follows the tract as well — the acuminate belongs to what flies and what steers, the truncate is a wing feather's cut edge — and so does the coat, so a flight feather is rarely gaudy and a bit of rump fluff is almost never a bold two-tone. The coats themselves are untouched; only how often each is dealt.
+
+### The die with a middle
+
+The other half of the trouble was the dice themselves. Every form dial was rolled flat across its whole range, and **a flat die has no middle**: the extreme is exactly as likely as the ordinary. Measured over five hundred conjures, the quartiles came out evenly spaced on every single dial —
+
+```
+len      min 400  p25 453  med 500  p75 551  max 599
+width    min  45  p25  62  med  81  p75 101  max 119
+angle    min  28  p25  38  med  47  p75  56  max  65
+density  min  60  p25 100  med 115  p75 130  max 149
+```
+
+— which is what made a wander feel like noise rather than like a moor. Three dice averaged have a centre and thin tails, so the ordinary feather is common and the odd one is a find, which is what a walk is actually like. (The codebase already knew the trick — `rng()*rng()` on the aftershaft, a power curve on the spot grain — it was simply applied in three places out of a dozen.)
+
+Two things fell out of centring the dice that are worth writing down.
+
+**Asymmetry had to be taught to snap to nothing.** A bell die lands exactly on zero about never, so without a snap every feather on the moor came out very slightly lopsided — and a body feather is not slightly lopsided, it is *symmetric*. A tract whose range starts at zero means it, and the snap is what lets it say so.
+
+**And the afterfeather had to lean hard short.** Centring that one die was the single change that made the whole rewrite cost anything at all: the moor's median afterfeather went from nothing to a fifth of the feather overnight, and a second downy plume is the most expensive thing a feather can put on. A grouse's cloud is a find, not a Tuesday.
+
+With both leaned back and the tract ranges priced, the moor's mean specimen sits within a whisker of where it was, and the **p90 is down 4.6% and the worst case down a tenth** — because thinning the tails is what a die with a middle does.
 
 ### The plumage — coats, and the pattern to carry them
 
@@ -233,7 +364,7 @@ The conjure picks a coat first and then loads the pattern dice in its favour, be
 
 ## Truths, and 'patameters
 
-The **truths** are the places where the maths is not decoration but the actual grain of the thing: a real ocellus does hold its rings near 1/φ² and 1/φ; a barb does land its tip on the vane's edge, not its root; a dome is convex everywhere; a barbule reaches its neighbour and no further, so the gap a lost barb leaves stays a gap; a vane is a hierarchy of line densities and not a tone, so the finest order it can hold gets drawn rather than averaged; plumaceous and pennaceous are properties of the barbules and not of the barb, so the boundary between down and vane runs *along* each barb rather than flat across the feather, and it is the barb's own bare end grown until it is the whole barb; a pattern is a field in the rachis frame and not a property of the barb it lands on, so a bar stays level however the comb leans; the comb sets which way a downy barb leaves and not how far it goes; a vane does not come to a point at the bottom, it begins; a plumaceous barb is held by nothing and so obeys no outline; and structural colour sits on the barb, which is why an iridescent feather is near-black from the wrong angle.
+The **truths** are the places where the maths is not decoration but the actual grain of the thing: a real ocellus does hold its rings near 1/φ² and 1/φ; a barb does land its tip on the vane's edge, not its root; a dome is convex everywhere; a barbule reaches its neighbour and no further, so the gap a lost barb leaves stays a gap; a vane is a hierarchy of line densities and not a tone, so the finest order it can hold gets drawn rather than averaged — and a line faded until it averages has been averaged, whatever the mechanism says; a gap is read against the barb it is a gap in, so a weave holds one gauge and not one pitch; looseness is an extent and not a spacing, so a vane unzips from its margin inward and nothing in the weave has a frequency left to beat against; a barb is not the colour of its neighbour, and tone at the scale of one barb is how a vane shows that it has form; there is no blue pigment in a bird, so a bright's own hue says whether it is made of food or made of light, and nobody has to be asked; a feather has a place it grew, and that place settles its length and its breadth and its asymmetry all at once, so they are not six dice but one; plumaceous and pennaceous are properties of the barbules and not of the barb, so the boundary between down and vane runs *along* each barb rather than flat across the feather, and it is the barb's own bare end grown until it is the whole barb; a pattern is a field in the rachis frame and not a property of the barb it lands on, so a bar stays level however the comb leans; the comb sets which way a downy barb leaves and not how far it goes; a vane does not come to a point at the bottom, it begins; a plumaceous barb is held by nothing and so obeys no outline; and structural colour sits on the barb, which is why an iridescent feather is near-black from the wrong angle.
 
 The **'patameters** — the 'pataphysical parameters — are where a real number is pushed past its reason and something truer-than-true falls out: an eye grown until it stops being a spot and becomes weather crossing the vane; a position sent negative until the ocellus stands off the quill; the finding that one mark, sized and cast and coloured right, is the answer to every bird.
 
