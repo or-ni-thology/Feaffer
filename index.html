@@ -2483,18 +2483,31 @@ function conjureFrom(str){
   // it gives up goes mostly to the PALE ground — the French-grey pigeon, and the
   // home of the beige marble. The beige is not reduced; it is redirected to the
   // exquisite kind. The pheasants keep their fawn.
+  // the warm coats (brown, fawn) give a little share back to the ones that now
+  // carry cool — the dove-grey pales and the steel darks — because a moor that
+  // is nine-tenths brown reads as one long cup of tea however good each feather is.
   const coat = ['brown','pale','dark','twotone','fawn','gaudy'][pick(
-    { flight :[0.24,0.08,0.20,0.30,0.16,0.02],
-      tail   :[0.25,0.07,0.12,0.27,0.24,0.05],
-      covert :[0.13,0.12,0.10,0.35,0.16,0.14],
-      contour:[0.16,0.17,0.14,0.24,0.19,0.10],
-      fluff  :[0.22,0.33,0.12,0.08,0.21,0.04] }[tract])];
+    { flight :[0.20,0.12,0.22,0.28,0.16,0.02],
+      tail   :[0.20,0.12,0.15,0.25,0.23,0.05],
+      covert :[0.11,0.16,0.12,0.33,0.14,0.14],
+      contour:[0.13,0.22,0.16,0.22,0.17,0.10],
+      fluff  :[0.18,0.38,0.14,0.07,0.19,0.04] }[tract])];
   if(coat==='brown'){
-    // the moor's own ground note — kept, but patterned more often than plain, and
-    // marbled oftener still
-    const h1 = 26 + rng()*24, s1 = 25 + rng()*30, l1 = 28 + rng()*20;
+    // the moor's own ground note — but no longer one warm sludge. Three earths
+    // share it now: the cool grey-brown of a dunnock or a hen partridge, the
+    // honest peat, and once in a while a proper red grouse's rufous. All of them
+    // lifted and greyed a shade from the old browns, because the barbules and the
+    // camber now carry the depth the pigment used to have to fake — and a shade
+    // that WORE the depth as well came out as tea.
+    const e = rng();
+    let h1, s1, l1;
+    if(e < 0.36){ h1 = 22 + rng()*20; s1 =  9 + rng()*11; l1 = 42 + rng()*15; }   // grey-brown
+    else if(e < 0.82){ h1 = 24 + rng()*16; s1 = 17 + rng()*19; l1 = 37 + rng()*15; } // peat
+    else { h1 = 11 + rng()*13; s1 = 33 + rng()*20; l1 = 31 + rng()*13; }           // red grouse — rufous
     $('pig1').value = hslToHex(h1, s1, l1);
-    $('pig2').value = hslToHex(h1-4+rng()*8, s1*0.8, l1*0.45);
+    // the shade sits COOLER and less dark than its ground, never warmer and blacker:
+    // a shade that out-warms the tone it darkens toward is the whole recipe for murk.
+    $('pig2').value = hslToHex(h1-7+rng()*6, s1*0.72, l1*0.58);
     if(rng()<0.62){
       P.bars.value = 3 + Math.floor(rng()*7);
       P.baredge.value = Math.floor(rng()*rng()*100);
@@ -2515,11 +2528,17 @@ function conjureFrom(str){
     // and now and then the EXQUISITE one: a near-white ground and a warm beige
     // shade that marbles across it. The pale sky as it turns; the up mirrored in
     // the down.
-    const hp = 30 + rng()*30;
-    const beige = rng()<0.42;
-    $('pig1').value = hslToHex(hp, 4 + rng()*10, 76 + rng()*12);
-    $('pig2').value = beige ? hslToHex(34 + rng()*12, 20 + rng()*16, 48 + rng()*12)
-                            : hslToHex(hp, 3 + rng()*8, 34 + rng()*16);
+    // ...and now the pale comes COOL as often as warm — the true dove-grey, blue-
+    // leaning, that the moor has been missing, where the grey wagtail and the
+    // French-grey pigeon and the gull-white actually live. Warm keeps the beige.
+    const cool = rng()<0.52;
+    const beige = !cool && rng()<0.5;
+    const hp = cool ? 200 + rng()*42 : 34 + rng()*22;
+    $('pig1').value = cool ? hslToHex(hp, 5 + rng()*9,  78 + rng()*14)   // dove to gull-white
+                           : hslToHex(hp, 3 + rng()*8,  80 + rng()*11);  // warm off-white, cleaner
+    $('pig2').value = cool  ? hslToHex(hp, 9 + rng()*13, 34 + rng()*16)  // slate-grey shade
+                   : beige  ? hslToHex(34 + rng()*12, 18 + rng()*14, 50 + rng()*12)
+                            : hslToHex(hp, 3 + rng()*8,  38 + rng()*15);
     if(beige){
       // faint bars for the marble to wander on, then let it wander
       P.bars.value = 5 + Math.floor(rng()*7);
@@ -2534,9 +2553,14 @@ function conjureFrom(str){
     // the blackbird's undercarriage — near-black over true black, warm-
     // tinged or oil-cool by the toss. And DENSE: a black feather is a
     // solid pointy job, not a wisp, so a thin weave thickens.
-    const hd = rng()<0.4 ? 210 + rng()*50 : 18 + rng()*24;
-    $('pig1').value = hslToHex(hd, 6 + rng()*14, 14 + rng()*10);
-    $('pig2').value = hslToHex(hd, 8 + rng()*12, 4 + rng()*5);
+    // the blackbird warm, and now a proper barn-swallow / magpie STEEL: a blue-
+    // black with the blue actually IN it, saturated enough to read as colour
+    // rather than soot, and lifted a touch off true black. Cool more often now.
+    const cool = rng()<0.55;
+    const hd = cool ? 208 + rng()*34 : 16 + rng()*26;
+    const sd = cool ? 22 + rng()*20 : 8 + rng()*12;
+    $('pig1').value = hslToHex(hd, sd,      16 + rng()*11);
+    $('pig2').value = hslToHex(hd, sd*0.85,  5 + rng()*5);
     if(rng()<0.25) P.bars.value = 3 + Math.floor(rng()*6);   // self-coloured, barely-there
     if(rng()<0.3)  P.margin.value = -(10 + Math.floor(rng()*22));   // the blackbird's faint fringe, lighter
     if(+P.density.value < 105) P.density.value = 105 + Math.floor(rng()*45);
@@ -2552,7 +2576,10 @@ function conjureFrom(str){
              : u<0.77 ? [ 12+rng()*12, 55+rng()*20, 27+rng()*11]    // rust
              : u<0.89 ? [205+rng()*28, 16+rng()*18, 20+rng()*10]    // slate
              :          [200+rng()*66, 38+rng()*16, 15+rng()*11];   // jewel — dark & muted
-    $('pig1').value = hslToHex(35 + rng()*20, 2 + rng()*7, 84 + rng()*10);
+    // the white itself: a clean cool white more often than a warm cream now, so a
+    // magpie reads as black-and-white and not black-and-tea.
+    $('pig1').value = rng()<0.55 ? hslToHex(205 + rng()*30, 3 + rng()*5, 88 + rng()*8)   // cool white
+                                 : hslToHex(38 + rng()*16,  3 + rng()*6, 87 + rng()*8);  // warm cream
     $('pig2').value = hslToHex(sh[0], sh[1], sh[2]);
     const pat = rng();
     if(pat<0.45)      P.bars.value = 4 + Math.floor(rng()*7);
@@ -2569,9 +2596,11 @@ function conjureFrom(str){
   } else if(coat==='fawn'){
     // warm buff over deep sepia, and never plain — barred like a woodcock's wing
     // as often as spotted like a thrush's breast, and marbled like a pheasant
-    const hf = 30 + rng()*16;
-    $('pig1').value = hslToHex(hf, 28 + rng()*17, 58 + rng()*14);
-    $('pig2').value = hslToHex(hf - 4 + rng()*8, 35 + rng()*15, 16 + rng()*10);
+    // fawn stays the honest warm one — the moor is allowed its pheasants — but
+    // lifted and de-oranged a shade so it reads as buff, not as sludge.
+    const hf = 32 + rng()*14;
+    $('pig1').value = hslToHex(hf, 23 + rng()*15, 62 + rng()*14);
+    $('pig2').value = hslToHex(hf - 4 + rng()*8, 30 + rng()*14, 19 + rng()*10);
     if(rng()<0.5){
       P.bars.value = 3 + Math.floor(rng()*6);
       P.baredge.value = 20 + Math.floor(rng()*60);
