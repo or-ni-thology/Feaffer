@@ -301,7 +301,7 @@
     </div>
     <div class="card" title="soft, disordered barbs at the base">
       <div class="cap"><label for="down">Plumaceous down</label><span class="val" id="down-v"></span></div>
-      <input type="range" id="down" min="0" max="45" value="18">
+      <input type="range" id="down" min="0" max="80" value="18">
     </div>
     <div class="card" title="the aftershaft — a whole second downy plume off the superior umbilicus, the way a grouse wears one">
       <div class="cap"><label for="after">Aftershaft</label><span class="val" id="after-v"></span></div>
@@ -2343,6 +2343,13 @@ function conjureFrom(str){
   const bell  = () => (rng()+rng()+rng())/3;
   const span  = (lo,hi) => lo + bell()*(hi-lo);
   const ispan = (lo,hi) => Math.round(span(lo,hi));
+  // a die that keeps a middle but leans toward the GOOD end. The square root
+  // pulls a centred roll upward without flattening it, so camber, knit and down
+  // land in the handsome upper reaches far oftener than the meh lower ones, and
+  // the low tail — the fish-bone weave, the sad flat, the invisible wisp — thins
+  // to a rarity instead of being a third of the moor. A good middle, not a mean one.
+  const spanH = (lo,hi) => lo + Math.sqrt(bell())*(hi-lo);
+  const ispanH= (lo,hi) => Math.round(spanH(lo,hi));
   const pick  = ws => { let r = rng();
     for(let i=0;i<ws.length;i++){ r -= ws[i]; if(r<=0) return i; } return ws.length-1; };
 
@@ -2364,23 +2371,31 @@ function conjureFrom(str){
   // The shares are a walk's and not a bird's: you find what falls, and what
   // falls is mostly body feathers and coverts. A primary is a lucky day.
   const tract = ['flight','tail','covert','contour','fluff'][pick([0.13,0.11,0.24,0.31,0.21])];
+  // camber, knit and down are read with the leaning-high die; down floors now sit
+  // above the sad line everywhere (the red-kite rule: even a flight feather ends
+  // in a wisp, so all must) and fluff reaches a floating puffball. The last column
+  // is the AFTERSHAFT, and it changed shape: [chance, min, max]. It used to be
+  // rolled on every feather and come out invisible on most — tail could not pass
+  // 14, covert not 32, and the visible line is 50, so the roll was mostly wasted
+  // ink. Now it is a proper find: it seldom comes, but when it comes it SHOWS,
+  // and on the downy tracts it comes as a grouse's cloud.
   const T = {
-    //         len        width     asym    camber   angle    density   knit    down    after
-    // a flight feather: long, narrow, stiff and strongly asymmetric, barely any
-    // down and no afterfeather at all — every part of it is for flying
-    flight : [[520,600],[40, 62],[55,95],[35,78],[30,44],[112,144],[62,95],[ 6,16],[0, 0]],
-    // a tail feather: as long, broader, and very nearly symmetric, because it
-    // steers with its whole width instead of cutting the air with one edge
-    tail   : [[500,600],[54, 86],[ 0,28],[22,62],[34,48],[104,140],[58,92],[ 8,20],[0,14]],
-    // a covert: short, broad, neat and round — the tidy little roof-tiles of a
-    // wing, and the feathers that most often carry the finery
-    covert : [[400,486],[62, 98],[ 0,18],[28,72],[40,56],[ 95,134],[55,92],[14,28],[0,32]],
-    // a contour feather: the body of the bird, and much the commonest thing on
-    // the ground underneath it — a proper plumaceous base and a real afterfeather
-    contour: [[430,534],[66,104],[ 0,14],[22,66],[42,60],[ 84,123],[46,86],[20,36],[8,56]],
-    // and the fluff off a flank or a rump, which is mostly down with a little
-    // vane on the end of it as an afterthought
-    fluff  : [[390,452],[74,112],[ 0, 8],[ 8,46],[48,68],[ 64,102],[34,72],[32,45],[24,92]]
+    //         len        width     asym    camber   angle    density   knit    down     after[p,lo,hi]
+    // a flight feather: long, narrow, stiff and strongly asymmetric — barely any
+    // down (but never none, now) and no afterfeather at all: every part of it flies
+    flight : [[520,600],[40, 62],[55,95],[42,82],[30,44],[112,144],[66,92],[12,30],[0,   0, 0]],
+    // a tail feather: as long, broader, nearly symmetric; a little down, and a
+    // slim afterfeather once in a long while
+    tail   : [[500,600],[54, 86],[ 0,28],[34,70],[34,48],[104,140],[62,90],[14,36],[0.08,50,64]],
+    // a covert: short, broad, neat and round — the tidy roof-tiles of a wing, the
+    // feathers that most often carry the finery, and a modest plume now and then
+    covert : [[400,486],[62, 98],[ 0,18],[40,80],[40,56],[ 95,134],[60,90],[20,50],[0.14,50,74]],
+    // a contour feather: the body of the bird, the commonest thing on the ground
+    // beneath it — a proper plumaceous base and a real afterfeather when it comes
+    contour: [[430,534],[66,104],[ 0,14],[34,74],[42,60],[ 84,123],[52,86],[26,62],[0.24,55,86]],
+    // the fluff off a flank or a rump: mostly down, a puffball on a good day, and
+    // the tract that carries the grouse's cloud oftenest
+    fluff  : [[390,452],[74,112],[ 0, 8],[16,54],[48,68],[ 64,102],[42,78],[40,80],[0.42,60,95]]
   }[tract];
   P.len.value     = ispan(T[0][0], T[0][1]);
   P.width.value   = ispan(T[1][0], T[1][1]);
@@ -2391,28 +2406,33 @@ function conjureFrom(str){
   // lets it say so.
   const asy = ispan(T[2][0], T[2][1]);
   P.asym.value    = asy < 7 ? 0 : asy;
-  P.camber.value  = rng()<0.80 ? ispan(T[3][0], T[3][1]) : 0;   // a few lie nearly flat
+  P.camber.value  = rng()<0.82 ? ispanH(T[3][0], T[3][1]) : 0;   // leaning high; a few still lie flat, on purpose
   P.angle.value   = ispan(T[4][0], T[4][1]);
   P.density.value = ispan(T[5][0], T[5][1]);
   // the knit: half to three quarters is a feather in good order — the barbules
   // invisible at a glance and unmistakable close up, which is how they behave
   // on the bird. Never quite the whole way, because a vane zipped to the very
   // ends of its barbs has no margin left to be crisp with.
-  P.knit.value    = ispan(T[6][0], T[6][1]);
+  P.knit.value    = ispanH(T[6][0], T[6][1]);
   // and never none: a feather with no plumaceous base at all is not a feather,
   // it is a leaf. The floor is the conjure's; the slider still goes to zero for
   // anyone who would like to see the leaf.
-  P.down.value    = ispan(T[7][0], T[7][1]);
-  // the afterfeather leans SHORT, and hard, even where a tract allows a great
-  // one — because a grouse's cloud is a thing you find now and then and not
-  // every Tuesday, and because a second downy plume is the most expensive
-  // thing a feather can put on. Centring this die was the single change that
-  // made the whole tract rewrite cost anything at all: the moor's median
-  // afterfeather went from nothing to a fifth of the feather overnight.
-  P.after.value   = T[8][1] ? Math.round(T[8][0] + Math.pow(bell(),2.6)*(T[8][1]-T[8][0])) : 0;
-  // the curve is the wind it grew against, and a long stiff feather carries
-  // more of it than a little round one does
-  P.curve.value   = Math.round((bell()-0.5)*(tract==='fluff' ? 70 : tract==='covert' ? 100 : 150));
+  P.down.value    = ispanH(T[7][0], T[7][1]);
+  // the afterfeather is a find, not a Tuesday — a second downy plume is the most
+  // expensive thing a feather can put on, so it seldom rolls at all. But it used
+  // to be rolled on EVERY feather and leaned so hard-short that it came out below
+  // the visible line on nearly all of them: tail could not pass 14, covert not 32,
+  // and 50 is where a plume begins to show past the vane's own down, so the roll
+  // was mostly wasted ink. Now the tract holds its odds outright (see the T table)
+  // and when the die says yes it lands visible — 50 and up, leaning toward the
+  // grouse's whole cloud. Rarer than before, and never invisible.
+  P.after.value   = (T[8][0] && rng() < T[8][0]) ? ispanH(T[8][1], T[8][2]) : 0;
+  // the curve is the wind it grew against, and a long stiff feather carries more
+  // of it than a little round one does. A fat-tailed die, not a bell: the sign is
+  // a coin, the size a power roll that reaches its whole amplitude often enough
+  // that a proper scimitar is a find you actually make, not a myth a centred die
+  // keeps promising. (The big ones land past the slider's ninety and rest there.)
+  P.curve.value   = Math.round((rng()<0.5?-1:1)*Math.pow(rng(),2.2)*(tract==='fluff' ? 56 : tract==='covert' ? 80 : 96));
   // the apex family follows the tract too: a dome is the moor's common coin
   // everywhere, the acuminate belongs to what flies and what steers, and the
   // truncate is a wing feather's cut edge
@@ -2437,50 +2457,79 @@ function conjureFrom(str){
   P.bars.value = 0; P.barside.value = 0; P.baredge.value = 0;
   P.tipband.value = 0; P.speck.value = 0; P.margin.value = 0; P.marble.value = 0;
   P.brightcover.value = 0;
-  // the grain of the spotting, rolled apart from the amount of it — the moor
-  // runs to fine freckling far oftener than to splodges, so the dice lean that
-  // way and the big blotches stay a treat
-  P.specksize.value = Math.floor(Math.pow(rng(), 1.9)*95);
+  // the grain of the spotting, rolled apart from the amount of it. Fine freckling
+  // is still the moor's common coin, but a proper blotch is a find worth making,
+  // so the die is BIMODAL now rather than merely leaning small: mostly fine, and
+  // sometimes frankly big — both ends are a joy, and the indecisive middle less so.
+  P.specksize.value = rng()<0.7 ? Math.floor(Math.pow(rng(),1.7)*44)
+                                : 44 + Math.floor(rng()*56);
+  // three shared hands for the pattern dice below. SPECKLE runs the full gamut a
+  // real breast does — a lone spot or two, the honest freckle, or a velvet of
+  // spots — because the mid-range alone was where we kept getting stuck. TB is the
+  // terminal band, bimodal on purpose: a whisper at the very tip, or a fat half-
+  // feather slab. ONEWEB commits the bars to a single web, decided once at the end.
+  const speckle = () => { const r=rng();
+    return r<0.16 ? 5 + Math.floor(rng()*10)        // a lone spot or two
+         : r<0.76 ? 20 + Math.floor(rng()*38)       // the honest freckle
+         :          66 + Math.floor(rng()*34); };   // a velvet of spots
+  const tb = () => rng()<0.55 ? 5 + Math.floor(rng()*8)     // a hint at the tip
+                              : 26 + Math.floor(rng()*14);  // a fat cut
+  const oneWeb = () => 58 + Math.floor(rng()*42);
   // ...and the coat is dealt the tract's own hand. A flight feather is rarely a
   // gaudy one and a bit of rump fluff is almost never a bold two-tone, while a
   // covert is where a bird keeps its finery. The coats themselves are untouched
   // — only how often each of them is dealt.
+  // the flat plain brown is trimmed back a little on every tract, and the share
+  // it gives up goes mostly to the PALE ground — the French-grey pigeon, and the
+  // home of the beige marble. The beige is not reduced; it is redirected to the
+  // exquisite kind. The pheasants keep their fawn.
   const coat = ['brown','pale','dark','twotone','fawn','gaudy'][pick(
-    { flight :[0.28,0.06,0.20,0.30,0.14,0.02],
-      tail   :[0.30,0.05,0.12,0.26,0.22,0.05],
-      covert :[0.16,0.10,0.10,0.34,0.16,0.14],
-      contour:[0.20,0.14,0.14,0.24,0.18,0.10],
-      fluff  :[0.26,0.30,0.12,0.08,0.20,0.04] }[tract])];
+    { flight :[0.24,0.08,0.20,0.30,0.16,0.02],
+      tail   :[0.25,0.07,0.12,0.27,0.24,0.05],
+      covert :[0.13,0.12,0.10,0.35,0.16,0.14],
+      contour:[0.16,0.17,0.14,0.24,0.19,0.10],
+      fluff  :[0.22,0.33,0.12,0.08,0.21,0.04] }[tract])];
   if(coat==='brown'){
-    // the moor's own ground note — kept, but patterned more often than plain
+    // the moor's own ground note — kept, but patterned more often than plain, and
+    // marbled oftener still
     const h1 = 26 + rng()*24, s1 = 25 + rng()*30, l1 = 28 + rng()*20;
     $('pig1').value = hslToHex(h1, s1, l1);
     $('pig2').value = hslToHex(h1-4+rng()*8, s1*0.8, l1*0.45);
-    if(rng()<0.55){
+    if(rng()<0.62){
       P.bars.value = 3 + Math.floor(rng()*7);
       P.baredge.value = Math.floor(rng()*rng()*100);
-      if(rng()<0.35) P.barside.value = 40 + Math.floor(rng()*60);
     }
-    if(rng()<0.35) P.tipband.value = 10 + Math.floor(rng()*28);
-    if(rng()<0.4)  P.speck.value = 15 + Math.floor(rng()*55);
+    if(rng()<0.35) P.tipband.value = tb();
+    if(rng()<0.4)  P.speck.value = speckle();
     // the moor is largely gamebird, and a gamebird is largely vermiculated
-    if(+P.bars.value>0 && rng()<0.45){
+    if(+P.bars.value>0 && rng()<0.6){
       P.marble.value = 30 + Math.floor(rng()*55);
       P.bars.value = 6 + Math.floor(rng()*7);
     }
-    // a pale rim is the moor's commonest finish — the scaled look of a wren,
-    // a dunnock, a juvenile's fresh edging
-    if(rng()<0.45) P.margin.value = -(20 + Math.floor(rng()*45));
+    // a pale rim is the moor's commonest finish — the scaled look of a wren, a
+    // dunnock, a juvenile's fresh edging — with a lighter hand than before
+    if(rng()<0.45) P.margin.value = -(12 + Math.floor(rng()*32));
   } else if(coat==='pale'){
-    // dove-greys and off-whites — the curly little ones from under
-    // everything, softly barred or faintly freckled when marked at all
+    // dove-greys and off-whites — the curly little ones from under everything, the
+    // French-grey pigeon, softly barred or faintly freckled when marked at all...
+    // and now and then the EXQUISITE one: a near-white ground and a warm beige
+    // shade that marbles across it. The pale sky as it turns; the up mirrored in
+    // the down.
     const hp = 30 + rng()*30;
-    $('pig1').value = hslToHex(hp, 4 + rng()*10, 74 + rng()*12);
-    $('pig2').value = hslToHex(hp, 3 + rng()*8, 34 + rng()*16);
-    if(rng()<0.35){
+    const beige = rng()<0.42;
+    $('pig1').value = hslToHex(hp, 4 + rng()*10, 76 + rng()*12);
+    $('pig2').value = beige ? hslToHex(34 + rng()*12, 20 + rng()*16, 48 + rng()*12)
+                            : hslToHex(hp, 3 + rng()*8, 34 + rng()*16);
+    if(beige){
+      // faint bars for the marble to wander on, then let it wander
+      P.bars.value = 5 + Math.floor(rng()*7);
+      P.baredge.value = 20 + Math.floor(rng()*50);
+      P.marble.value = 34 + Math.floor(rng()*50);
+      if(rng()<0.4) P.margin.value = -(10 + Math.floor(rng()*20));
+    } else if(rng()<0.4){
       P.bars.value = 2 + Math.floor(rng()*5);
       P.baredge.value = 20 + Math.floor(rng()*60);
-    } else if(rng()<0.35) P.speck.value = 10 + Math.floor(rng()*30);
+    } else if(rng()<0.4) P.speck.value = speckle();
   } else if(coat==='dark'){
     // the blackbird's undercarriage — near-black over true black, warm-
     // tinged or oil-cool by the toss. And DENSE: a black feather is a
@@ -2489,7 +2538,7 @@ function conjureFrom(str){
     $('pig1').value = hslToHex(hd, 6 + rng()*14, 14 + rng()*10);
     $('pig2').value = hslToHex(hd, 8 + rng()*12, 4 + rng()*5);
     if(rng()<0.25) P.bars.value = 3 + Math.floor(rng()*6);   // self-coloured, barely-there
-    if(rng()<0.3)  P.margin.value = -(18 + Math.floor(rng()*30));   // the blackbird's faint fringe
+    if(rng()<0.3)  P.margin.value = -(10 + Math.floor(rng()*22));   // the blackbird's faint fringe, lighter
     if(+P.density.value < 105) P.density.value = 105 + Math.floor(rng()*45);
   } else if(coat==='twotone'){
     // WHITE-AND-ANYTHING — the contrasty ones, the biggest share on the
@@ -2501,38 +2550,38 @@ function conjureFrom(str){
     const sh = u<0.40 ? [ 20+rng()*20,  2+rng()*8,   5+rng()*9 ]    // black
              : u<0.65 ? [ 22+rng()*14, 35+rng()*20, 15+rng()*11]    // brown
              : u<0.77 ? [ 12+rng()*12, 55+rng()*20, 27+rng()*11]    // rust
-             : u<0.89 ? [205+rng()*30, 15+rng()*20, 21+rng()*11]    // slate
-             :          [160+rng()*160,45+rng()*25, 22+rng()*14];   // jewel
+             : u<0.89 ? [205+rng()*28, 16+rng()*18, 20+rng()*10]    // slate
+             :          [200+rng()*66, 38+rng()*16, 15+rng()*11];   // jewel — dark & muted
     $('pig1').value = hslToHex(35 + rng()*20, 2 + rng()*7, 84 + rng()*10);
     $('pig2').value = hslToHex(sh[0], sh[1], sh[2]);
     const pat = rng();
     if(pat<0.45)      P.bars.value = 4 + Math.floor(rng()*7);
-    else if(pat<0.75) P.tipband.value = 18 + Math.floor(rng()*22);
-    else { P.bars.value = 3 + Math.floor(rng()*5); P.tipband.value = 12 + Math.floor(rng()*16); }
+    else if(pat<0.75) P.tipband.value = tb();
+    else { P.bars.value = 3 + Math.floor(rng()*5); P.tipband.value = tb(); }
     if(+P.bars.value>0){
       P.baredge.value = Math.floor(rng()*rng()*80);
-      if(rng()<0.4) P.barside.value = 50 + Math.floor(rng()*50);
+      // a marbled two-tone now and then — a dark wandering across the white
+      if(rng()<0.3){ P.marble.value = 28 + Math.floor(rng()*45); P.bars.value = 6 + Math.floor(rng()*7); }
     }
-    if(rng()<0.25) P.speck.value = 15 + Math.floor(rng()*35);
-    if(rng()<0.3)  P.margin.value = 30 + Math.floor(rng()*45);   // a dark rim on white
+    if(rng()<0.25) P.speck.value = speckle();
+    if(rng()<0.3)  P.margin.value = 14 + Math.floor(rng()*30);   // a dark rim on white, lighter
     if(+P.density.value < 100) P.density.value = 100 + Math.floor(rng()*45);
   } else if(coat==='fawn'){
-    // warm buff over deep sepia, and never plain — barred like a
-    // woodcock's wing as often as spotted like a thrush's breast
+    // warm buff over deep sepia, and never plain — barred like a woodcock's wing
+    // as often as spotted like a thrush's breast, and marbled like a pheasant
     const hf = 30 + rng()*16;
     $('pig1').value = hslToHex(hf, 28 + rng()*17, 58 + rng()*14);
     $('pig2').value = hslToHex(hf - 4 + rng()*8, 35 + rng()*15, 16 + rng()*10);
     if(rng()<0.5){
       P.bars.value = 3 + Math.floor(rng()*6);
       P.baredge.value = 20 + Math.floor(rng()*60);
-      if(rng()<0.3) P.barside.value = 40 + Math.floor(rng()*60);
-    } else P.speck.value = 25 + Math.floor(rng()*45);
-    if(+P.bars.value>0 && rng()<0.5){
+    } else P.speck.value = speckle();
+    if(+P.bars.value>0 && rng()<0.55){
       P.marble.value = 25 + Math.floor(rng()*55);
       P.bars.value = 6 + Math.floor(rng()*7);
     }
-    if(rng()<0.3) P.tipband.value = 10 + Math.floor(rng()*24);
-    if(rng()<0.5) P.margin.value = (rng()<0.7?-1:1)*(25 + Math.floor(rng()*40));
+    if(rng()<0.3) P.tipband.value = tb();
+    if(rng()<0.5) P.margin.value = (rng()<0.7?-1:1)*(14 + Math.floor(rng()*28));
   } else {
     // and these being imaginary feathers, a few may as well say so: a
     // pale ground whose marks — spots, bars, band, the darkened base,
@@ -2544,9 +2593,15 @@ function conjureFrom(str){
     if(rng()<0.5){
       P.bars.value = 3 + Math.floor(rng()*7);
       P.baredge.value = Math.floor(rng()*rng()*80);
-    } else P.speck.value = 30 + Math.floor(rng()*40);
-    if(rng()<0.3) P.tipband.value = 14 + Math.floor(rng()*20);
+    } else P.speck.value = speckle();
+    if(rng()<0.3) P.tipband.value = tb();
   }
+  // ONE-SIDED BARRING, decided once for every coat: when bars are present and not
+  // wandering as marble, they should more often COMMIT — a clean single web, or
+  // (by staying put) clean both — instead of the half-hearted middle we lived in.
+  // A marbled bar has no side to take, so it is left alone; and the symmetric
+  // barred feather, the owl's, is simply the one that never gets pushed.
+  if(+P.bars.value>0 && +P.marble.value===0 && rng()<0.5) P.barside.value = oneWeb();
 
   // THE BRIGHT — rolled last, because it cannot be rolled at all until the
   // marks are known. A bright makes no mark of its own; it rides what is
@@ -2561,16 +2616,31 @@ function conjureFrom(str){
   const brightOdds = coat==='gaudy' ? 0.85 : coat==='twotone' ? 0.30
                    : coat==='dark'  ? 0.22 : coat==='pale' ? 0.16 : 0.12;
   if(hasMark && rng() < brightOdds){
-    // FOOD or LIGHT, and the hue is the whole of that decision. A dark coat
-    // leans to the structural blues, because that is what a glossed black
-    // feather is; everything else leans warm, because most of what a moor bird
-    // eats comes out yellow.
+    // FOOD or LIGHT — but HUSHED, always. When a bright is fettled by hand the
+    // bold colours have to be dragged down and down until they stop shouting and
+    // begin to sing: the goldcrest is not yellow but saffron, the snipe not orange
+    // but russet, the woodpecker's green faded into wet mossy bark after rain. So
+    // the die draws from Alison's Hushed Standards — dark, low-saturation anchors
+    // that render far louder In The Feather than their numbers threaten — jittered
+    // a little so no two are quite alike. A dark coat wears the structural end
+    // (jay, raven, woodpecker); everything else wears the food end (goldcrest,
+    // snipe, the lek) or, once in a while, the beige bright: a hush so quiet it is
+    // barely a colour, and pure magic on the right feather. And should a gaudy
+    // feel like it, an unexpected flamingo.
+    const jit  = (a,b)=> a - b/2 + rng()*b;
+    const shade= a => hslToHex(jit(a[0],10), jit(a[1],10), jit(a[2],7));
     const structural = coat==='dark' ? rng()<0.80 : coat==='gaudy' ? rng()<0.45 : rng()<0.18;
-    const h = structural ? 180 + rng()*95                       // teal .. violet
-            : rng()<0.30 ? 2 + rng()*22                         // rust .. scarlet
-            :              34 + rng()*22;                       // gold .. yellow
-    $('bright').value = hslToHex(h, structural ? 42+rng()*26 : 55+rng()*32,
-                                    structural ? 34+rng()*16 : 46+rng()*14);
+    if(coat==='gaudy' && rng()<0.12){
+      $('bright').value = shade([324,47,23]);                            // Punk Flamingo
+    } else if(structural){                                              // jay / raven / woodpecker
+      $('bright').value = shade([[212,47,24],[243,47,16],[99,28,28]][Math.floor(rng()*3)]);
+    } else {
+      const r = rng();
+      $('bright').value = r<0.32 ? shade([42,47,43])                    // Goldcrest / Woodcock Pilot
+                        : r<0.55 ? shade([24,86,18])                    // The Winnow of a Snipe
+                        : r<0.74 ? shade([ 0,86,20])                    // At the Lek
+                        :          shade([34,20,42]);                   // the beige bright
+    }
     // and the cover: mostly a partial claim, because the two-band finish is
     // the commoner and the better-looking one — something sensible at the root
     // of the mark and something loud at the end of it
@@ -2578,12 +2648,13 @@ function conjureFrom(str){
                                      : 80 + Math.floor(rng()*20);
   }
 
-  // iridescence: properly rare now, and tempered when it comes — at the
-  // old odds the peacock was crowding out the pigeon. The pale and the
-  // two-tones never conjure a sheen at all: screen-blent light has
-  // nothing to say over white. (Dialled by hand it still burns exactly
-  // as hard as you ask it to.)
-  const dazzling = rng() < 0.10 && coat!=='pale' && coat!=='twotone';
+  // iridescence: RARE now, and we shall see if it is pined for. It never sat
+  // happily with every colour, and the Bright carries most of the joy it used to,
+  // so the base rate is cut hard — if the moor starts wanting a starling badly
+  // enough to walk miles for one, the dial comes back up. The pale and the two-
+  // tones still never conjure a sheen: screen-blent light has nothing to say over
+  // white. (Dialled by hand it still burns exactly as hard as you ask it to.)
+  const dazzling = rng() < 0.045 && coat!=='pale' && coat!=='twotone';
   $('irid').checked = dazzling;
   toggleIrid();
   if(dazzling){
@@ -2596,9 +2667,11 @@ function conjureFrom(str){
     P.iridstr.value = 30+Math.floor(rng()*28);
   }
 
-  // the peacock possibility. Eight years ago one landed on Dad's roof, so
-  // the odds are real — but roof-rare.
-  const roofBird = rng() < 0.09;
+  // the peacock possibility. Eight years ago one landed on Dad's roof, so the
+  // odds are real — but roof-rare, and the old one-in-eleven was a whole flock on
+  // the cobbles outside the Alston coop. About one in twenty-eight now: a genuine
+  // red-letter walk, not a Tuesday.
+  const roofBird = rng() < 0.036;
   if(roofBird){
     P.eye.value = 40 + Math.floor(rng()*55);
     P.eyepos.value = 55 + Math.floor(rng()*28);

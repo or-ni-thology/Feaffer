@@ -350,13 +350,42 @@ Two things fell out of centring the dice that are worth writing down.
 
 **Asymmetry had to be taught to snap to nothing.** A bell die lands exactly on zero about never, so without a snap every feather on the moor came out very slightly lopsided — and a body feather is not slightly lopsided, it is *symmetric*. A tract whose range starts at zero means it, and the snap is what lets it say so.
 
-**And the afterfeather had to lean hard short.** Centring that one die was the single change that made the whole rewrite cost anything at all: the moor's median afterfeather went from nothing to a fifth of the feather overnight, and a second downy plume is the most expensive thing a feather can put on. A grouse's cloud is a find, not a Tuesday.
+**And the afterfeather had to lean hard short.** Centring that one die was the single change that made the whole rewrite cost anything at all: the moor's median afterfeather went from nothing to a fifth of the feather overnight, and a second downy plume is the most expensive thing a feather can put on. A grouse's cloud is a find, not a Tuesday. *(Later superseded — see [The great jiggle](#the-great-jiggle--a-good-middle-and-joyful-tails). The leaning-hard-short was the wrong tool: it made the plume rare by making it small, so most of them fell below the visible line and the roll was wasted ink. It is now made rare by a straight probability, and drawn visible whenever it comes.)*
 
 With both leaned back and the tract ranges priced, the moor's mean specimen sits within a whisker of where it was, and the **p90 is down 4.6% and the worst case down a tenth** — because thinning the tails is what a die with a middle does.
 
 ### The plumage — coats, and the pattern to carry them
 
 The conjure picks a coat first and then loads the pattern dice in its favour, because a colourway mostly *is* its pattern. The biggest single share is **white-and-anything** — a white ground and one dark to carry it: black first, then brown, rust, slate, or a jewel, always in bold bars or a heavy terminal band, sometimes on one web only. Around it: the moor's **brown** (about a fifth now, patterned more often than plain), pale **dove-greys**, the blackbird's dense **near-black**, warm **fawn** that is never unmarked, and a small **gaudy** share whose marks come out jewel blue, teal or violet, these being imaginary feathers after all. The sheen is properly rare and tempered when it comes — the pale and the two-tones never conjure one — while everything dialled by hand stays exactly as you dial it. And no conjured feather arrives with no down at all: a feather with no plumaceous base is not a feather, it is a leaf. The floor is the conjure's; the slider still goes to zero for anyone who would like to see the leaf.
+
+### The great jiggle — a good middle, and joyful tails
+
+The die with a middle solved the noise. But a bell die does two things to a moor that a walk does not: it lets a dial fall into a *sad* place — a weave gone to fish-bone, a down so slight it reads as damage, an afterfeather too short to see — because a bell still has a bottom tail; and it makes the *joy* too rare, because a bell has thin tails at **both** ends, and the really curvy feather and the great blotch live in the top one. A walk on the fells is not like that. The ordinary is common, yes — but the extraordinary is *findable*, and nothing you pick up is outright sad.
+
+So the middle was moved. Three "form" dials that have a handsome end and a meh one — **camber, knit, down** — are now read with a die that keeps its centre but leans toward the good: the square root of the bell, which pulls a centred roll upward without flattening it. The low tail — the fish-bone, the sad flat, the invisible wisp — thins to a rarity instead of being a third of the moor. A *good* middle, not a mean one. And the "joy" dials — **curve, spotting, the terminal band** — had their fat tail put back: curve is a coin for its sign and a power roll for its size, so a proper scimitar turns up about one walk in seven instead of never; spotting runs the whole gamut a real breast does, a lone spot to a velvet; the band is frankly bimodal, a whisper at the tip or a fat half-feather slab, with little of the indecisive middle.
+
+The particulars, measured over six thousand conjures:
+
+- **Down.** The ceiling was 45 — a number nobody had ever questioned, and no law of imaginary feathers requires. It is now **80**: a feather may be four-fifths down, a puffball floating off Eals Fell. Every floor rose above the sad line (the *red-kite rule*: a real kite's flight feather ends in a wisp of fluff, so if that one has some, all must), and the die leans high. Median down went from about a fifth of the feather to **~46%**, a puffball (≥60) turns up **one walk in five**, and **nothing** now conjures below ten. The down is greatly loved here, and it shows.
+- **The aftershaft**, remade as above: a straight per-tract chance instead of a shrunk die, present on **~20%** of feathers and, when present, **always visible** — mean four-fifths of a plume, up to a grouse's whole cloud, and carried oftenest by the downy tracts. Rarer than it looks, never invisible.
+- **The peacock.** One in eleven was a whole flock on the cobbles outside the coop. Now **~1 in 28** — a genuine red-letter walk. Iridescence, which never sat happily with every colour and was mostly along for the peacock's ride, is cut to a rare **~6%** overall; we shall see if it is pined for.
+- **The bright, hushed.** A structural or food colour that rides an existing mark, now drawn from a fixed palette of dark, low-saturation anchors — because a bright fettled by hand always has to be dragged down and down until it stops shouting and starts to sing. The goldcrest is not yellow but saffron; the snipe not orange but russet; the woodpecker's green faded into wet mossy bark after rain. The named shades are the field station's own, and one of them is a beige so quiet it is barely a colour and pure magic on the right feather. And, once in a long while and mostly on a gaudy: an unexpected flamingo. *(Best to be prepared.)*
+- **The beige, redirected.** The flat plain brown is trimmed on every tract and its share handed mostly to the **pale ground**, the French-grey pigeon — and marbling, which used to belong to the browns and fawns alone, now wanders across a pale ground too. A near-white feather with a warm beige marble: the pale sky as it turns, the up mirrored in the down. The pheasants keep their fawn.
+- **Marbling** — the moor's newest joy — is now on nearly **a quarter** of feathers; **one-sided barring** commits decisively to a single web far oftener (and, when it declines, sits clean on both, the owl's way); and the **margin** was given a lighter hand.
+
+The named shades, for the record and for anyone painting an upstairs landing floor:
+
+| shade | H | S | L |
+|---|---|---|---|
+| Faded Woodpecker | 99° | 28% | 28% |
+| Jay Jewel | 212° | 47% | 24% |
+| The Colour of Ravens When You Are Not Looking | 243° | 47% | 16% |
+| Goldcrest *(aka Woodcock Pilot)* | 42° | 47% | 43% |
+| The Winnow of a Snipe | 24° | 86% | 18% |
+| At the Lek | 0° | 86% | 20% |
+| Punk Flamingo | 324° | 47% | 23% |
+
+None of this is carved in stone, because that is the whole gift of imaginary feathers: it is all revisitable. If the moor starts wanting a starling badly enough to walk miles for one, a dial comes back up.
 
 
 
