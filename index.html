@@ -2483,12 +2483,18 @@ function conjureFrom(str){
   // it gives up goes mostly to the PALE ground — the French-grey pigeon, and the
   // home of the beige marble. The beige is not reduced; it is redirected to the
   // exquisite kind. The pheasants keep their fawn.
-  const coat = ['brown','pale','dark','twotone','fawn','gaudy'][pick(
-    { flight :[0.24,0.08,0.20,0.30,0.16,0.02],
-      tail   :[0.25,0.07,0.12,0.27,0.24,0.05],
-      covert :[0.13,0.12,0.10,0.35,0.16,0.14],
-      contour:[0.16,0.17,0.14,0.24,0.19,0.10],
-      fluff  :[0.22,0.33,0.12,0.08,0.21,0.04] }[tract])];
+  // ...and a SLATE is added to the deck — the cool side of the moor the warm
+  // browns never let in. It takes its share mostly from the browns and the fawns
+  // (the tea-stain the pages were forever washing) and a little from the two-
+  // tones, so the moor cools without losing its gamebirds. It flies (harriers and
+  // cuckoos do) and it bodies (the ouzel, the grey wagtail), so it lands heaviest
+  // on flight, contour and covert.
+  const coat = ['brown','pale','dark','twotone','fawn','gaudy','slate'][pick(
+    { flight :[0.18,0.07,0.18,0.28,0.12,0.02,0.15],
+      tail   :[0.20,0.06,0.11,0.25,0.20,0.05,0.13],
+      covert :[0.11,0.11,0.09,0.33,0.13,0.13,0.10],
+      contour:[0.12,0.15,0.13,0.22,0.15,0.09,0.14],
+      fluff  :[0.18,0.30,0.11,0.07,0.18,0.04,0.12] }[tract])];
   if(coat==='brown'){
     // the moor's own ground note — kept, but patterned more often than plain, and
     // marbled oftener still
@@ -2534,7 +2540,7 @@ function conjureFrom(str){
     // the blackbird's undercarriage — near-black over true black, warm-
     // tinged or oil-cool by the toss. And DENSE: a black feather is a
     // solid pointy job, not a wisp, so a thin weave thickens.
-    const hd = rng()<0.4 ? 210 + rng()*50 : 18 + rng()*24;
+    const hd = rng()<0.52 ? 210 + rng()*50 : 18 + rng()*24;   // leaning cool now — the ouzel and the raven wash charcoal-blue, not brown-black
     $('pig1').value = hslToHex(hd, 6 + rng()*14, 14 + rng()*10);
     $('pig2').value = hslToHex(hd, 8 + rng()*12, 4 + rng()*5);
     if(rng()<0.25) P.bars.value = 3 + Math.floor(rng()*6);   // self-coloured, barely-there
@@ -2582,12 +2588,34 @@ function conjureFrom(str){
     }
     if(rng()<0.3) P.tipband.value = tb();
     if(rng()<0.5) P.margin.value = (rng()<0.7?-1:1)*(14 + Math.floor(rng()*28));
+  } else if(coat==='slate'){
+    // THE COOL COAT — the moor's grey side, and the one the warm browns kept
+    // out. A hen harrier gone ghost over the heather; a cuckoo's hawk-barred
+    // back; the slate of a grey wagtail; the sooty char of a ring ouzel. It is
+    // MUTED in the feather — a grey vane is every bit as feathery as a sepia one
+    // — but its SHADE runs cool, which is the one thing the pages of the other
+    // toy have never once washed. Blue-grey through true slate to char, over a
+    // ground of cool cloud-white.
+    const hs = 198 + rng()*36;                                         // 198–234, the cool quarter of the wheel
+    const ghost = rng()<0.34;                                          // the harrier: pale, faint, barely-there
+    $('pig1').value = hslToHex(hs, 4 + rng()*8, 82 + rng()*10);        // cool cloud-white
+    $('pig2').value = ghost ? hslToHex(hs,  8 + rng()*10, 46 + rng()*14)   // ghost silver
+                            : hslToHex(hs, 14 + rng()*18, 18 + rng()*18);  // slate / char
+    // barred like a cuckoo more often than not; a ghost wears the faintest hand
+    if(rng()<0.6){
+      P.bars.value = (ghost?2:4) + Math.floor(rng()*6);
+      P.baredge.value = 20 + Math.floor(rng()*60);
+    } else P.speck.value = speckle();
+    if(rng()<0.35) P.tipband.value = tb();
+    if(rng()<0.42) P.margin.value = -(10 + Math.floor(rng()*24));      // a pale silver rim
+    if(ghost && +P.bars.value>0) P.marble.value = 20 + Math.floor(rng()*42);  // the harrier's soft vermiculation
   } else {
     // and these being imaginary feathers, a few may as well say so: a
     // pale ground whose marks — spots, bars, band, the darkened base,
     // all of them the shade's creatures — come out jewel blue, teal,
-    // violet. No moor bird grew these. No matter; no moor did either.
-    const hj = 160 + rng()*160;
+    // violet, and now and then a WOODPECKER green (wet moss after rain).
+    // No moor bird grew these. No matter; no moor did either.
+    const hj = rng()<0.24 ? 96 + rng()*54 : 168 + rng()*152;   // a green pocket (woodpecker / moss), else the jewels
     $('pig1').value = hslToHex(30 + rng()*30, 6 + rng()*12, 70 + rng()*16);
     $('pig2').value = hslToHex(hj, 45 + rng()*25, 24 + rng()*16);
     if(rng()<0.5){
@@ -2614,7 +2642,7 @@ function conjureFrom(str){
   // gold now and then; a near-black wears the jackdaw's and the magpie's blue,
   // which is structural and belongs to the dark; and the gaudy always says yes.
   const brightOdds = coat==='gaudy' ? 0.85 : coat==='twotone' ? 0.30
-                   : coat==='dark'  ? 0.22 : coat==='pale' ? 0.16 : 0.12;
+                   : coat==='dark'  ? 0.22 : coat==='slate' ? 0.20 : coat==='pale' ? 0.16 : 0.12;
   if(hasMark && rng() < brightOdds){
     // FOOD or LIGHT — but HUSHED, always. When a bright is fettled by hand the
     // bold colours have to be dragged down and down until they stop shouting and
@@ -2629,7 +2657,7 @@ function conjureFrom(str){
     // feel like it, an unexpected flamingo.
     const jit  = (a,b)=> a - b/2 + rng()*b;
     const shade= a => hslToHex(jit(a[0],10), jit(a[1],10), jit(a[2],7));
-    const structural = coat==='dark' ? rng()<0.80 : coat==='gaudy' ? rng()<0.45 : rng()<0.18;
+    const structural = coat==='dark' ? rng()<0.80 : coat==='slate' ? rng()<0.45 : coat==='gaudy' ? rng()<0.45 : rng()<0.18;
     if(coat==='gaudy' && rng()<0.12){
       $('bright').value = shade([324,47,23]);                            // Punk Flamingo
     } else if(structural){                                              // jay / raven / woodpecker
