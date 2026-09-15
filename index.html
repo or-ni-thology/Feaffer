@@ -328,6 +328,14 @@
       <div class="cap"><label for="shadedepth">Shade depth</label><span class="val" id="shadedepth-v"></span></div>
       <input type="range" id="shadedepth" min="0" max="100" value="30">
     </div>
+    <div class="card" title="TEMPORARY colour faffing — the vividness of the GROUND pigment, saturation worn at the source so it colours the whole feather's base and the pale end of every mark. Down toward grey is the murk; 100 is as grown; up is the vivid the ridiculous birds need">
+      <div class="cap"><label for="groundint">Ground intensity</label><span class="val" id="groundint-v"></span></div>
+      <input type="range" id="groundint" min="0" max="200" value="100">
+    </div>
+    <div class="card" title="TEMPORARY colour faffing — the vividness of the SHADE pigment, which is where nearly all the marks live: the bars, the band, the specks, the darkened base. Down toward grey, 100 as grown, up toward a macaw. Pairs with Shade depth (how MUCH shade) and this (how VIVID it is)">
+      <div class="cap"><label for="markint">Marking intensity</label><span class="val" id="markint-v"></span></div>
+      <input type="range" id="markint" min="0" max="200" value="100">
+    </div>
     <div class="card" title="dark bands across the vane">
       <div class="cap"><label for="bars">Barring</label><span class="val" id="bars-v"></span></div>
       <input type="range" id="bars" min="0" max="12" value="0">
@@ -446,7 +454,7 @@ const P = {
   density:$('density'), knit:$('knit'), down:$('down'), after:$('after'), wear:$('wear'),
   bars:$('bars'), barside:$('barside'), baredge:$('baredge'), tipband:$('tipband'), speck:$('speck'),
   margin:$('margin'), marble:$('marble'), specksize:$('specksize'),
-  shadedepth:$('shadedepth'),
+  shadedepth:$('shadedepth'), groundint:$('groundint'), markint:$('markint'),
   brightcover:$('brightcover'),
   eye:$('eye'), eyepupil:$('eyepupil'), eyepos:$('eyepos'), eyeside:$('eyeside'),
   iridpos:$('iridpos'), iridspread:$('iridspread'), iridstr:$('iridstr')
@@ -502,6 +510,13 @@ function mix(a,b,t){ return {r:a.r+(b.r-a.r)*t, g:a.g+(b.g-a.g)*t, b:a.b+(b.b-a.
 const cl255 = v => v < 0 ? 0 : v > 255 ? 255 : v|0;
 function rgbStr(c){ return `rgb(${cl255(c.r)} ${cl255(c.g)} ${cl255(c.b)})`; }
 function darken(c,f){ return {r:c.r*f,g:c.g*f,b:c.b*f}; }
+/* Saturation as a lever, worn like darken(): push a colour away from its own
+   grey (k>1, more vivid) or toward it (k<1, murkier), k=1 leaving it be. The
+   grey is the colour's luma, so lightness is untouched — only the distance from
+   neutral moves. Left unclamped like everything else here; it clamps at text. */
+function saturate(c,k){ if(k===1) return c;
+  const l = 0.299*c.r + 0.587*c.g + 0.114*c.b;
+  return { r: l+(c.r-l)*k, g: l+(c.g-l)*k, b: l+(c.b-l)*k }; }
 
 /* ---- the growing of a feather ---- */
 function drawFeather(){
@@ -587,8 +602,15 @@ function drawFeather(){
   const eyeT = +P.eyepos.value/100;       // where along the shaft the eye sits
   const eyeSide = +P.eyeside.value/100;   // the cast: 0 a true eye .. ±1 sent off a web
 
-  const pig1 = hexToRgb($('pig1').value);
-  const pig2 = hexToRgb($('pig2').value);
+  // GROUND & MARKING INTENSITY — temporary colour-faffing dials, saturation
+  // multipliers worn at the source so they cascade everywhere the pigment goes.
+  // Ground rides pig1 (the plain vane's base and the pale end of every mark);
+  // marking rides pig2 (the shade, which is where nearly all the marks live).
+  // 100 is 'as grown'; down toward grey is the murk, up is the vivid a kākāpō
+  // needs. They mix with Shade depth to give a small three-dial colour cockpit.
+  const groundInt = (+P.groundint.value)/100, markInt = (+P.markint.value)/100;
+  const pig1 = saturate(hexToRgb($('pig1').value), groundInt);
+  const pig2 = saturate(hexToRgb($('pig2').value), markInt);
 
   // ================= THE BRIGHT =================
   //
@@ -2316,6 +2338,9 @@ function updateReadouts(){
   $('shadedepth-v').textContent = +P.shadedepth.value===0 ? 'ground only'
                                 : +P.shadedepth.value===30 ? 'as grown'
                                 : P.shadedepth.value;
+  const intv = v => +v===100 ? 'as grown' : +v===0 ? 'grey' : v+'%';
+  $('groundint-v').textContent = intv(P.groundint.value);
+  $('markint-v').textContent   = intv(P.markint.value);
   $('margin-v').textContent = +P.margin.value===0 ? 'none'
     : (+P.margin.value<0 ? 'pale ' : 'dark ') + Math.abs(+P.margin.value) + '%';
   {
@@ -2472,7 +2497,10 @@ function conjureFrom(str){
   // owed the feather a coordinate grew last week.)
   P.bars.value = 0; P.barside.value = 0; P.baredge.value = 0;
   P.tipband.value = 0; P.speck.value = 0; P.margin.value = 0; P.marble.value = 0;
-  P.brightcover.value = 0; P.shadedepth.value = 30;   // every conjure comes up 'as grown'; the depth is a hand dial for now
+  P.brightcover.value = 0;
+  // the colour-density cockpit resets to 'as grown' on every conjure — these
+  // three stay hand dials, so Wander always deals a plainly-dyed feather
+  P.shadedepth.value = 30; P.groundint.value = 100; P.markint.value = 100;
   // the grain of the spotting, rolled apart from the amount of it. Fine freckling
   // is still the moor's common coin, but a proper blotch is a find worth making,
   // so the die is BIMODAL now rather than merely leaning small: mostly fine, and
@@ -2938,6 +2966,8 @@ $('receipt').addEventListener('click', ()=>{
   t += crow('ground', $('pig1').value);
   t += crow('shade', $('pig2').value);
   t += row('shade depth', rd('shadedepth-v'));
+  t += row('ground intensity', rd('groundint-v'));
+  t += row('marking intensity', rd('markint-v'));
   t += row('barring', rd('bars-v'));
   t += row('bar side', rd('barside-v'));
   t += row('bar edge', rd('baredge-v'));
@@ -2973,7 +3003,7 @@ $('receipt').addEventListener('click', ()=>{
     bars:P.bars.value, barside:P.barside.value, baredge:P.baredge.value,
     tipband:P.tipband.value, speck:P.speck.value, margin:P.margin.value,
     marble:P.marble.value, specksize:P.specksize.value,
-    shadedepth:P.shadedepth.value,
+    shadedepth:P.shadedepth.value, groundint:P.groundint.value, markint:P.markint.value,
     bright:$('bright').value, brightcover:P.brightcover.value,
     eye:P.eye.value, eyecol:$('eyecol').value, eyecol2:$('eyecol2').value,
     eyepupil:P.eyepupil.value, eyepos:P.eyepos.value, eyeside:P.eyeside.value,
@@ -3037,6 +3067,9 @@ function applyRecord(m){
   if(!numOk(m.specksize)) P.specksize.value = 30;  // ...and before the grain, at the size the one slider used to give
   setR(P.shadedepth,'shadedepth');
   if(!numOk(m.shadedepth)) P.shadedepth.value = 30;    // feathers saved before the depth come back as grown
+  setR(P.groundint,'groundint'); setR(P.markint,'markint');
+  if(!numOk(m.groundint)) P.groundint.value = 100;     // ...and before the intensity dials, at full as grown
+  if(!numOk(m.markint))   P.markint.value   = 100;
   setR(P.brightcover,'brightcover');
   if(!numOk(m.brightcover)) P.brightcover.value = 0;   // feathers saved before the bright come back in plain melanin
   setR(P.eye,'eye'); setR(P.eyepupil,'eyepupil'); setR(P.eyepos,'eyepos'); setR(P.eyeside,'eyeside');
