@@ -2384,6 +2384,51 @@ function updateReadouts(){
 
 function render(){ updateReadouts(); drawFeather(); }
 
+// ============================================================================
+//  ALISON'S COLOUR BOOK
+//  Hand-picked by eye, from the jug of real moor feathers on the windowsill.
+//  This is the paintbox — edit it freely: nudge a number, add a swatch, retire
+//  one, and the moor learns it on the next Wander. Everything is
+//  [Hue 0–360, Saturation 0–100, Lightness 0–100], the same reading the H·S·L
+//  picker shows. (The procedural coats further down still roll their own base
+//  tone inside a RANGE — that is the variation the moor lives on — but the named
+//  swatches here are dealt in among them, so a colour you specify turns up as
+//  itself. To hand-pick a whole coat's base, ask and we'll lift its range here
+//  too.)
+// ============================================================================
+
+// THE BRIGHTS — the pattern pigments. One is dealt per marked feather, chosen to
+// CONTRAST the base (a warm bright shuns a warm ground), then jittered a touch so
+// no two are alike. Warm is FOOD (flat, matt); cool is LIGHT (a blaze that rides
+// the tilt) — the tool reads which from the hue, so add a colour and it simply
+// knows what it is. Mark a swatch `rare:true` to keep it out of the everyday deal
+// (the gaudy's flamingo is the one such now).
+const BRIGHTS = [
+  { name:'Jay Jewel',                                     hsl:[212,47,24] },
+  { name:'The Colour of Ravens When You Are Not Looking', hsl:[243,47,16] },
+  { name:'Faded Woodpecker',                              hsl:[ 99,28,28] },
+  { name:'Yaffle Moss',                                   hsl:[140,34,24] },  // wet green bark after rain
+  { name:'Goldcrest',                                     hsl:[ 42,47,43] },  // aka Woodcock Pilot
+  { name:'The Winnow of a Snipe',                         hsl:[ 24,86,18] },
+  { name:'At the Lek',                                    hsl:[  0,86,20] },
+  { name:'Crown Red',                                     hsl:[  0,62,26] },  // the yaffle's cap, a woodpecker's flash
+  { name:'The Quiet Beige',                               hsl:[ 34,20,42] },  // barely a colour, pure magic
+  { name:'Punk Flamingo',                                 hsl:[324,47,23], rare:true },  // gaudy only, and seldom
+];
+
+// THE HYDRANGEAS — hand-picked PALE base colourways, dried-flower muted: a ground
+// and a shade that belong together, dealt now and then by the pale coat as its
+// 'pressed-flower' pick, then patterned by a contrasting Bright. This is the
+// corner to fill from the windowsill jug — add a whimsical and it joins the drift.
+// {ground, shade} as [H,S,L].
+const HYDRANGEAS = [
+  { name:'Dried Hydrangea Mauve', ground:[318,13,80], shade:[320,16,57] },
+  { name:'Faded Bloom Blue',      ground:[210,14,80], shade:[214,17,55] },
+  { name:'Antique Sage',          ground:[102,10,78], shade:[ 98,15,53] },
+  { name:'Papery Lilac',          ground:[272,12,80], shade:[268,15,56] },
+  { name:'Old Parchment',         ground:[ 40,15,82], shade:[ 38,18,59] },
+];
+
 function conjureFrom(str){
   const seedFn = hashStr(str);
   const rng = mulberry(seedFn());
@@ -2585,24 +2630,36 @@ function conjureFrom(str){
   } else if(coat==='pale'){
     // dove-greys and off-whites — the curly little ones from under everything, the
     // French-grey pigeon, softly barred or faintly freckled when marked at all...
-    // and now and then the EXQUISITE one: a near-white ground and a warm beige
-    // shade that marbles across it. The pale sky as it turns; the up mirrored in
-    // the down.
-    const hp = 30 + rng()*30;
-    const beige = rng()<0.42;
-    $('pig1').value = hslToHex(hp, 4 + rng()*10, 76 + rng()*12);
-    $('pig2').value = beige ? hslToHex(34 + rng()*12, 20 + rng()*16, 48 + rng()*12)
-                            : hslToHex(hp, 3 + rng()*8, 34 + rng()*16);
-    if(beige){
-      // faint bars for the marble to wander on, then let it wander
-      P.bars.value = 5 + Math.floor(rng()*7);
+    // and now, from ALISON'S COLOUR BOOK, a dried HYDRANGEA a third of the time:
+    // a hand-picked pale colourway, muted as a pressed flower, that a contrasting
+    // Bright then patterns. (The old EXQUISITE beige — a warm shade marbled across
+    // near-white — is still here as the other pale voice.)
+    if(rng()<0.30 && HYDRANGEAS.length){
+      const H  = HYDRANGEAS[Math.floor(rng()*HYDRANGEAS.length)];
+      const jg = (a,b)=> a - b/2 + rng()*b;      // a whisper of jitter, so no two press quite alike
+      $('pig1').value = hslToHex(jg(H.ground[0],10), jg(H.ground[1],6), jg(H.ground[2],6));
+      $('pig2').value = hslToHex(jg(H.shade[0], 10), jg(H.shade[1], 8), jg(H.shade[2], 8));
+      P.bars.value = 4 + Math.floor(rng()*6);    // a mark for the Bright to ride
       P.baredge.value = 20 + Math.floor(rng()*50);
-      P.marble.value = 34 + Math.floor(rng()*50);
-      if(rng()<0.4) P.margin.value = -(10 + Math.floor(rng()*20));
-    } else if(rng()<0.4){
-      P.bars.value = 2 + Math.floor(rng()*5);
-      P.baredge.value = 20 + Math.floor(rng()*60);
-    } else if(rng()<0.4) P.speck.value = speckle();
+      if(rng()<0.5) P.marble.value = 26 + Math.floor(rng()*46);
+      if(rng()<0.4) P.margin.value = -(10 + Math.floor(rng()*18));
+    } else {
+      const hp = 30 + rng()*30;
+      const beige = rng()<0.42;
+      $('pig1').value = hslToHex(hp, 4 + rng()*10, 76 + rng()*12);
+      $('pig2').value = beige ? hslToHex(34 + rng()*12, 20 + rng()*16, 48 + rng()*12)
+                              : hslToHex(hp, 3 + rng()*8, 34 + rng()*16);
+      if(beige){
+        // faint bars for the marble to wander on, then let it wander
+        P.bars.value = 5 + Math.floor(rng()*7);
+        P.baredge.value = 20 + Math.floor(rng()*50);
+        P.marble.value = 34 + Math.floor(rng()*50);
+        if(rng()<0.4) P.margin.value = -(10 + Math.floor(rng()*20));
+      } else if(rng()<0.4){
+        P.bars.value = 2 + Math.floor(rng()*5);
+        P.baredge.value = 20 + Math.floor(rng()*60);
+      } else if(rng()<0.4) P.speck.value = speckle();
+    }
   } else if(coat==='dark'){
     // the blackbird's undercarriage — near-black over true black, warm-
     // tinged or oil-cool by the toss. And DENSE: a black feather is a
@@ -2719,37 +2776,29 @@ function conjureFrom(str){
                    : coat==='twotone'? 0.55
                    : coat==='dark'  ? 0.42 : 0.6;
   if(hasMark && rng() < brightOdds){
-    // The hushed anchors — Alison's Standards, dark and low-saturation, that
-    // render far louder In The Feather than their numbers threaten, jittered so
-    // no two are alike. Warm is FOOD (flat, matt, the same from every angle),
-    // cool is LIGHT (a blaze that rides the tilt): the tool reads which from the
-    // hue, so nothing here is asked. The moor gains its greens and reds — a
-    // yaffle-moss and a crown-red — that a melanin ramp could never reach.
+    // The anchors come from ALISON'S COLOUR BOOK at the top of the file — edit
+    // them there. They render far louder In The Feather than their numbers
+    // threaten, and are jittered here so no two are alike. Warm is FOOD (flat,
+    // matt), cool is LIGHT (a blaze that rides the tilt): the tool reads which
+    // from the hue, so nothing is asked.
     const jit = (a,b)=> a - b/2 + rng()*b;
     const dye = a => hslToHex(jit(a[0],10), jit(a[1],10), jit(a[2],7));
-    const ANCHORS = [
-      [212,47,24],  // Jay Jewel
-      [243,47,16],  // The Colour of Ravens When You Are Not Looking
-      [ 99,28,28],  // Faded Woodpecker
-      [140,34,24],  // Yaffle Moss — wet green bark after rain
-      [ 42,47,43],  // Goldcrest / Woodcock Pilot
-      [ 24,86,18],  // The Winnow of a Snipe
-      [  0,86,20],  // At the Lek
-      [  0,62,26],  // Crown Red — the yaffle's cap, the flash of a woodpecker
-      [ 34,20,42],  // the beige bright, the quiet magic
-    ];
+    const POOL  = BRIGHTS.filter(b => !b.rare);   // the everyday deal; rares are dealt only on their own occasion
+    const rares = BRIGHTS.filter(b =>  b.rare);
     // A pattern sings when it DIFFERS from the base, so the anchor is picked by
     // how far its hue sits from the ground's, around the circle — a warm bright
     // shuns a warm brown. Near hues are made rare rather than forbidden, so the
     // odd tone-on-tone whisper still turns up. A greyed-off base has no hue worth
-    // contrasting, so there the whole palette is dealt evenly instead.
+    // contrasting, so there the whole pool is dealt evenly instead.
     const base = hexToHsl($('pig1').value);
     const arc  = h => { let d = Math.abs(h - base.h) % 360; return d > 180 ? 360 - d : d; };
-    const wts  = ANCHORS.map(a => base.s < 14 ? 1 : 0.12 + arc(a[0])/180);
+    const wts  = POOL.map(b => base.s < 14 ? 1 : 0.12 + arc(b.hsl[0])/180);
     let sum = wts.reduce((x,y)=>x+y,0), r = rng()*sum, idx = wts.length-1;
     for(let i=0;i<wts.length;i++){ r -= wts[i]; if(r<=0){ idx = i; break; } }
-    if(coat==='gaudy' && rng()<0.12) $('bright').value = dye([324,47,23]);  // the rare Punk Flamingo
-    else                             $('bright').value = dye(ANCHORS[idx]);
+    if(coat==='gaudy' && rares.length && rng()<0.12)
+      $('bright').value = dye(rares[Math.floor(rng()*rares.length)].hsl);   // the rare Punk Flamingo & kin
+    else
+      $('bright').value = dye(POOL[idx].hsl);
     // the cover: a full claim more often now — a whole bar or band in the
     // Bright's own colour is the clearest pattern the moor wears — with the
     // two-band finish (sensible root, loud tip) still the other half of the time.
