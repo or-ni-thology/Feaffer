@@ -324,6 +324,22 @@
         <span class="well"><input type="color" id="pig2" value="#3a2c18" tabindex="-1" aria-hidden="true"><span class="wellhit" data-for="pig2" role="button" tabindex="0" aria-label="Shade tone"></span></span>
       </div>
     </div>
+    <div class="card" title="how much of the SHADE tone paints the plain vane — thin at the tip, deeper toward the base, and always well short of the marks, which pull deeper still. 'As grown' is how a feather has always been dyed; wind it down to ground-only, or up until the whole vane goes to shade and the marks all but vanish into it">
+      <div class="cap"><label for="shadedepth">Shade depth</label><span class="val" id="shadedepth-v"></span></div>
+      <input type="range" id="shadedepth" min="0" max="100" value="30">
+    </div>
+    <div class="card" title="TEMPORARY colour faffing — the vividness of the GROUND pigment, saturation worn at the source so it colours the whole feather's base and the pale end of every mark. Down toward grey is the murk; 100 is as grown; up is the vivid the ridiculous birds need">
+      <div class="cap"><label for="groundint">Ground intensity</label><span class="val" id="groundint-v"></span></div>
+      <input type="range" id="groundint" min="0" max="200" value="100">
+    </div>
+    <div class="card" title="TEMPORARY colour faffing — the vividness of the SHADE pigment, which is where nearly all the marks live: the bars, the band, the specks, the darkened base. Down toward grey, 100 as grown, up toward a macaw. Pairs with Shade depth (how MUCH shade) and this (how VIVID it is)">
+      <div class="cap"><label for="markint">Marking intensity</label><span class="val" id="markint-v"></span></div>
+      <input type="range" id="markint" min="0" max="200" value="100">
+    </div>
+    <div class="card" title="the SHADING — the light-and-shade that models the feather's form (the camber's lit and shaded webs, and the per-barb melange tilt). It multiplies each stroke's colour, so on a white feather it can only DARKEN — the highlight has nowhere to go above white and the shadow bites in full, which is most of why a pale vane greys. Flatten it toward 0 to lift the shadows off; 100 is as grown; up is deeper relief. Distinct from the shade TONE and from Shade depth">
+      <div class="cap"><label for="shading">Shading</label><span class="val" id="shading-v"></span></div>
+      <input type="range" id="shading" min="0" max="200" value="100">
+    </div>
     <div class="card" title="dark bands across the vane">
       <div class="cap"><label for="bars">Barring</label><span class="val" id="bars-v"></span></div>
       <input type="range" id="bars" min="0" max="12" value="0">
@@ -442,6 +458,7 @@ const P = {
   density:$('density'), knit:$('knit'), down:$('down'), after:$('after'), wear:$('wear'),
   bars:$('bars'), barside:$('barside'), baredge:$('baredge'), tipband:$('tipband'), speck:$('speck'),
   margin:$('margin'), marble:$('marble'), specksize:$('specksize'),
+  shadedepth:$('shadedepth'), groundint:$('groundint'), markint:$('markint'), shading:$('shading'),
   brightcover:$('brightcover'),
   eye:$('eye'), eyepupil:$('eyepupil'), eyepos:$('eyepos'), eyeside:$('eyeside'),
   iridpos:$('iridpos'), iridspread:$('iridspread'), iridstr:$('iridstr')
@@ -497,6 +514,13 @@ function mix(a,b,t){ return {r:a.r+(b.r-a.r)*t, g:a.g+(b.g-a.g)*t, b:a.b+(b.b-a.
 const cl255 = v => v < 0 ? 0 : v > 255 ? 255 : v|0;
 function rgbStr(c){ return `rgb(${cl255(c.r)} ${cl255(c.g)} ${cl255(c.b)})`; }
 function darken(c,f){ return {r:c.r*f,g:c.g*f,b:c.b*f}; }
+/* Saturation as a lever, worn like darken(): push a colour away from its own
+   grey (k>1, more vivid) or toward it (k<1, murkier), k=1 leaving it be. The
+   grey is the colour's luma, so lightness is untouched — only the distance from
+   neutral moves. Left unclamped like everything else here; it clamps at text. */
+function saturate(c,k){ if(k===1) return c;
+  const l = 0.299*c.r + 0.587*c.g + 0.114*c.b;
+  return { r: l+(c.r-l)*k, g: l+(c.g-l)*k, b: l+(c.b-l)*k }; }
 
 /* ---- the growing of a feather ---- */
 function drawFeather(){
@@ -582,8 +606,15 @@ function drawFeather(){
   const eyeT = +P.eyepos.value/100;       // where along the shaft the eye sits
   const eyeSide = +P.eyeside.value/100;   // the cast: 0 a true eye .. ±1 sent off a web
 
-  const pig1 = hexToRgb($('pig1').value);
-  const pig2 = hexToRgb($('pig2').value);
+  // GROUND & MARKING INTENSITY — temporary colour-faffing dials, saturation
+  // multipliers worn at the source so they cascade everywhere the pigment goes.
+  // Ground rides pig1 (the plain vane's base and the pale end of every mark);
+  // marking rides pig2 (the shade, which is where nearly all the marks live).
+  // 100 is 'as grown'; down toward grey is the murk, up is the vivid a kākāpō
+  // needs. They mix with Shade depth to give a small three-dial colour cockpit.
+  const groundInt = (+P.groundint.value)/100, markInt = (+P.markint.value)/100;
+  const pig1 = saturate(hexToRgb($('pig1').value), groundInt);
+  const pig2 = saturate(hexToRgb($('pig2').value), markInt);
 
   // ================= THE BRIGHT =================
   //
@@ -1074,7 +1105,15 @@ function drawFeather(){
     const x = t*Math.max(1, nBarbs-1)/MEL_CELL + (side>0 ? 0 : 53.7) + off;
     return (msmooth(x)-0.5)*1.6 + (mhash(Math.floor(x*997)+11)-0.5)*0.4;
   };
-  const groundAt = (t, side) => (0.15 + (1-t)*0.35) * (1 + MEL_PIG*melAt(t, side, 0));
+  // the SHADE DEPTH: how much of the shade tone the plain vane carries. The base
+  // coat was 0.15 at the tip rising to 0.50 at the foot; the dial scales it, 30
+  // reproducing that exactly ('as grown'), 0 leaving the plain vane at pure ground
+  // (marks still show), and up toward the whole vane going to shade. The marks
+  // ride on top of this in pigAt, so they always sit deeper — until this is wound
+  // so high the base clamps at shade and swallows them, which is the disaster the
+  // slider is honest enough to allow.
+  const shadeGain = (+P.shadedepth.value) / 30;
+  const groundAt = (t, side) => (0.15 + (1-t)*0.35) * shadeGain * (1 + MEL_PIG*melAt(t, side, 0));
   const lumAt    = (t, side) => 1 + MEL_LUM*melAt(t, side, 211.3);
 
   const barbLines = [];
@@ -1324,7 +1363,19 @@ function drawFeather(){
   // and the light the camber throws on a point, read off its true across-distance
   // the light on a point of a barb: the camber's cosine for where the web is
   // turned, times the barb's own share of the melange for how IT is turned
-  const camAt = (b,x,y) => (camR ? camLit((x-b.rpx)*(-b.uy) + (y-b.rpy)*b.ux) : 1) * (b.lum || 1);
+  // SHADING — the strength of the light-and-shade that models the feather's
+  // form: the camber's lit and shaded webs times the per-barb melange tilt. It
+  // is a MULTIPLY on each stroke's own colour, so it can only ever darken a
+  // white feather — no colour is brighter than white, and the highlight half
+  // clamps away while the shadow half bites in full, which greys a pale vane to
+  // pewter. This dial scales the whole deviation from flat: 100 as grown, 0
+  // dead flat (the colour as dyed, no relief), up for deeper modelling. A
+  // diagnostic as much as a control — flatten it to see how much murk is shadow.
+  const shadeStr = (+P.shading.value)/100;
+  const camAt = (b,x,y) => {
+    const raw = (camR ? camLit((x-b.rpx)*(-b.uy) + (y-b.rpy)*b.ux) : 1) * (b.lum || 1);
+    return 1 + (raw - 1)*shadeStr;
+  };
   const dim = (c,k) => k===1 ? c : {r:c.r*k, g:c.g*k, b:c.b*k};
 
 
@@ -2300,6 +2351,13 @@ function updateReadouts(){
   $('specksize-v').textContent = +P.specksize.value<18 ? 'freckle'
     : +P.specksize.value>72 ? 'splodge' : P.specksize.value+'%';
   $('marble-v').textContent = P.marble.value>0? P.marble.value+'%' : 'none';
+  $('shadedepth-v').textContent = +P.shadedepth.value===0 ? 'ground only'
+                                : +P.shadedepth.value===30 ? 'as grown'
+                                : P.shadedepth.value;
+  const intv = v => +v===100 ? 'as grown' : +v===0 ? 'grey' : v+'%';
+  $('groundint-v').textContent = intv(P.groundint.value);
+  $('markint-v').textContent   = intv(P.markint.value);
+  $('shading-v').textContent = +P.shading.value===100 ? 'as grown' : +P.shading.value===0 ? 'flat' : P.shading.value+'%';
   $('margin-v').textContent = +P.margin.value===0 ? 'none'
     : (+P.margin.value<0 ? 'pale ' : 'dark ') + Math.abs(+P.margin.value) + '%';
   {
@@ -2325,6 +2383,51 @@ function updateReadouts(){
 }
 
 function render(){ updateReadouts(); drawFeather(); }
+
+// ============================================================================
+//  ALISON'S COLOUR BOOK
+//  Hand-picked by eye, from the jug of real moor feathers on the windowsill.
+//  This is the paintbox — edit it freely: nudge a number, add a swatch, retire
+//  one, and the moor learns it on the next Wander. Everything is
+//  [Hue 0–360, Saturation 0–100, Lightness 0–100], the same reading the H·S·L
+//  picker shows. (The procedural coats further down still roll their own base
+//  tone inside a RANGE — that is the variation the moor lives on — but the named
+//  swatches here are dealt in among them, so a colour you specify turns up as
+//  itself. To hand-pick a whole coat's base, ask and we'll lift its range here
+//  too.)
+// ============================================================================
+
+// THE BRIGHTS — the pattern pigments. One is dealt per marked feather, chosen to
+// CONTRAST the base (a warm bright shuns a warm ground), then jittered a touch so
+// no two are alike. Warm is FOOD (flat, matt); cool is LIGHT (a blaze that rides
+// the tilt) — the tool reads which from the hue, so add a colour and it simply
+// knows what it is. Mark a swatch `rare:true` to keep it out of the everyday deal
+// (the gaudy's flamingo is the one such now).
+const BRIGHTS = [
+  { name:'Jay Jewel',                                     hsl:[212,47,24] },
+  { name:'The Colour of Ravens When You Are Not Looking', hsl:[243,47,16] },
+  { name:'Faded Woodpecker',                              hsl:[ 99,28,28] },
+  { name:'Yaffle Moss',                                   hsl:[140,34,24] },  // wet green bark after rain
+  { name:'Goldcrest',                                     hsl:[ 42,47,43] },  // aka Woodcock Pilot
+  { name:'The Winnow of a Snipe',                         hsl:[ 24,86,18] },
+  { name:'At the Lek',                                    hsl:[  0,86,20] },
+  { name:'Crown Red',                                     hsl:[  0,62,26] },  // the yaffle's cap, a woodpecker's flash
+  { name:'The Quiet Beige',                               hsl:[ 34,20,42] },  // barely a colour, pure magic
+  { name:'Punk Flamingo',                                 hsl:[324,47,23], rare:true },  // gaudy only, and seldom
+];
+
+// THE HYDRANGEAS — hand-picked PALE base colourways, dried-flower muted: a ground
+// and a shade that belong together, dealt now and then by the pale coat as its
+// 'pressed-flower' pick, then patterned by a contrasting Bright. This is the
+// corner to fill from the windowsill jug — add a whimsical and it joins the drift.
+// {ground, shade} as [H,S,L].
+const HYDRANGEAS = [
+  { name:'Dried Hydrangea Mauve', ground:[318,13,80], shade:[320,16,57] },
+  { name:'Faded Bloom Blue',      ground:[210,14,80], shade:[214,17,55] },
+  { name:'Antique Sage',          ground:[102,10,78], shade:[ 98,15,53] },
+  { name:'Papery Lilac',          ground:[272,12,80], shade:[268,15,56] },
+  { name:'Old Parchment',         ground:[ 40,15,82], shade:[ 38,18,59] },
+];
 
 function conjureFrom(str){
   const seedFn = hashStr(str);
@@ -2457,6 +2560,15 @@ function conjureFrom(str){
   P.bars.value = 0; P.barside.value = 0; P.baredge.value = 0;
   P.tipband.value = 0; P.speck.value = 0; P.margin.value = 0; P.marble.value = 0;
   P.brightcover.value = 0;
+  // the colour-density cockpit resets to 'as grown' on every conjure — these
+  // three stay hand dials, so Wander always deals a plainly-dyed feather.
+  // The moor's survey settled two of them below 'as grown': the SHADING comes
+  // down to a whisper (a light shape is all the form a barbed vane needs — the
+  // rest was the multiply murking pale feathers to pewter), and the SHADE DEPTH
+  // sits low, so the plain vane stays near its ground and the shade shows where
+  // it sings — in the marks — rather than washing the body. The scalpel is still
+  // in the drawer for a yaffle (shade depth to nothing hides it from the base).
+  P.shadedepth.value = 15; P.groundint.value = 100; P.markint.value = 100; P.shading.value = 30;
   // the grain of the spotting, rolled apart from the amount of it. Fine freckling
   // is still the moor's common coin, but a proper blotch is a find worth making,
   // so the die is BIMODAL now rather than merely leaning small: mostly fine, and
@@ -2483,12 +2595,18 @@ function conjureFrom(str){
   // it gives up goes mostly to the PALE ground — the French-grey pigeon, and the
   // home of the beige marble. The beige is not reduced; it is redirected to the
   // exquisite kind. The pheasants keep their fawn.
-  const coat = ['brown','pale','dark','twotone','fawn','gaudy'][pick(
-    { flight :[0.24,0.08,0.20,0.30,0.16,0.02],
-      tail   :[0.25,0.07,0.12,0.27,0.24,0.05],
-      covert :[0.13,0.12,0.10,0.35,0.16,0.14],
-      contour:[0.16,0.17,0.14,0.24,0.19,0.10],
-      fluff  :[0.22,0.33,0.12,0.08,0.21,0.04] }[tract])];
+  // ...and a SLATE is added to the deck — the cool side of the moor the warm
+  // browns never let in. It takes its share mostly from the browns and the fawns
+  // (the tea-stain the pages were forever washing) and a little from the two-
+  // tones, so the moor cools without losing its gamebirds. It flies (harriers and
+  // cuckoos do) and it bodies (the ouzel, the grey wagtail), so it lands heaviest
+  // on flight, contour and covert.
+  const coat = ['brown','pale','dark','twotone','fawn','gaudy','slate'][pick(
+    { flight :[0.18,0.07,0.18,0.28,0.12,0.02,0.15],
+      tail   :[0.20,0.06,0.11,0.25,0.20,0.05,0.13],
+      covert :[0.11,0.11,0.09,0.33,0.13,0.13,0.10],
+      contour:[0.12,0.15,0.13,0.22,0.15,0.09,0.14],
+      fluff  :[0.18,0.30,0.11,0.07,0.18,0.04,0.12] }[tract])];
   if(coat==='brown'){
     // the moor's own ground note — kept, but patterned more often than plain, and
     // marbled oftener still
@@ -2512,29 +2630,41 @@ function conjureFrom(str){
   } else if(coat==='pale'){
     // dove-greys and off-whites — the curly little ones from under everything, the
     // French-grey pigeon, softly barred or faintly freckled when marked at all...
-    // and now and then the EXQUISITE one: a near-white ground and a warm beige
-    // shade that marbles across it. The pale sky as it turns; the up mirrored in
-    // the down.
-    const hp = 30 + rng()*30;
-    const beige = rng()<0.42;
-    $('pig1').value = hslToHex(hp, 4 + rng()*10, 76 + rng()*12);
-    $('pig2').value = beige ? hslToHex(34 + rng()*12, 20 + rng()*16, 48 + rng()*12)
-                            : hslToHex(hp, 3 + rng()*8, 34 + rng()*16);
-    if(beige){
-      // faint bars for the marble to wander on, then let it wander
-      P.bars.value = 5 + Math.floor(rng()*7);
+    // and now, from ALISON'S COLOUR BOOK, a dried HYDRANGEA a third of the time:
+    // a hand-picked pale colourway, muted as a pressed flower, that a contrasting
+    // Bright then patterns. (The old EXQUISITE beige — a warm shade marbled across
+    // near-white — is still here as the other pale voice.)
+    if(rng()<0.30 && HYDRANGEAS.length){
+      const H  = HYDRANGEAS[Math.floor(rng()*HYDRANGEAS.length)];
+      const jg = (a,b)=> a - b/2 + rng()*b;      // a whisper of jitter, so no two press quite alike
+      $('pig1').value = hslToHex(jg(H.ground[0],10), jg(H.ground[1],6), jg(H.ground[2],6));
+      $('pig2').value = hslToHex(jg(H.shade[0], 10), jg(H.shade[1], 8), jg(H.shade[2], 8));
+      P.bars.value = 4 + Math.floor(rng()*6);    // a mark for the Bright to ride
       P.baredge.value = 20 + Math.floor(rng()*50);
-      P.marble.value = 34 + Math.floor(rng()*50);
-      if(rng()<0.4) P.margin.value = -(10 + Math.floor(rng()*20));
-    } else if(rng()<0.4){
-      P.bars.value = 2 + Math.floor(rng()*5);
-      P.baredge.value = 20 + Math.floor(rng()*60);
-    } else if(rng()<0.4) P.speck.value = speckle();
+      if(rng()<0.5) P.marble.value = 26 + Math.floor(rng()*46);
+      if(rng()<0.4) P.margin.value = -(10 + Math.floor(rng()*18));
+    } else {
+      const hp = 30 + rng()*30;
+      const beige = rng()<0.42;
+      $('pig1').value = hslToHex(hp, 4 + rng()*10, 76 + rng()*12);
+      $('pig2').value = beige ? hslToHex(34 + rng()*12, 20 + rng()*16, 48 + rng()*12)
+                              : hslToHex(hp, 3 + rng()*8, 34 + rng()*16);
+      if(beige){
+        // faint bars for the marble to wander on, then let it wander
+        P.bars.value = 5 + Math.floor(rng()*7);
+        P.baredge.value = 20 + Math.floor(rng()*50);
+        P.marble.value = 34 + Math.floor(rng()*50);
+        if(rng()<0.4) P.margin.value = -(10 + Math.floor(rng()*20));
+      } else if(rng()<0.4){
+        P.bars.value = 2 + Math.floor(rng()*5);
+        P.baredge.value = 20 + Math.floor(rng()*60);
+      } else if(rng()<0.4) P.speck.value = speckle();
+    }
   } else if(coat==='dark'){
     // the blackbird's undercarriage — near-black over true black, warm-
     // tinged or oil-cool by the toss. And DENSE: a black feather is a
     // solid pointy job, not a wisp, so a thin weave thickens.
-    const hd = rng()<0.4 ? 210 + rng()*50 : 18 + rng()*24;
+    const hd = rng()<0.52 ? 210 + rng()*50 : 18 + rng()*24;   // leaning cool now — the ouzel and the raven wash charcoal-blue, not brown-black
     $('pig1').value = hslToHex(hd, 6 + rng()*14, 14 + rng()*10);
     $('pig2').value = hslToHex(hd, 8 + rng()*12, 4 + rng()*5);
     if(rng()<0.25) P.bars.value = 3 + Math.floor(rng()*6);   // self-coloured, barely-there
@@ -2582,12 +2712,34 @@ function conjureFrom(str){
     }
     if(rng()<0.3) P.tipband.value = tb();
     if(rng()<0.5) P.margin.value = (rng()<0.7?-1:1)*(14 + Math.floor(rng()*28));
+  } else if(coat==='slate'){
+    // THE COOL COAT — the moor's grey side, and the one the warm browns kept
+    // out. A hen harrier gone ghost over the heather; a cuckoo's hawk-barred
+    // back; the slate of a grey wagtail; the sooty char of a ring ouzel. It is
+    // MUTED in the feather — a grey vane is every bit as feathery as a sepia one
+    // — but its SHADE runs cool, which is the one thing the pages of the other
+    // toy have never once washed. Blue-grey through true slate to char, over a
+    // ground of cool cloud-white.
+    const hs = 198 + rng()*36;                                         // 198–234, the cool quarter of the wheel
+    const ghost = rng()<0.34;                                          // the harrier: pale, faint, barely-there
+    $('pig1').value = hslToHex(hs, 4 + rng()*8, 82 + rng()*10);        // cool cloud-white
+    $('pig2').value = ghost ? hslToHex(hs,  8 + rng()*10, 46 + rng()*14)   // ghost silver
+                            : hslToHex(hs, 14 + rng()*18, 18 + rng()*18);  // slate / char
+    // barred like a cuckoo more often than not; a ghost wears the faintest hand
+    if(rng()<0.6){
+      P.bars.value = (ghost?2:4) + Math.floor(rng()*6);
+      P.baredge.value = 20 + Math.floor(rng()*60);
+    } else P.speck.value = speckle();
+    if(rng()<0.35) P.tipband.value = tb();
+    if(rng()<0.42) P.margin.value = -(10 + Math.floor(rng()*24));      // a pale silver rim
+    if(ghost && +P.bars.value>0) P.marble.value = 20 + Math.floor(rng()*42);  // the harrier's soft vermiculation
   } else {
     // and these being imaginary feathers, a few may as well say so: a
     // pale ground whose marks — spots, bars, band, the darkened base,
     // all of them the shade's creatures — come out jewel blue, teal,
-    // violet. No moor bird grew these. No matter; no moor did either.
-    const hj = 160 + rng()*160;
+    // violet, and now and then a WOODPECKER green (wet moss after rain).
+    // No moor bird grew these. No matter; no moor did either.
+    const hj = rng()<0.24 ? 96 + rng()*54 : 168 + rng()*152;   // a green pocket (woodpecker / moss), else the jewels
     $('pig1').value = hslToHex(30 + rng()*30, 6 + rng()*12, 70 + rng()*16);
     $('pig2').value = hslToHex(hj, 45 + rng()*25, 24 + rng()*16);
     if(rng()<0.5){
@@ -2603,49 +2755,55 @@ function conjureFrom(str){
   // barred feather, the owl's, is simply the one that never gets pushed.
   if(+P.bars.value>0 && +P.marble.value===0 && rng()<0.5) P.barside.value = oneWeb();
 
-  // THE BRIGHT — rolled last, because it cannot be rolled at all until the
-  // marks are known. A bright makes no mark of its own; it rides what is
-  // already there, so a plain feather has nowhere to put one and does not get
-  // one. (Which is the mechanism doing the dice's job for it, and a good sign.)
+  // THE BRIGHT — now the moor's MAIN way to pattern a feather, and the reason is
+  // the whole of the colour survey in one line: a mark sings when its colour is
+  // DIFFERENT from the base, and the Bright is the one pigment always independent
+  // of the ground/shade pair. The ramp marks murk exactly where ground and shade
+  // sit close — the browns, the fawns — because there a "bar" is only the base
+  // dragged toward its own shadow. So on those coats the Bright is reached for
+  // hard and painted over the marks already laid; where the base is a genuine
+  // two-tone (the black-and-white ones, the ouzel) the ramp already sings and the
+  // Bright is the goldfinch's extra rather than the cure. It still rides an
+  // existing mark and makes none of its own, so a plain feather stays plain.
   const hasMark = +P.bars.value>0 || +P.tipband.value>0 || +P.speck.value>0
                   || +P.margin.value!==0;
-  // how often, by coat: the two-tones are the goldfinch-and-woodpecker corner
-  // and take one readily; the moor's browns and fawns wear a touch of rust or
-  // gold now and then; a near-black wears the jackdaw's and the magpie's blue,
-  // which is structural and belongs to the dark; and the gaudy always says yes.
-  const brightOdds = coat==='gaudy' ? 0.85 : coat==='twotone' ? 0.30
-                   : coat==='dark'  ? 0.22 : coat==='pale' ? 0.16 : 0.12;
+  // how often, by coat. The close-pair coats lead hard now — their patterns were
+  // the muddy ones. The two-tone sings by its own contrast, so a Bright on it is
+  // taken often but not always; the gaudy always says yes.
+  const brightOdds = coat==='gaudy' ? 0.92
+                   : coat==='brown' || coat==='fawn' ? 0.80
+                   : coat==='pale'  || coat==='slate'? 0.66
+                   : coat==='twotone'? 0.55
+                   : coat==='dark'  ? 0.42 : 0.6;
   if(hasMark && rng() < brightOdds){
-    // FOOD or LIGHT — but HUSHED, always. When a bright is fettled by hand the
-    // bold colours have to be dragged down and down until they stop shouting and
-    // begin to sing: the goldcrest is not yellow but saffron, the snipe not orange
-    // but russet, the woodpecker's green faded into wet mossy bark after rain. So
-    // the die draws from Alison's Hushed Standards — dark, low-saturation anchors
-    // that render far louder In The Feather than their numbers threaten — jittered
-    // a little so no two are quite alike. A dark coat wears the structural end
-    // (jay, raven, woodpecker); everything else wears the food end (goldcrest,
-    // snipe, the lek) or, once in a while, the beige bright: a hush so quiet it is
-    // barely a colour, and pure magic on the right feather. And should a gaudy
-    // feel like it, an unexpected flamingo.
-    const jit  = (a,b)=> a - b/2 + rng()*b;
-    const shade= a => hslToHex(jit(a[0],10), jit(a[1],10), jit(a[2],7));
-    const structural = coat==='dark' ? rng()<0.80 : coat==='gaudy' ? rng()<0.45 : rng()<0.18;
-    if(coat==='gaudy' && rng()<0.12){
-      $('bright').value = shade([324,47,23]);                            // Punk Flamingo
-    } else if(structural){                                              // jay / raven / woodpecker
-      $('bright').value = shade([[212,47,24],[243,47,16],[99,28,28]][Math.floor(rng()*3)]);
-    } else {
-      const r = rng();
-      $('bright').value = r<0.32 ? shade([42,47,43])                    // Goldcrest / Woodcock Pilot
-                        : r<0.55 ? shade([24,86,18])                    // The Winnow of a Snipe
-                        : r<0.74 ? shade([ 0,86,20])                    // At the Lek
-                        :          shade([34,20,42]);                   // the beige bright
-    }
-    // and the cover: mostly a partial claim, because the two-band finish is
-    // the commoner and the better-looking one — something sensible at the root
-    // of the mark and something loud at the end of it
-    P.brightcover.value = rng()<0.68 ? 35 + Math.floor(rng()*40)
-                                     : 80 + Math.floor(rng()*20);
+    // The anchors come from ALISON'S COLOUR BOOK at the top of the file — edit
+    // them there. They render far louder In The Feather than their numbers
+    // threaten, and are jittered here so no two are alike. Warm is FOOD (flat,
+    // matt), cool is LIGHT (a blaze that rides the tilt): the tool reads which
+    // from the hue, so nothing is asked.
+    const jit = (a,b)=> a - b/2 + rng()*b;
+    const dye = a => hslToHex(jit(a[0],10), jit(a[1],10), jit(a[2],7));
+    const POOL  = BRIGHTS.filter(b => !b.rare);   // the everyday deal; rares are dealt only on their own occasion
+    const rares = BRIGHTS.filter(b =>  b.rare);
+    // A pattern sings when it DIFFERS from the base, so the anchor is picked by
+    // how far its hue sits from the ground's, around the circle — a warm bright
+    // shuns a warm brown. Near hues are made rare rather than forbidden, so the
+    // odd tone-on-tone whisper still turns up. A greyed-off base has no hue worth
+    // contrasting, so there the whole pool is dealt evenly instead.
+    const base = hexToHsl($('pig1').value);
+    const arc  = h => { let d = Math.abs(h - base.h) % 360; return d > 180 ? 360 - d : d; };
+    const wts  = POOL.map(b => base.s < 14 ? 1 : 0.12 + arc(b.hsl[0])/180);
+    let sum = wts.reduce((x,y)=>x+y,0), r = rng()*sum, idx = wts.length-1;
+    for(let i=0;i<wts.length;i++){ r -= wts[i]; if(r<=0){ idx = i; break; } }
+    if(coat==='gaudy' && rares.length && rng()<0.12)
+      $('bright').value = dye(rares[Math.floor(rng()*rares.length)].hsl);   // the rare Punk Flamingo & kin
+    else
+      $('bright').value = dye(POOL[idx].hsl);
+    // the cover: a full claim more often now — a whole bar or band in the
+    // Bright's own colour is the clearest pattern the moor wears — with the
+    // two-band finish (sensible root, loud tip) still the other half of the time.
+    P.brightcover.value = rng()<0.5 ? 42 + Math.floor(rng()*38)
+                                    : 82 + Math.floor(rng()*18);
   }
 
   // iridescence: RARE now, and we shall see if it is pined for. It never sat
@@ -2893,6 +3051,10 @@ $('receipt').addEventListener('click', ()=>{
   t += '\n  ── colour ──\n';
   t += crow('ground', $('pig1').value);
   t += crow('shade', $('pig2').value);
+  t += row('shade depth', rd('shadedepth-v'));
+  t += row('ground intensity', rd('groundint-v'));
+  t += row('marking intensity', rd('markint-v'));
+  t += row('shading', rd('shading-v'));
   t += row('barring', rd('bars-v'));
   t += row('bar side', rd('barside-v'));
   t += row('bar edge', rd('baredge-v'));
@@ -2928,6 +3090,7 @@ $('receipt').addEventListener('click', ()=>{
     bars:P.bars.value, barside:P.barside.value, baredge:P.baredge.value,
     tipband:P.tipband.value, speck:P.speck.value, margin:P.margin.value,
     marble:P.marble.value, specksize:P.specksize.value,
+    shadedepth:P.shadedepth.value, groundint:P.groundint.value, markint:P.markint.value, shading:P.shading.value,
     bright:$('bright').value, brightcover:P.brightcover.value,
     eye:P.eye.value, eyecol:$('eyecol').value, eyecol2:$('eyecol2').value,
     eyepupil:P.eyepupil.value, eyepos:P.eyepos.value, eyeside:P.eyeside.value,
@@ -2989,6 +3152,12 @@ function applyRecord(m){
   setR(P.specksize,'specksize');
   if(!numOk(m.marble)) P.marble.value = 0;       // ...and before the marbling, with their bars still marching
   if(!numOk(m.specksize)) P.specksize.value = 30;  // ...and before the grain, at the size the one slider used to give
+  setR(P.shadedepth,'shadedepth');
+  if(!numOk(m.shadedepth)) P.shadedepth.value = 30;    // feathers saved before the depth come back as grown
+  setR(P.groundint,'groundint'); setR(P.markint,'markint'); setR(P.shading,'shading');
+  if(!numOk(m.groundint)) P.groundint.value = 100;     // ...and before the intensity dials, at full as grown
+  if(!numOk(m.markint))   P.markint.value   = 100;
+  if(!numOk(m.shading))   P.shading.value   = 100;     // ...and before the shading dial, at full relief
   setR(P.brightcover,'brightcover');
   if(!numOk(m.brightcover)) P.brightcover.value = 0;   // feathers saved before the bright come back in plain melanin
   setR(P.eye,'eye'); setR(P.eyepupil,'eyepupil'); setR(P.eyepos,'eyepos'); setR(P.eyeside,'eyeside');
