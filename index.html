@@ -2516,8 +2516,14 @@ function conjureFrom(str){
   P.tipband.value = 0; P.speck.value = 0; P.margin.value = 0; P.marble.value = 0;
   P.brightcover.value = 0;
   // the colour-density cockpit resets to 'as grown' on every conjure — these
-  // three stay hand dials, so Wander always deals a plainly-dyed feather
-  P.shadedepth.value = 30; P.groundint.value = 100; P.markint.value = 100; P.shading.value = 100;
+  // three stay hand dials, so Wander always deals a plainly-dyed feather.
+  // The moor's survey settled two of them below 'as grown': the SHADING comes
+  // down to a whisper (a light shape is all the form a barbed vane needs — the
+  // rest was the multiply murking pale feathers to pewter), and the SHADE DEPTH
+  // sits low, so the plain vane stays near its ground and the shade shows where
+  // it sings — in the marks — rather than washing the body. The scalpel is still
+  // in the drawer for a yaffle (shade depth to nothing hides it from the base).
+  P.shadedepth.value = 15; P.groundint.value = 100; P.markint.value = 100; P.shading.value = 30;
   // the grain of the spotting, rolled apart from the amount of it. Fine freckling
   // is still the moor's common coin, but a proper blotch is a find worth making,
   // so the die is BIMODAL now rather than merely leaning small: mostly fine, and
