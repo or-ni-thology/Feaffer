@@ -2698,49 +2698,63 @@ function conjureFrom(str){
   // barred feather, the owl's, is simply the one that never gets pushed.
   if(+P.bars.value>0 && +P.marble.value===0 && rng()<0.5) P.barside.value = oneWeb();
 
-  // THE BRIGHT — rolled last, because it cannot be rolled at all until the
-  // marks are known. A bright makes no mark of its own; it rides what is
-  // already there, so a plain feather has nowhere to put one and does not get
-  // one. (Which is the mechanism doing the dice's job for it, and a good sign.)
+  // THE BRIGHT — now the moor's MAIN way to pattern a feather, and the reason is
+  // the whole of the colour survey in one line: a mark sings when its colour is
+  // DIFFERENT from the base, and the Bright is the one pigment always independent
+  // of the ground/shade pair. The ramp marks murk exactly where ground and shade
+  // sit close — the browns, the fawns — because there a "bar" is only the base
+  // dragged toward its own shadow. So on those coats the Bright is reached for
+  // hard and painted over the marks already laid; where the base is a genuine
+  // two-tone (the black-and-white ones, the ouzel) the ramp already sings and the
+  // Bright is the goldfinch's extra rather than the cure. It still rides an
+  // existing mark and makes none of its own, so a plain feather stays plain.
   const hasMark = +P.bars.value>0 || +P.tipband.value>0 || +P.speck.value>0
                   || +P.margin.value!==0;
-  // how often, by coat: the two-tones are the goldfinch-and-woodpecker corner
-  // and take one readily; the moor's browns and fawns wear a touch of rust or
-  // gold now and then; a near-black wears the jackdaw's and the magpie's blue,
-  // which is structural and belongs to the dark; and the gaudy always says yes.
-  const brightOdds = coat==='gaudy' ? 0.85 : coat==='twotone' ? 0.30
-                   : coat==='dark'  ? 0.22 : coat==='slate' ? 0.20 : coat==='pale' ? 0.16 : 0.12;
+  // how often, by coat. The close-pair coats lead hard now — their patterns were
+  // the muddy ones. The two-tone sings by its own contrast, so a Bright on it is
+  // taken often but not always; the gaudy always says yes.
+  const brightOdds = coat==='gaudy' ? 0.92
+                   : coat==='brown' || coat==='fawn' ? 0.80
+                   : coat==='pale'  || coat==='slate'? 0.66
+                   : coat==='twotone'? 0.55
+                   : coat==='dark'  ? 0.42 : 0.6;
   if(hasMark && rng() < brightOdds){
-    // FOOD or LIGHT — but HUSHED, always. When a bright is fettled by hand the
-    // bold colours have to be dragged down and down until they stop shouting and
-    // begin to sing: the goldcrest is not yellow but saffron, the snipe not orange
-    // but russet, the woodpecker's green faded into wet mossy bark after rain. So
-    // the die draws from Alison's Hushed Standards — dark, low-saturation anchors
-    // that render far louder In The Feather than their numbers threaten — jittered
-    // a little so no two are quite alike. A dark coat wears the structural end
-    // (jay, raven, woodpecker); everything else wears the food end (goldcrest,
-    // snipe, the lek) or, once in a while, the beige bright: a hush so quiet it is
-    // barely a colour, and pure magic on the right feather. And should a gaudy
-    // feel like it, an unexpected flamingo.
-    const jit  = (a,b)=> a - b/2 + rng()*b;
-    const shade= a => hslToHex(jit(a[0],10), jit(a[1],10), jit(a[2],7));
-    const structural = coat==='dark' ? rng()<0.80 : coat==='slate' ? rng()<0.45 : coat==='gaudy' ? rng()<0.45 : rng()<0.18;
-    if(coat==='gaudy' && rng()<0.12){
-      $('bright').value = shade([324,47,23]);                            // Punk Flamingo
-    } else if(structural){                                              // jay / raven / woodpecker
-      $('bright').value = shade([[212,47,24],[243,47,16],[99,28,28]][Math.floor(rng()*3)]);
-    } else {
-      const r = rng();
-      $('bright').value = r<0.32 ? shade([42,47,43])                    // Goldcrest / Woodcock Pilot
-                        : r<0.55 ? shade([24,86,18])                    // The Winnow of a Snipe
-                        : r<0.74 ? shade([ 0,86,20])                    // At the Lek
-                        :          shade([34,20,42]);                   // the beige bright
-    }
-    // and the cover: mostly a partial claim, because the two-band finish is
-    // the commoner and the better-looking one — something sensible at the root
-    // of the mark and something loud at the end of it
-    P.brightcover.value = rng()<0.68 ? 35 + Math.floor(rng()*40)
-                                     : 80 + Math.floor(rng()*20);
+    // The hushed anchors — Alison's Standards, dark and low-saturation, that
+    // render far louder In The Feather than their numbers threaten, jittered so
+    // no two are alike. Warm is FOOD (flat, matt, the same from every angle),
+    // cool is LIGHT (a blaze that rides the tilt): the tool reads which from the
+    // hue, so nothing here is asked. The moor gains its greens and reds — a
+    // yaffle-moss and a crown-red — that a melanin ramp could never reach.
+    const jit = (a,b)=> a - b/2 + rng()*b;
+    const dye = a => hslToHex(jit(a[0],10), jit(a[1],10), jit(a[2],7));
+    const ANCHORS = [
+      [212,47,24],  // Jay Jewel
+      [243,47,16],  // The Colour of Ravens When You Are Not Looking
+      [ 99,28,28],  // Faded Woodpecker
+      [140,34,24],  // Yaffle Moss — wet green bark after rain
+      [ 42,47,43],  // Goldcrest / Woodcock Pilot
+      [ 24,86,18],  // The Winnow of a Snipe
+      [  0,86,20],  // At the Lek
+      [  0,62,26],  // Crown Red — the yaffle's cap, the flash of a woodpecker
+      [ 34,20,42],  // the beige bright, the quiet magic
+    ];
+    // A pattern sings when it DIFFERS from the base, so the anchor is picked by
+    // how far its hue sits from the ground's, around the circle — a warm bright
+    // shuns a warm brown. Near hues are made rare rather than forbidden, so the
+    // odd tone-on-tone whisper still turns up. A greyed-off base has no hue worth
+    // contrasting, so there the whole palette is dealt evenly instead.
+    const base = hexToHsl($('pig1').value);
+    const arc  = h => { let d = Math.abs(h - base.h) % 360; return d > 180 ? 360 - d : d; };
+    const wts  = ANCHORS.map(a => base.s < 14 ? 1 : 0.12 + arc(a[0])/180);
+    let sum = wts.reduce((x,y)=>x+y,0), r = rng()*sum, idx = wts.length-1;
+    for(let i=0;i<wts.length;i++){ r -= wts[i]; if(r<=0){ idx = i; break; } }
+    if(coat==='gaudy' && rng()<0.12) $('bright').value = dye([324,47,23]);  // the rare Punk Flamingo
+    else                             $('bright').value = dye(ANCHORS[idx]);
+    // the cover: a full claim more often now — a whole bar or band in the
+    // Bright's own colour is the clearest pattern the moor wears — with the
+    // two-band finish (sensible root, loud tip) still the other half of the time.
+    P.brightcover.value = rng()<0.5 ? 42 + Math.floor(rng()*38)
+                                    : 82 + Math.floor(rng()*18);
   }
 
   // iridescence: RARE now, and we shall see if it is pined for. It never sat
