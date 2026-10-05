@@ -279,9 +279,9 @@ So there is a **bright**, and it is the one colour on a feather that is not mela
 
 Reds, oranges and yellows are **carotenoids**: pigment, eaten, deposited into the growing feather. A flamingo is pink because of what it stands in. Pigment absorbs, so it is flat and matt and exactly the same colour from every angle you hold it at.
 
-Blues are not pigment. **There is no blue pigment in a bird** — not one, the world over, bar a couple of turacos with a copper trick. Every blue feather there has ever been is a nanostructure: a spongy layer of keratin in the barb scattering the short wavelengths back at you, over a dark melanin backing that swallows the rest. Which is why a jay's blue blazes from one angle and dies from another, and why it needs the dark underneath it.
+Blues are not pigment. **There is no blue pigment in a bird** — not one, the world over. Every blue feather there has ever been is a nanostructure: a spongy layer of keratin in the barb scattering the short wavelengths back at you, over a dark melanin backing that swallows the rest. Which is why a jay's blue blazes from one angle and dies from another, and why it needs the dark underneath it.
 
-And greens are both at once, nearly always — structural blue seen through a carotenoid yellow — which is the kingfisher, the greenfinch and the parrot in one sentence.
+And greens are both at once, nearly always — structural blue seen through a carotenoid yellow — which is the kingfisher, the greenfinch and the parrot in one sentence. The *nearly* is the turacos, whose copper trick is a true green pigment, with a red one besides — never a blue.
 
 So **the tool never asks which**. It reads the hue and knows, because the physics has already decided. Warm is food, cool is light, and the crossover lies across the greens where the real thing is a mixture. Saturation damps it toward pigment as the colour greys off, because an unsaturated colour is not scattering anything. The readout says which it turned out to be, that being the one thing about the bright nobody chose and everybody should be told.
 
